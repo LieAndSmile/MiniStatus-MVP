@@ -1,0 +1,12 @@
+version: "3.8"
+
+services:
+  ministatus:
+    build: .
+    container_name: ministatus
+    ports:
+      - "5000:5000"
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - ADMIN_SECRET=${ADMIN_SECRET}
+    restart: unless-stopped
