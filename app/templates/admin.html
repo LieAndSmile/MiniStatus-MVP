@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MiniStatus Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background-color: #111827;
+      color: white;
+      font-family: 'Segoe UI', sans-serif;
+    }
+  </style>
+</head>
+<body class="p-6">
+    <nav class="bg-gray-800 p-4 mb-8 rounded-xl shadow-md flex justify-between items-center">
+        <div class="text-yellow-400 font-bold text-xl">MiniStatus</div>
+        <div class="space-x-4">
+          <a href="/" class="text-white hover:text-yellow-300">Status</a>
+          <a href="/admin?auth={{ auth | default('') }}" class="text-white hover:text-yellow-300">Admin</a>
+          <a href="/sync?auth={{ auth | default('') }}" class="text-white hover:text-yellow-300">Sync</a>
+        </div>
+      </nav>
+      
+  <div class="max-w-3xl mx-auto bg-gray-900 p-6 rounded-xl shadow-xl">
+    <h1 class="text-4xl font-bold text-yellow-400 mb-6 text-center">MiniStatus Admin</h1>
+
+    <h2 class="text-xl font-semibold mb-2 border-b border-gray-700 pb-2">Add New Service</h2>
+    <form method="POST" class="space-y-4 mb-8">
+      <input type="text" name="name" placeholder="Service name" required class="w-full p-2 rounded bg-gray-800 text-white placeholder-gray-400">
+      <input type="text" name="description" placeholder="Description" required class="w-full p-2 rounded bg-gray-800 text-white placeholder-gray-400">
+      <select name="status" class="w-full p-2 rounded bg-gray-800 text-white">
+        <option value="up">🟢 Up</option>
+        <option value="degraded">🟠 Degraded</option>
+        <option value="down">🔴 Down</option>
+      </select>
+      <button type="submit" class="bg-yellow-400 text-black px-4 py-2 rounded hover:bg-yellow-300">Add Service</button>
+    </form>
+
+    <h2 class="text-xl font-semibold mb-2 border-b border-gray-700 pb-2">Current Services</h2>
+    <div class="space-y-4">
+      {% for svc in services %}
+      <div class="bg-gray-800 p-4 rounded-lg flex items-center justify-between">
+        <div>
+          <div class="font-bold text-white">{{ svc.name }}</div>
+          <div class="text-sm text-gray-400">{{ svc.description }}</div>
+        </div>
+        <div class="flex items-center gap-3">
+          <form method="POST" action="{{ url_for('main.update_service', service_id=svc.id) }}?auth={{ auth }}">
+            <select name="status" class="bg-gray-700 text-white rounded px-2 py-1 text-sm">
+              <option value="up" {% if svc.status == 'up' %}selected{% endif %}>🟢 Up</option>
+              <option value="degraded" {% if svc.status == 'degraded' %}selected{% endif %}>🟠 Degraded</option>
+              <option value="down" {% if svc.status == 'down' %}selected{% endif %}>🔴 Down</option>
+            </select>
+            <button type="submit" class="ml-2 px-3 py-1 bg-blue-500 text-sm rounded hover:bg-blue-600">Update</button>
+          </form>
+          <form method="POST" action="{{ url_for('main.delete_service', service_id=svc.id) }}?auth={{ auth }}">
+            <button type="submit" class="bg-red-600 text-white px-3 py-1 text-sm rounded hover:bg-red-700" onclick="return confirm('Are you sure?')">🗑 Delete</button>
+          </form>
+        </div>
+      </div>
+      {% else %}
+      <p class="text-sm text-gray-500">No services yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Access Denied</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background-color: #111827;
+      color: white;
+      font-family: 'Segoe UI', sans-serif;
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center h-screen">
+    <nav class="bg-gray-800 p-4 mb-8 rounded-xl shadow-md flex justify-between items-center">
+        <div class="text-yellow-400 font-bold text-xl">MiniStatus</div>
+        <div class="space-x-4">
+          <a href="/" class="text-white hover:text-yellow-300">Status</a>
+          <a href="/admin?auth={{ auth | default('') }}" class="text-white hover:text-yellow-300">Admin</a>
+          <a href="/sync?auth={{ auth | default('') }}" class="text-white hover:text-yellow-300">Sync</a>
+        </div>
+      </nav>
+      
+  <div class="text-center">
+    <h1 class="text-6xl font-bold text-red-500 mb-4">403</h1>
+    <p class="text-xl text-gray-300 mb-2">Access Denied</p>
+    <p class="text-sm text-gray-500 mb-6">You do not have permission to view this page.</p>
+    <a href="/" class="bg-yellow-400 text-black px-4 py-2 rounded hover:bg-yellow-300">← Go Back</a>
+  </div>
+</body>
+</html>

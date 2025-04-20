@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MiniStatus Sync</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background-color: #111827;
+      color: white;
+      font-family: 'Segoe UI', sans-serif;
+    }
+  </style>
+</head>
+<body class="p-6">
+    <nav class="bg-gray-800 p-4 mb-8 rounded-xl shadow-md flex justify-between items-center">
+        <div class="text-yellow-400 font-bold text-xl">MiniStatus</div>
+        <div class="space-x-4">
+          <a href="/" class="text-white hover:text-yellow-300">Status</a>
+          <a href="/admin?auth={{ auth | default('') }}" class="text-white hover:text-yellow-300">Admin</a>
+          <a href="/sync?auth={{ auth | default('') }}" class="text-white hover:text-yellow-300">Sync</a>
+        </div>
+      </nav>
+      
+  <div class="max-w-xl mx-auto bg-gray-900 p-6 rounded-xl shadow-xl">
+    <h1 class="text-3xl font-bold text-yellow-400 mb-6 text-center">Docker Sync Results</h1>
+
+    {% if updated_services %}
+      <ul class="space-y-2">
+        {% for line in updated_services %}
+        <li class="bg-gray-800 rounded px-4 py-2">{{ line }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-gray-400 text-center">No Docker containers found.</p>
+    {% endif %}
+
+    <div class="text-center mt-6">
+      <a href="/admin?auth={{ auth }}" class="text-yellow-300 hover:underline">← Back to Admin</a>
+    </div>
+  </div>
+</body>
+</html>
