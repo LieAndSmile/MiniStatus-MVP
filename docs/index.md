@@ -27,8 +27,8 @@ A lightweight, self-hosted status dashboard for tracking your services — Docke
 ### 3. 📸 Screenshots 
 
 ```markdown
-<img src="https://github.com/user-attachments/assets/900a0171-4c0d-4458-8758-599167d6d710" alt="MiniStatus Dashboard" width="600"/>
-
+![MiniStatus Dashboard](https://github.com/user-attachments/assets/900a0171-4c0d-4458-8758-599167d6d710)
+ ```
 
 ### 4. ⚙️ Getting Started
 
@@ -69,7 +69,7 @@ A lightweight, self-hosted status dashboard for tracking your services — Docke
 
 - Login at `/login` with your password from `.env` (`ADMIN_SECRET`)
 ```
-
+ ```
 ### 5. 🧩 Future Plans / TODO
 
 ```markdown
