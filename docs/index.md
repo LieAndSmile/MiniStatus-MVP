@@ -1,13 +1,3 @@
-Great question! 💡 Your `README.md` is the **first thing people see** when they visit your GitHub repo — it's like your project's elevator pitch, user manual, and install guide all rolled into one.
-
----
-
-## ✅ Typical `README.md` Structure (for MiniStatus)
-
-Here’s what you should include:
-
----
-
 ### 1. 📛 Project Title + One-liner
 
 ```markdown
@@ -37,7 +27,7 @@ A lightweight, self-hosted status dashboard for tracking your services — Docke
 ### 3. 📸 Screenshots 
 
 ```markdown
-![image](https://github.com/user-attachments/assets/d8421d89-ae71-4334-9537-32c2fb79f980)
+<img src="https://github.com/user-attachments/assets/900a0171-4c0d-4458-8758-599167d6d710" alt="MiniStatus Dashboard" width="600"/>
 
 
 ### 4. ⚙️ Getting Started
