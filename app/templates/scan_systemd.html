@@ -1,0 +1,47 @@
+@main.route("/sync-systemd")
+def sync_systemd_services():
+    if not session.get("authenticated"):
+        return redirect(url_for("main.login"))
+
+    try:
+        result = subprocess.check_output([
+            "systemctl", "list-units", "--type=service", "--all", "--no-pager"
+        ])
+        output = result.decode("utf-8").strip().split("\n")
+    except Exception as e:
+        return f"Error running systemctl: {e}", 500
+
+    updated_services = []
+
+    for line in output:
+        if ".service" not in line:
+            continue
+        parts = line.split()
+        if len(parts) < 4:
+            continue
+
+        unit_name = parts[0]               # e.g., nginx.service
+        load_state = parts[1]              # e.g., loaded
+        active_state = parts[2]            # e.g., active / inactive
+        sub_state = parts[3]               # e.g., running / exited / failed
+
+        name = unit_name.replace(".service", "")
+        status = "up" if active_state == "active" and sub_state == "running" else "down"
+
+        existing = Service.query.filter_by(name=name).first()
+        if existing:
+            existing.status = status
+            existing.last_updated = datetime.utcnow()
+            updated_services.append(f"{name} → {status}")
+        else:
+            new_svc = Service(
+                name=name,
+                status=status,
+                description=f"Systemd service: {unit_name}",
+                last_updated=datetime.utcnow()
+            )
+            db.session.add(new_svc)
+            updated_services.append(f"Added {name} → {status}")
+
+    db.session.commit()
+    return render_template("sync.html", updated_services=updated_services)

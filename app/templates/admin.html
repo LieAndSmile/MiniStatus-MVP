@@ -20,12 +20,22 @@
           <a href="/" class="text-white hover:text-yellow-300">Status</a>
           <a href="/admin?auth={{ auth | default('') }}" class="text-white hover:text-yellow-300">Admin</a>
           <a href="/sync?auth={{ auth | default('') }}" class="text-white hover:text-yellow-300">Sync</a>
-        </div>
       </nav>
       
-  <div class="max-w-3xl mx-auto bg-gray-900 p-6 rounded-xl shadow-xl">
-    <h1 class="text-4xl font-bold text-yellow-400 mb-6 text-center">MiniStatus Admin</h1>
-
+      <div class="max-w-3xl mx-auto">
+        <h1 class="text-4xl font-bold text-yellow-400 mb-6 text-center">MiniStatus Admin</h1>
+      
+        <div class="flex justify-end mb-4">
+          <a href="/sync-systemd" class="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1.5 rounded-md shadow-sm text-sm font-medium">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v6h6M20 20v-6h-6M4 20l16-16" />
+            </svg>
+            Sync Systemd
+          </a>
+        </div>
+    
+    
+    
     <h2 class="text-xl font-semibold mb-2 border-b border-gray-700 pb-2">Add New Service</h2>
     <form method="POST" class="space-y-4 mb-8">
       <input type="text" name="name" placeholder="Service name" required class="w-full p-2 rounded bg-gray-800 text-white placeholder-gray-400">

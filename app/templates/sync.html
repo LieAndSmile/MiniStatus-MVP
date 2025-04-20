@@ -1,44 +1,68 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MiniStatus Sync</title>
+  <meta charset="UTF-8">
+  <title>{{ title or "Sync Results" }}</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body {
-      background-color: #111827;
-      color: white;
-      font-family: 'Segoe UI', sans-serif;
-    }
-  </style>
 </head>
-<body class="p-6">
-    <nav class="bg-gray-800 p-4 mb-8 rounded-xl shadow-md flex justify-between items-center">
-        <div class="text-yellow-400 font-bold text-xl">MiniStatus</div>
-        <div class="space-x-4">
-          <a href="/" class="text-white hover:text-yellow-300">Status</a>
-          <a href="/admin?auth={{ auth | default('') }}" class="text-white hover:text-yellow-300">Admin</a>
-          <a href="/sync?auth={{ auth | default('') }}" class="text-white hover:text-yellow-300">Sync</a>
+<body class="bg-gray-900 text-white font-sans min-h-screen p-8">
+  <div class="max-w-3xl mx-auto bg-gray-800 p-6 rounded-xl shadow-xl">
+    <h1 class="text-2xl font-bold text-yellow-400 text-center mb-6">
+      {{ title or "Sync Results" }}
+    </h1>
+
+    {% set grouped = {
+      "up": [],
+      "down": [],
+      "degraded": [],
+      "unknown": []
+    } %}
+
+    {% for line in updated_services %}
+      {% set parts = line.split(' → ') %}
+      {% set service = parts[0] %}
+      {% set status = parts[1] if parts|length > 1 else 'unknown' %}
+      {% if service.strip() != "" and not service.startswith("●") %}
+        {% set _ = grouped[status if status in grouped else "unknown"].append(service) %}
+      {% endif %}
+    {% endfor %}
+
+    {% for status in ["down", "degraded", "up", "unknown"] %}
+      {% if grouped[status]|length > 0 %}
+        <h2 class="text-xl font-semibold mt-6 mb-2 cursor-pointer select-none" onclick="toggleSection('group-{{ status }}')">
+          {% if status == "up" %}🟢 Up{% elif status == "down" %}🔴 Down{% elif status == "degraded" %}🟡 Degraded{% else %}⚪ Unknown{% endif %}
+          <span class="text-sm text-gray-400">(click to toggle)</span>
+        </h2>
+        <div id="group-{{ status }}" class="space-y-2">
+          {% for service in grouped[status] %}
+            <div class="flex items-center justify-between bg-gray-700 px-4 py-2 rounded">
+              <span class="text-white font-medium">{{ service }}</span>
+              {% if status == "up" %}
+                <span class="text-green-400 font-bold">🟢 Up</span>
+              {% elif status == "down" %}
+                <span class="text-red-400 font-bold">🔴 Down</span>
+              {% elif status == "degraded" %}
+                <span class="text-yellow-400 font-bold">🟡 Degraded</span>
+              {% else %}
+                <span class="text-gray-400 font-bold">⚪ Unknown</span>
+              {% endif %}
+            </div>
+          {% endfor %}
         </div>
-      </nav>
-      
-  <div class="max-w-xl mx-auto bg-gray-900 p-6 rounded-xl shadow-xl">
-    <h1 class="text-3xl font-bold text-yellow-400 mb-6 text-center">Docker Sync Results</h1>
+      {% endif %}
+    {% endfor %}
 
-    {% if updated_services %}
-      <ul class="space-y-2">
-        {% for line in updated_services %}
-        <li class="bg-gray-800 rounded px-4 py-2">{{ line }}</li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p class="text-gray-400 text-center">No Docker containers found.</p>
-    {% endif %}
-
-    <div class="text-center mt-6">
-      <a href="/admin?auth={{ auth }}" class="text-yellow-300 hover:underline">← Back to Admin</a>
+    <div class="mt-6 text-center">
+      <a href="/admin" class="text-yellow-300 hover:underline">← Back to Admin</a>
     </div>
   </div>
+
+  <script>
+    function toggleSection(id) {
+      const section = document.getElementById(id);
+      section.classList.toggle("hidden");
+    }
+  </script>
 </body>
 </html>
