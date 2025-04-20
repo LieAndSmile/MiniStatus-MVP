@@ -1,79 +1,55 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MiniStatus Admin</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body {
-      background-color: #111827;
-      color: white;
-      font-family: 'Segoe UI', sans-serif;
-    }
-  </style>
-</head>
-<body class="p-6">
-    <nav class="bg-gray-800 p-4 mb-8 rounded-xl shadow-md flex justify-between items-center">
-        <div class="text-yellow-400 font-bold text-xl">MiniStatus</div>
-        <div class="space-x-4">
-          <a href="/" class="text-white hover:text-yellow-300">Status</a>
-          <a href="/admin?auth={{ auth | default('') }}" class="text-white hover:text-yellow-300">Admin</a>
-          <a href="/sync?auth={{ auth | default('') }}" class="text-white hover:text-yellow-300">Sync</a>
-      </nav>
-      
-      <div class="max-w-3xl mx-auto">
-        <h1 class="text-4xl font-bold text-yellow-400 mb-6 text-center">MiniStatus Admin</h1>
-      
-        <div class="flex justify-end mb-4">
-          <a href="/sync-systemd" class="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1.5 rounded-md shadow-sm text-sm font-medium">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v6h6M20 20v-6h-6M4 20l16-16" />
-            </svg>
-            Sync Systemd
-          </a>
-        </div>
-    
-    
-    
-    <h2 class="text-xl font-semibold mb-2 border-b border-gray-700 pb-2">Add New Service</h2>
-    <form method="POST" class="space-y-4 mb-8">
-      <input type="text" name="name" placeholder="Service name" required class="w-full p-2 rounded bg-gray-800 text-white placeholder-gray-400">
-      <input type="text" name="description" placeholder="Description" required class="w-full p-2 rounded bg-gray-800 text-white placeholder-gray-400">
-      <select name="status" class="w-full p-2 rounded bg-gray-800 text-white">
-        <option value="up">🟢 Up</option>
-        <option value="degraded">🟠 Degraded</option>
-        <option value="down">🔴 Down</option>
-      </select>
-      <button type="submit" class="bg-yellow-400 text-black px-4 py-2 rounded hover:bg-yellow-300">Add Service</button>
-    </form>
 
-    <h2 class="text-xl font-semibold mb-2 border-b border-gray-700 pb-2">Current Services</h2>
-    <div class="space-y-4">
-      {% for svc in services %}
-      <div class="bg-gray-800 p-4 rounded-lg flex items-center justify-between">
-        <div>
-          <div class="font-bold text-white">{{ svc.name }}</div>
-          <div class="text-sm text-gray-400">{{ svc.description }}</div>
-        </div>
-        <div class="flex items-center gap-3">
-          <form method="POST" action="{{ url_for('main.update_service', service_id=svc.id) }}?auth={{ auth }}">
-            <select name="status" class="bg-gray-700 text-white rounded px-2 py-1 text-sm">
-              <option value="up" {% if svc.status == 'up' %}selected{% endif %}>🟢 Up</option>
-              <option value="degraded" {% if svc.status == 'degraded' %}selected{% endif %}>🟠 Degraded</option>
-              <option value="down" {% if svc.status == 'down' %}selected{% endif %}>🔴 Down</option>
-            </select>
-            <button type="submit" class="ml-2 px-3 py-1 bg-blue-500 text-sm rounded hover:bg-blue-600">Update</button>
-          </form>
-          <form method="POST" action="{{ url_for('main.delete_service', service_id=svc.id) }}?auth={{ auth }}">
-            <button type="submit" class="bg-red-600 text-white px-3 py-1 text-sm rounded hover:bg-red-700" onclick="return confirm('Are you sure?')">🗑 Delete</button>
-          </form>
-        </div>
-      </div>
-      {% else %}
-      <p class="text-sm text-gray-500">No services yet.</p>
-      {% endfor %}
-    </div>
+{% extends "base.html" %}
+
+{% block title %}Admin - MiniStatus{% endblock %}
+
+{% block content %}
+<div class="bg-gray-800 p-6 rounded-xl shadow-xl">
+  <h1 class="text-4xl font-bold text-yellow-400 mb-6 text-center">MiniStatus Admin</h1>
+
+  <div class="flex justify-end space-x-4 mb-4">
+    {% if has_docker %}
+      <a href="/sync" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded">Sync Docker</a>
+    {% endif %}
+    {% if has_systemctl %}
+      <a href="/sync-systemd" class="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-2 rounded">Sync Systemd</a>
+    {% endif %}
+    <a href="/logout" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded">Logout</a>
   </div>
-</body>
-</html>
+
+  <form method="POST" class="mb-6 space-y-4">
+    <div class="grid grid-cols-3 gap-4">
+      <input name="name" type="text" placeholder="Service Name" class="col-span-1 px-4 py-2 rounded bg-gray-700 text-white" required>
+      <select name="status" class="col-span-1 px-4 py-2 rounded bg-gray-700 text-white">
+        <option value="up">Up</option>
+        <option value="degraded">Degraded</option>
+        <option value="down">Down</option>
+      </select>
+      <input name="description" type="text" placeholder="Description" class="col-span-1 px-4 py-2 rounded bg-gray-700 text-white">
+    </div>
+    <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">Add Service</button>
+  </form>
+
+  <div class="space-y-2">
+    {% for service in services %}
+      <form method="POST" action="/update/{{ service.id }}" class="flex items-center justify-between bg-gray-700 px-4 py-2 rounded">
+        <div>
+          <strong>{{ service.name }}</strong> - {{ service.description }} <br>
+          <small class="text-gray-400">Last updated: {{ service.last_updated }}</small>
+        </div>
+        <div class="flex space-x-2 items-center">
+          <select name="status" class="px-2 py-1 rounded bg-gray-800 text-white">
+            <option value="up" {% if service.status == 'up' %}selected{% endif %}>Up</option>
+            <option value="degraded" {% if service.status == 'degraded' %}selected{% endif %}>Degraded</option>
+            <option value="down" {% if service.status == 'down' %}selected{% endif %}>Down</option>
+          </select>
+          <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded">Update</button>
+      </form>
+      <form method="POST" action="/delete/{{ service.id }}">
+          <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded">Delete</button>
+      </form>
+        </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
