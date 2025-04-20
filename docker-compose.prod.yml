@@ -1,0 +1,15 @@
+
+version: "3.8"
+
+services:
+  ministatus:
+    build: .
+    container_name: ministatus
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=${SECRET_KEY}
+      - ADMIN_SECRET=${ADMIN_SECRET}
+    command: gunicorn --bind 0.0.0.0:5000 run:app
+    restart: unless-stopped
