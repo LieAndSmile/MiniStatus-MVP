@@ -80,29 +80,7 @@ A lightweight, self-hosted status dashboard for tracking your services — Docke
 - Login at `/login` with your password from `.env` (`ADMIN_SECRET`)
 ```
 
----
-
-### 5. 📁 Project Structure (optional)
-
-```markdown
-## Project Structure
-
-```
-ministatus/
-├── app/
-│   ├── routes.py
-│   ├── models.py
-│   └── templates/
-├── run.py
-├── .env
-├── requirements.txt
-└── README.md
-```
-```
-
----
-
-### 6. 🧩 Future Plans / TODO
+### 5. 🧩 Future Plans / TODO
 
 ```markdown
 ## Roadmap
@@ -115,7 +93,7 @@ ministatus/
 
 ---
 
-### 7. 📜 License & Credits
+### 6. 📜 License & Credits
 
 ```markdown
 ## License
