@@ -28,7 +28,7 @@ python run.py
 Then open http://localhost:5000 in your browser.
 
 📷 Screenshots
-Add your screenshots here later for extra bling!
+![image](https://github.com/user-attachments/assets/900a0171-4c0d-4458-8758-599167d6d710)
 
 🧩 Tech Stack
 Flask + Jinja2
