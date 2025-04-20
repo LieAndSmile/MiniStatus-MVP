@@ -6,6 +6,9 @@ import os
 import subprocess
 import requests
 
+from app.utils.system_check import has_docker, has_systemctl
+
+
 main = Blueprint('main', __name__)
 
 # Homepage
@@ -62,7 +65,12 @@ def admin():
         return redirect(url_for("main.admin"))
 
     services = Service.query.all()
-    return render_template("admin.html", services=services)
+    return render_template(
+        "admin.html",
+        services=services,
+        has_docker=has_docker(),
+        has_systemctl=has_systemctl()
+    )
 
 # Update service
 @main.route("/update/<int:service_id>", methods=["POST"])
@@ -143,7 +151,8 @@ def sync_docker_services():
 @main.app_errorhandler(403)
 def forbidden(e):
     return render_template("403.html"), 403
-### Systemd service scanning
+
+# Systemd service scanning
 @main.route("/sync-systemd")
 def sync_systemd_services():
     if not session.get("authenticated"):
@@ -192,4 +201,3 @@ def sync_systemd_services():
 
     db.session.commit()
     return render_template("sync.html", updated_services=updated_services)
-

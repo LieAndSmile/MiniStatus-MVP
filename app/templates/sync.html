@@ -1,68 +1,32 @@
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>{{ title or "Sync Results" }}</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-900 text-white font-sans min-h-screen p-8">
-  <div class="max-w-3xl mx-auto bg-gray-800 p-6 rounded-xl shadow-xl">
-    <h1 class="text-2xl font-bold text-yellow-400 text-center mb-6">
-      {{ title or "Sync Results" }}
-    </h1>
+{% extends "base.html" %}
 
-    {% set grouped = {
-      "up": [],
-      "down": [],
-      "degraded": [],
-      "unknown": []
-    } %}
+{% block title %}Sync Results - MiniStatus{% endblock %}
 
-    {% for line in updated_services %}
-      {% set parts = line.split(' → ') %}
-      {% set service = parts[0] %}
-      {% set status = parts[1] if parts|length > 1 else 'unknown' %}
-      {% if service.strip() != "" and not service.startswith("●") %}
-        {% set _ = grouped[status if status in grouped else "unknown"].append(service) %}
-      {% endif %}
-    {% endfor %}
+{% block content %}
+<div class="max-w-3xl mx-auto bg-gray-800 p-6 rounded-xl shadow-xl">
+  <h2 class="text-2xl font-bold text-yellow-400 mb-4 text-center">Sync Results</h2>
 
-    {% for status in ["down", "degraded", "up", "unknown"] %}
-      {% if grouped[status]|length > 0 %}
-        <h2 class="text-xl font-semibold mt-6 mb-2 cursor-pointer select-none" onclick="toggleSection('group-{{ status }}')">
-          {% if status == "up" %}🟢 Up{% elif status == "down" %}🔴 Down{% elif status == "degraded" %}🟡 Degraded{% else %}⚪ Unknown{% endif %}
-          <span class="text-sm text-gray-400">(click to toggle)</span>
-        </h2>
-        <div id="group-{{ status }}" class="space-y-2">
-          {% for service in grouped[status] %}
-            <div class="flex items-center justify-between bg-gray-700 px-4 py-2 rounded">
-              <span class="text-white font-medium">{{ service }}</span>
-              {% if status == "up" %}
-                <span class="text-green-400 font-bold">🟢 Up</span>
-              {% elif status == "down" %}
-                <span class="text-red-400 font-bold">🔴 Down</span>
-              {% elif status == "degraded" %}
-                <span class="text-yellow-400 font-bold">🟡 Degraded</span>
-              {% else %}
-                <span class="text-gray-400 font-bold">⚪ Unknown</span>
-              {% endif %}
-            </div>
-          {% endfor %}
-        </div>
-      {% endif %}
-    {% endfor %}
+  {% if updated_services %}
+    <ul class="space-y-2">
+      {% for item in updated_services %}
+        <li class="bg-gray-700 px-4 py-2 rounded text-white">
+          {% if '→ up' in item %}
+            <span class="text-green-400">🟢</span> {{ item }}
+          {% elif '→ degraded' in item %}
+            <span class="text-yellow-400">🟡</span> {{ item }}
+          {% else %}
+            <span class="text-red-400">🔴</span> {{ item }}
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-gray-300">No services updated.</p>
+  {% endif %}
 
-    <div class="mt-6 text-center">
-      <a href="/admin" class="text-yellow-300 hover:underline">← Back to Admin</a>
-    </div>
+  <div class="mt-6 text-center">
+    <a href="/admin" class="text-yellow-400 hover:underline">← Back to Admin</a>
   </div>
-
-  <script>
-    function toggleSection(id) {
-      const section = document.getElementById(id);
-      section.classList.toggle("hidden");
-    }
-  </script>
-</body>
-</html>
+</div>
+{% endblock %}

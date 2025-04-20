@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}MiniStatus{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white font-sans">
+  <nav class="bg-gray-800 px-6 py-4 flex justify-between items-center">
+    <div class="text-yellow-400 font-bold text-xl">MiniStatus</div>
+    <div class="space-x-4 text-white">
+      <a href="/" class="hover:underline">Status</a>
+      <a href="/admin" class="hover:underline">Admin</a>
+    </div>
+  </nav>
+
+  <main class="p-6 max-w-5xl mx-auto">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
