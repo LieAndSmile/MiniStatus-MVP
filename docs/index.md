@@ -25,6 +25,7 @@ A lightweight, self-hosted status dashboard for tracking your services — Docke
 ---
 
 ### 3. 📸 Screenshots 
+
 ![MiniStatus Dashboard](./docs/preview.png)
 
 
