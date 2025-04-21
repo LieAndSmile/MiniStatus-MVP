@@ -1,126 +1,90 @@
-Great question! 💡 Your `README.md` is the **first thing people see** when they visit your GitHub repo — it's like your project's elevator pitch, user manual, and install guide all rolled into one.
+
+# 📡 MiniStatus
+
+**MiniStatus** is a self-hosted micro status page to monitor the health of services running in your homelab, VPS, or cloud setup.
+
+It supports:
+- 🐳 Docker container health sync
+- ⚙️ Systemd services scan
+- 🔐 Password-protected admin panel
+- 🔄 Manual status override (Up / Degraded / Down)
+- 🎨 Clean UI with TailwindCSS
+- 🐘 SQLite-backed persistence
 
 ---
 
-## ✅ Typical `README.md` Structure (for MiniStatus)
+## 🚀 Getting Started
 
-Here’s what you should include:
-
----
-
-### 1. 📛 Project Title + One-liner
-
-```markdown
-# MiniStatus
-
-A lightweight, self-hosted status dashboard for tracking your services — Docker-aware, dark-themed, and DevOps-friendly.
-```
+### 📦 Requirements
+- Docker & Docker Compose
+- Python 3.12+ (for local use)
+- `.env` file with secrets
 
 ---
 
-### 2. 🚀 Features (Bulleted list)
+### ⚙️ Environment Setup
 
-```markdown
-## Features
+You must create a `.env` file in the root of the project:
 
-- 🟢 Real-time status dashboard
-- 🔐 Session-based login system
-- 🛠 Admin panel to add/update/delete services
-- 📦 Docker container discovery
-- 🌓 Dark mode UI with Tailwind CSS
-- 📡 Sync running containers with one click
-- 🔧 Custom 403 error page
+```env
+SECRET_KEY=your-random-secret-key
+ADMIN_SECRET=your-admin-password
 ```
+
+To start, just copy the example file:
+
+```bash
+cp .env.example .env
+```
+
+> Never commit `.env` with real secrets!
 
 ---
 
-### 3. 📸 Screenshots 
+### 🐳 Run with Docker (Production)
 
-```markdown
-![image](https://github.com/user-attachments/assets/d8421d89-ae71-4334-9537-32c2fb79f980)
-
-
-### 4. ⚙️ Getting Started
-
-```markdown
-## Getting Started
-
-1. Clone the repo:
-   ```bash
-   git clone https://github.com/LieAndSmile/MiniStatus-MVP.git
-   cd MiniStatus-MVP
-   ```
-
-2. Create and activate a virtual environment:
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
-
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. Set up `.env`:
-   ```bash
-   cp .env.example .env  # or create it manually
-   ```
-
-5. Run the app:
-   ```bash
-   python run.py
-   ```
-
-6. Open your browser:
-   ```
-   http://127.0.0.1:5000/
-   ```
-
-- Login at `/login` with your password from `.env` (`ADMIN_SECRET`)
+```bash
+docker-compose --env-file .env up --build -d
 ```
+
+Access the app at: [http://localhost:5000](http://localhost:5000)
 
 ---
 
-### 5. 📁 Project Structure (optional)
+### 🧪 Run in Dev Mode
 
-```markdown
-## Project Structure
+```bash
+docker-compose -f docker-compose.dev.yml --env-file .env.dev up --build
+```
 
-```
-ministatus/
-├── app/
-│   ├── routes.py
-│   ├── models.py
-│   └── templates/
-├── run.py
-├── .env
-├── requirements.txt
-└── README.md
-```
-```
+This uses volume mounts and Flask's dev server.
 
 ---
 
-### 6. 🧩 Future Plans / TODO
+## 🛠️ Admin Panel
 
-```markdown
-## Roadmap
-
-- [ ] Add API endpoint `/status.json`
-- [ ] Add Telegram alerting
-- [ ] Docker Compose support
-- [ ] Uptime tracking and incident timeline
-```
+- Visit `/admin?auth=your-admin-password`
+- Add, update, or delete services
+- Sync Docker or systemd services
 
 ---
 
-### 7. 📜 License & Credits
+## 🧪 CI/CD (Optional)
 
-```markdown
-## License
+You can enable GitHub Actions to:
+- Auto-build Docker images
+- Push to Docker Hub
 
-MIT — use freely, improve freely.
+See: `.github/workflows/docker-build-push.yml`
 
-## Made with ❤️ by [@LieAndSmile](https://github.com/LieAndSmile)
-```
+---
+
+## 📸 Screenshot
+
+![MiniStatus Dashboard](./docs/preview.png)
+
+---
+
+## 📄 License
+
+MIT © [LieAndSmile](https://github.com/LieAndSmile)
