@@ -1,0 +1,4 @@
+*.md
+*.txt
+*.bak
+.DS_Store

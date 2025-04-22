@@ -1,0 +1,22 @@
+image:
+  repository: rilmay/ministatus
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 5000
+
+env:
+  SECRET_KEY: "changeme"
+  ADMIN_SECRET: "changeme"
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: ministatus.local
+      paths:
+        - path: /
+          pathType: Prefix

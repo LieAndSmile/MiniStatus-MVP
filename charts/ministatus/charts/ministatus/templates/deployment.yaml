@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ministatus.fullname" . }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "ministatus.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "ministatus.name" . }}
+    spec:
+      containers:
+        - name: ministatus
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 5000
+          env:
+            - name: SECRET_KEY
+              value: "{{ .Values.env.SECRET_KEY }}"
+            - name: ADMIN_SECRET
+              value: "{{ .Values.env.ADMIN_SECRET }}"
