@@ -11,6 +11,8 @@ It supports:
 - 🎨 Clean UI with TailwindCSS
 - 🐘 SQLite-backed persistence
 
+![MiniStatus Dashboard](./docs/preview.png)
+
 ---
 
 ## 🚀 Getting Started
@@ -78,13 +80,6 @@ You can enable GitHub Actions to:
 See: `.github/workflows/docker-build-push.yml`
 
 ---
-
-## 📸 Screenshot
-
-![MiniStatus Dashboard](./docs/preview.png)
-
----
-
 ---
 
 ## ⎈ Deploy to Kubernetes with Helm
@@ -111,6 +106,12 @@ helm install ministatus ./charts/ministatus \
 helm upgrade ministatus ./charts/ministatus --set image.tag=v1.0.0
 ```
 
+### 🔁 Upgrade
+
+```bash
+helm upgrade ministatus ./charts/ministatus --set image.tag=v1.0.0
+```
+
 ### 🧼 Uninstall
 
 ```bash
@@ -118,24 +119,10 @@ helm uninstall ministatus
 ```
 
 > The chart lives in: `charts/ministatus/`
-```
+
 
 ---
-
-## 🛠 Let’s Do It
-
-You can either:
-
-### 🔹 Manually paste that section at the end  
-– OR –
-
-### 🔹 I can generate a clean `README-merged.md` for you to download and commit. Want that?
-
-Let me know!
-
 
 ## 📄 License
 
 MIT © [LieAndSmile](https://github.com/LieAndSmile)
-
-
