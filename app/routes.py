@@ -201,3 +201,47 @@ def sync_systemd_services():
 
     db.session.commit()
     return render_template("sync.html", updated_services=updated_services)
+
+# APO Method for reporting status
+
+from flask import request, jsonify
+from .models import Service
+from . import db
+from datetime import datetime
+import os
+
+@main.route("/report", methods=["POST"])
+def report_status():
+    print("Incoming webhook:", request.get_data())
+    api_key = request.headers.get("X-API-Key")
+    expected_key = os.getenv("API_KEY", "supersecret")  # default fallback
+
+    if api_key != expected_key:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json() or request.form
+    name = data.get("name")
+    status = data.get("status")
+    description = data.get("description", "Reported via webhook")
+
+    if not name or not status:
+        return jsonify({"error": "Missing required fields"}), 400
+
+    service = Service.query.filter_by(name=name).first()
+    if service:
+        service.status = status
+        service.last_updated = datetime.utcnow()
+        service.description = description
+    else:
+        service = Service(
+            name=name,
+            status=status,
+            description=description,
+            last_updated=datetime.utcnow()
+        )
+        db.session.add(service)
+
+    db.session.commit()
+    return jsonify({"message": f"Service '{name}' updated to '{status}'"})
+
+
