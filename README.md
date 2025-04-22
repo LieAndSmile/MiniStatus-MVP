@@ -85,17 +85,6 @@ See: `.github/workflows/docker-build-push.yml`
 
 ---
 
-Awesome — thanks for sharing the original `README.md`. It looks great already — well-structured and clear.
-
-So instead of **overwriting**, the best approach is to **append the Helm deployment section** to the bottom, keeping your structure intact ✅
-
----
-
-## ✅ Updated Plan
-
-We’ll **add a new section like this** at the end of your current README:
-
-```markdown
 ---
 
 ## ⎈ Deploy to Kubernetes with Helm
