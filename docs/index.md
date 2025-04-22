@@ -1,93 +1,115 @@
-### 1. 📛 Project Title + One-liner
 
-```markdown
-# MiniStatus
+# 📡 MiniStatus
 
-A lightweight, self-hosted status dashboard for tracking your services — Docker-aware, dark-themed, and DevOps-friendly.
+**MiniStatus** is a self-hosted micro status page to monitor the health of services running in your homelab, VPS, or cloud setup.
+
+It supports:
+- 🐳 Docker container health sync
+- ⚙️ Systemd services scan
+- 🔐 Password-protected admin panel
+- 🔄 Manual status override (Up / Degraded / Down)
+- 🎨 Clean UI with TailwindCSS
+- 🐘 SQLite-backed persistence
+
+![MiniStatus Dashboard](./preview.png)
+
+---
+
+## 🚀 Getting Started
+
+### 📦 Requirements
+- Docker & Docker Compose
+- Python 3.12+ (for local use)
+- `.env` file with secrets
+
+---
+
+### ⚙️ Environment Setup
+
+You must create a `.env` file in the root of the project:
+
+```env
+SECRET_KEY=your-random-secret-key
+ADMIN_SECRET=your-admin-password
+```
+
+To start, just copy the example file:
+
+```bash
+cp .env.example
 ```
 
 ---
 
-### 2. 🚀 Features (Bulleted list)
+### 🐳 Run with Docker (Production)
 
-```markdown
-## Features
-
-- 🟢 Real-time status dashboard
-- 🔐 Session-based login system
-- 🛠 Admin panel to add/update/delete services
-- 📦 Docker container discovery
-- 🌓 Dark mode UI with Tailwind CSS
-- 📡 Sync running containers with one click
-- 🔧 Custom 403 error page
+```bash
+docker-compose --env-file .env up --build -d
 ```
+
+Access the app at: [http://localhost:5000](http://localhost:5000)
 
 ---
 
-### 3. 📸 Screenshots 
+### 🧪 Run in Dev Mode
 
-![MiniStatus Dashboard](preview.png)
-
-
-### 4. ⚙️ Getting Started
-
-```markdown
-## Getting Started
-
-1. Clone the repo:
-   ```bash
-   git clone https://github.com/LieAndSmile/MiniStatus-MVP.git
-   cd MiniStatus-MVP
-   ```
-
-2. Create and activate a virtual environment:
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
-
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. Set up `.env`:
-   ```bash
-   cp .env.example .env  # or create it manually
-   ```
-
-5. Run the app:
-   ```bash
-   python run.py
-   ```
-
-6. Open your browser:
-   ```
-   http://127.0.0.1:5000/
-   ```
-
-- Login at `/login` with your password from `.env` (`ADMIN_SECRET`)
+```bash
+docker-compose -f docker-compose.dev.yml --env-file .env.dev up --build
 ```
- ```
-### 5. 🧩 Future Plans / TODO
 
-```markdown
-## Roadmap
-
-- [ ] Add API endpoint `/status.json`
-- [ ] Add Telegram alerting
-- [ ] Docker Compose support
-- [ ] Uptime tracking and incident timeline
-```
+This uses volume mounts and Flask's dev server.
 
 ---
 
-### 6. 📜 License & Credits
+## 🛠️ Admin Panel
 
-```markdown
-## License
+- Visit `/admin?auth=your-admin-password`
+- Add, update, or delete services
+- Sync Docker or systemd services
 
-MIT — use freely, improve freely.
+---
 
-## Made with ❤️ by [@LieAndSmile](https://github.com/LieAndSmile)
+## ⎈ Deploy to Kubernetes with Helm
+
+MiniStatus includes a Helm chart for simple Kubernetes deployment.
+
+### 📦 Install with Helm
+
+```bash
+helm install ministatus ./charts/ministatus
 ```
+
+Customize it with your own values:
+
+```bash
+helm install ministatus ./charts/ministatus \
+  --set env.SECRET_KEY="yoursecret" \
+  --set env.ADMIN_SECRET="youradmin"
+```
+
+### 🔁 Upgrade
+
+```bash
+helm upgrade ministatus ./charts/ministatus --set image.tag=v1.0.0
+```
+
+### 🔁 Upgrade
+
+```bash
+helm upgrade ministatus ./charts/ministatus --set image.tag=v1.0.0
+```
+
+### 🧼 Uninstall
+
+```bash
+helm uninstall ministatus
+```
+
+> The chart lives in: `charts/ministatus/`
+
+
+---
+
+## 📄 License
+
+MIT © [LieAndSmile](https://github.com/LieAndSmile)
