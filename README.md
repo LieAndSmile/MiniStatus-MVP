@@ -85,6 +85,68 @@ See: `.github/workflows/docker-build-push.yml`
 
 ---
 
+Awesome — thanks for sharing the original `README.md`. It looks great already — well-structured and clear.
+
+So instead of **overwriting**, the best approach is to **append the Helm deployment section** to the bottom, keeping your structure intact ✅
+
+---
+
+## ✅ Updated Plan
+
+We’ll **add a new section like this** at the end of your current README:
+
+```markdown
+---
+
+## ⎈ Deploy to Kubernetes with Helm
+
+MiniStatus includes a Helm chart for simple Kubernetes deployment.
+
+### 📦 Install with Helm
+
+```bash
+helm install ministatus ./charts/ministatus
+```
+
+Customize it with your own values:
+
+```bash
+helm install ministatus ./charts/ministatus \
+  --set env.SECRET_KEY="yoursecret" \
+  --set env.ADMIN_SECRET="youradmin"
+```
+
+### 🔁 Upgrade
+
+```bash
+helm upgrade ministatus ./charts/ministatus --set image.tag=v1.0.0
+```
+
+### 🧼 Uninstall
+
+```bash
+helm uninstall ministatus
+```
+
+> The chart lives in: `charts/ministatus/`
+```
+
+---
+
+## 🛠 Let’s Do It
+
+You can either:
+
+### 🔹 Manually paste that section at the end  
+– OR –
+
+### 🔹 I can generate a clean `README-merged.md` for you to download and commit. Want that?
+
+Let me know!
+
+
 ## 📄 License
 
 MIT © [LieAndSmile](https://github.com/LieAndSmile)
+
+
