@@ -36,10 +36,8 @@ ADMIN_SECRET=your-admin-password
 To start, just copy the example file:
 
 ```bash
-cp .env.example .env
+cp .env.example
 ```
-
-> Never commit `.env` with real secrets!
 
 ---
 
@@ -69,17 +67,6 @@ This uses volume mounts and Flask's dev server.
 - Add, update, or delete services
 - Sync Docker or systemd services
 
----
-
-## 🧪 CI/CD (Optional)
-
-You can enable GitHub Actions to:
-- Auto-build Docker images
-- Push to Docker Hub
-
-See: `.github/workflows/docker-build-push.yml`
-
----
 ---
 
 ## ⎈ Deploy to Kubernetes with Helm
