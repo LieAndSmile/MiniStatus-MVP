@@ -1,15 +1,14 @@
-
 # 📡 MiniStatus
 
-**MiniStatus** is a self-hosted micro status page to monitor the health of services running in your homelab, VPS, or cloud setup.
+**MiniStatus** is a lightweight, self-hosted service status dashboard built for developers, homelabs, and small teams.
 
-It supports:
-- 🐳 Docker container health sync
-- ⚙️ Systemd services scan
-- 🔐 Password-protected admin panel
-- 🔄 Manual status override (Up / Degraded / Down)
-- 🎨 Clean UI with TailwindCSS
-- 🐘 SQLite-backed persistence
+- ✅ Track service health manually or via API
+- 🔐 Admin panel with password protection
+- 📡 Docker & systemd sync
+- 🎯 Built with Flask + SQLite, minimal resources
+- 🐳 Easy to deploy (Docker, Kubernetes, or manually)
+
+> No Prometheus. No Grafana. Just clean uptime visibility.
 
 ![MiniStatus Dashboard](./docs/preview.png)
 
@@ -22,47 +21,38 @@ It supports:
 - Python 3.12+ (for local use)
 - `.env` file with secrets
 
----
-
 ### ⚙️ Environment Setup
-
-You must create a `.env` file in the root of the project:
+Create a `.env` file in the root of the project:
 
 ```env
 SECRET_KEY=your-random-secret-key
 ADMIN_SECRET=your-admin-password
 ```
 
-To start, just copy the example file:
-
+Or copy the example:
 ```bash
-cp .env.example
+cp .env.example .env
 ```
 
 ---
 
 ### 🐳 Run with Docker (Production)
-
 ```bash
 docker-compose --env-file .env up --build -d
 ```
-
 Access the app at: [http://localhost:5000](http://localhost:5000)
 
 ---
 
 ### 🧪 Run in Dev Mode
-
 ```bash
 docker-compose -f docker-compose.dev.yml --env-file .env.dev up --build
 ```
-
-This uses volume mounts and Flask's dev server.
+Flask's dev server + volume mounts for live edits.
 
 ---
 
-## 🛠️ Admin Panel
-
+## 🔐 Admin Panel
 - Visit `/admin?auth=your-admin-password`
 - Add, update, or delete services
 - Sync Docker or systemd services
@@ -71,16 +61,11 @@ This uses volume mounts and Flask's dev server.
 
 ## ⎈ Deploy to Kubernetes with Helm
 
-MiniStatus includes a Helm chart for simple Kubernetes deployment.
-
-### 📦 Install with Helm
-
+### 📦 Install
 ```bash
 helm install ministatus ./charts/ministatus
 ```
-
-Customize it with your own values:
-
+Customize:
 ```bash
 helm install ministatus ./charts/ministatus \
   --set env.SECRET_KEY="yoursecret" \
@@ -88,28 +73,51 @@ helm install ministatus ./charts/ministatus \
 ```
 
 ### 🔁 Upgrade
-
-```bash
-helm upgrade ministatus ./charts/ministatus --set image.tag=v1.0.0
-```
-
-### 🔁 Upgrade
-
 ```bash
 helm upgrade ministatus ./charts/ministatus --set image.tag=v1.0.0
 ```
 
 ### 🧼 Uninstall
-
 ```bash
 helm uninstall ministatus
 ```
+Chart lives in: `charts/ministatus/`
 
-> The chart lives in: `charts/ministatus/`
+---
 
+## 📡 Features
+
+| Feature                        | Status  |
+|-------------------------------|----------|
+| Manual service status updates | ✅ Done  |
+| Docker & systemd sync         | ✅ Done  |
+| `/report` API w/ key auth     | ✅ Done  |
+| Admin panel (web UI)          | ✅ Done  |
+| Telegram/Slack alerts         | ⏳ Planned |
+| Public status page            | ⏳ Planned |
+| Multi-project support         | ⏳ Planned |
+| Incident history + notes      | ⏳ Planned |
+
+---
+
+## 🔜 Roadmap (MiniStatus Pro)
+- [ ] Public read-only status page (`/public`)
+- [ ] Telegram & Slack alerting
+- [ ] Incident history & resolution notes
+- [ ] Multi-project dashboard
+- [ ] Role-based auth (`admin`, `viewer`)
+- [ ] JSON & CSV export
+- [ ] GitHub deploy webhook support
+
+---
+
+## ⭐ Support & Feedback
+If you like the project, give it a ⭐ or open an issue for feedback or bugs.
+
+> Want a hosted version or have feature ideas? Let us know via [Issues](https://github.com/yourproject/issues) or Discussions.
 
 ---
 
 ## 📄 License
-
 MIT © [LieAndSmile](https://github.com/LieAndSmile)
+
