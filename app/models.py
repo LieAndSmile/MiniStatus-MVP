@@ -7,6 +7,9 @@ class Service(db.Model):
     status = db.Column(db.String(20), nullable=False, default="up")  # up, degraded, down
     description = db.Column(db.String(128))
     last_updated = db.Column(db.DateTime, default=datetime.utcnow)
+    host = db.Column(db.String(255), nullable=True)  # e.g., "127.0.0.1" or "google.com"
+    port = db.Column(db.Integer, nullable=True)      # e.g., 80, 443, 8080
+
 
 class Incident(db.Model):
     id = db.Column(db.Integer, primary_key=True)
