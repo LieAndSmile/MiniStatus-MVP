@@ -14,6 +14,10 @@ from datetime import datetime
 # Allows running shell commands like "docker" or "systemctl"
 import subprocess
 
+# Importing a helper function to check open ports
+from app.utils.ports import get_local_listening_ports
+
+
 # Creating a new Flask "blueprint" for grouping sync-related routes
 sync_bp = Blueprint("sync", __name__)
 
@@ -136,6 +140,9 @@ def sync_systemd_services():
     return render_template("sync.html", updated_services=updated_services)
 import socket  # add to the top if not already there
 
+# -------------------------------
+# PORTS CHECK
+# -------------------------------
 @sync_bp.route("/sync-ports")
 def sync_ports():
     if not session.get("authenticated"):

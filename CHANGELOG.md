@@ -3,6 +3,30 @@
 All notable changes to this project will be documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/) and uses the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
+## [v1.4.0] - 2025-05-12
+### Added
+- Redesigned /ports page with dark theme and grouped UI
+- Status icons (🟢 🔴 🟡) for remote port checks
+- Address scope (e.g. %lo) now stripped from local ports
+- Grouped TCP/UDP ports, labeled services like SSH/HTTP/Flask
+
+### Changed
+- `ports.html` layout: card → table format for monitored services
+- Icons added for common ports (SSH, HTTP, etc.)
+
+### TODO
+- Add uptime logging (ServiceLog model)
+- Add auto-sync via scheduler
+- Add alert notifications
+
+
+
+## [1.3.0] - 2025-05-12
+### Added
+- New `/ports` dashboard tab to display services with host:port
+- Port checker route `/sync-ports` using Python socket
+- Updated Service model with `host` and `port` fields
+- Visual display of scanned ports and status
 
 ---
 
