@@ -1,6 +1,7 @@
 from .admin import admin_bp
 from .api import api_bp
 from .sync import sync_bp
+from .ports import ports_bp
 from .error_handlers import errors_bp
 from .public import public_bp  # ⬅️ Add this line
 
@@ -10,3 +11,5 @@ def register_blueprints(app):
     app.register_blueprint(api_bp)
     app.register_blueprint(sync_bp)
     app.register_blueprint(errors_bp)
+    app.register_blueprint(ports_bp)
+
