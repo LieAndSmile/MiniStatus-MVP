@@ -118,6 +118,16 @@ If you like the project, give it a ⭐ or open an issue for feedback or bugs.
 
 ---
 
+## 📦 Releases
+
+**Latest:** `v1.1.0` – *May 12, 2025*  
+Modularized route structure using Flask Blueprints. Cleaned up `/admin`, `/report`, and `/sync` logic.
+
+See full [CHANGELOG.md](./CHANGELOG.md) for version history.
+
+
+---
+
 ## 📄 License
 MIT © [LieAndSmile](https://github.com/LieAndSmile)
 
