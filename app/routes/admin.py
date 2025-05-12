@@ -42,15 +42,32 @@ def admin():
         if existing:
             flash("Service with that name already exists!", "warning")
         else:
-            new_service = Service(name=name, status=status, description=description, last_updated=datetime.utcnow())
+            new_service = Service(
+                name=name,
+                status=status,
+                description=description,
+                last_updated=datetime.utcnow()
+            )
             db.session.add(new_service)
             db.session.commit()
             flash("Service added!", "success")
 
         return redirect(url_for("admin.admin"))
 
-    services = Service.query.all()
-    return render_template("admin.html", services=services, has_docker=has_docker(), has_systemctl=has_systemctl())
+    filter_status = request.args.get("status")
+    query = Service.query
+    if filter_status in ['up', 'down', 'degraded']:
+        query = query.filter_by(status=filter_status)
+
+    services = query.all()
+
+    return render_template(
+        "admin.html",
+        services=services,
+        has_docker=has_docker(),
+        has_systemctl=has_systemctl(),
+        current_filter=filter_status
+    )
 
 @admin_bp.route("/update/<int:service_id>", methods=["POST"])
 def update_service(service_id):

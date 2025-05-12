@@ -4,9 +4,22 @@
   <meta charset="UTF-8">
   <title>{% block title %}MiniStatus{% endblock %}</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'status-up': '#00e676',
+            'status-down': '#ff3d00',
+            'status-degraded': '#fdd835',
+          }
+        }
+      }
+    }
+  </script>
 </head>
 <body class="bg-gray-900 text-white font-sans">
-  <nav class="bg-gray-800 px-6 py-4 flex justify-between items-center">
+  <nav class="bg-gray-800 px-6 py-4 flex justify-between items-center shadow-md">
     <div class="text-yellow-400 font-bold text-xl">MiniStatus</div>
     <div class="space-x-4 text-white">
       <a href="/" class="hover:underline">Status</a>
@@ -14,7 +27,7 @@
     </div>
   </nav>
 
-  <main class="p-6 max-w-5xl mx-auto">
+  <main class="p-6 max-w-5xl mx-auto space-y-6">
     {% block content %}{% endblock %}
   </main>
 </body>

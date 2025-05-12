@@ -29,3 +29,12 @@ This project follows [Semantic Versioning](https://semver.org/) and uses the [Ke
 - Basic environment setup and `.env` support
 - Kubernetes Helm chart for deployment
 
+## [1.2.0] - 2025-05-12
+### Added
+- New public-facing dashboard at `/`
+- Separated logic and template from `/admin` panel
+- Responsive layout with status filters and service cards
+- Clear visual banner indicating "Public View"
+
+### Changed
+- Updated blueprint registration to isolate `/admin` under its own prefix

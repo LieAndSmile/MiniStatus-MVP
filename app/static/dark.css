@@ -1,0 +1,87 @@
+<style>
+  /* Global colors */
+  body {
+    background-color: #121212;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', sans-serif;
+  }
+
+  .container, .card, .form-control {
+    background-color: #1e1e1e !important;
+    color: #ffffff;
+    border-color: #333;
+  }
+
+  .navbar, .navbar-dark {
+    background-color: #1a1a1a;
+    border-bottom: 1px solid #333;
+  }
+
+  h1, h2, h3, h4, h5 {
+    color: #f5f5f5;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    background-color: #00bcd4;
+    border: none;
+  }
+
+  .btn-danger {
+    background-color: #ff4444;
+  }
+
+  .btn-success {
+    background-color: #4caf50;
+  }
+
+  .btn-secondary {
+    background-color: #555;
+    color: #eee;
+  }
+
+  /* Status badges */
+  .badge-up {
+    background-color: #00e676;
+    color: #000;
+  }
+
+  .badge-down {
+    background-color: #ff3d00;
+    color: #fff;
+  }
+
+  .badge-degraded {
+    background-color: #fdd835;
+    color: #000;
+  }
+
+  /* Inputs */
+  input.form-control, select.form-control {
+    background-color: #2a2a2a;
+    color: #eee;
+    border-color: #444;
+  }
+
+  input.form-control::placeholder {
+    color: #aaa;
+  }
+
+  /* Cards */
+  .card {
+    box-shadow: 0 0 10px rgba(0,0,0,0.4);
+    border-radius: 12px;
+  }
+
+  .table {
+    color: #eee;
+  }
+
+  .table th, .table td {
+    border-color: #444;
+  }
+
+  a {
+    color: #81d4fa;
+  }
+</style>

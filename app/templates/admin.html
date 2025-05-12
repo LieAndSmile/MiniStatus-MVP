@@ -1,4 +1,3 @@
-
 {% extends "base.html" %}
 
 {% block title %}Admin - MiniStatus{% endblock %}
@@ -7,7 +6,8 @@
 <div class="bg-gray-800 p-6 rounded-xl shadow-xl">
   <h1 class="text-4xl font-bold text-yellow-400 mb-6 text-center">MiniStatus Admin</h1>
 
-  <div class="flex justify-end space-x-4 mb-4">
+  <!-- Sync buttons -->
+  <div class="flex justify-end space-x-4 mb-6">
     {% if has_docker %}
       <a href="/sync" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded">Sync Docker</a>
     {% endif %}
@@ -17,38 +17,62 @@
     <a href="/logout" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded">Logout</a>
   </div>
 
-  <form method="POST" class="mb-6 space-y-4">
-    <div class="grid grid-cols-3 gap-4">
-      <input name="name" type="text" placeholder="Service Name" class="col-span-1 px-4 py-2 rounded bg-gray-700 text-white" required>
-      <select name="status" class="col-span-1 px-4 py-2 rounded bg-gray-700 text-white">
-        <option value="up">Up</option>
-        <option value="degraded">Degraded</option>
-        <option value="down">Down</option>
-      </select>
-      <input name="description" type="text" placeholder="Description" class="col-span-1 px-4 py-2 rounded bg-gray-700 text-white">
-    </div>
-    <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">Add Service</button>
+  <!-- Add service form -->
+  <form method="POST" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+    <input name="name" type="text" placeholder="Service Name" class="px-4 py-2 rounded bg-gray-700 text-white" required>
+    <select name="status" class="px-4 py-2 rounded bg-gray-700 text-white">
+      <option value="up">Up</option>
+      <option value="degraded">Degraded</option>
+      <option value="down">Down</option>
+    </select>
+    <input name="description" type="text" placeholder="Description" class="px-4 py-2 rounded bg-gray-700 text-white">
+    <button type="submit" class="md:col-span-3 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded mt-2">Add Service</button>
   </form>
 
-  <div class="space-y-2">
+  <!-- Filter Buttons -->
+  <div class="flex justify-center mb-6 space-x-4">
+    <a href="/admin" class="px-3 py-1 rounded bg-gray-700 text-white hover:bg-gray-600 {% if not current_filter %}ring-2 ring-yellow-400{% endif %}">All</a>
+    <a href="/admin?status=up" class="px-3 py-1 rounded bg-green-400 text-black hover:opacity-80 {% if current_filter == 'up' %}ring-2 ring-yellow-400{% endif %}">Up</a>
+    <a href="/admin?status=degraded" class="px-3 py-1 rounded bg-yellow-400 text-black hover:opacity-80 {% if current_filter == 'degraded' %}ring-2 ring-yellow-400{% endif %}">Degraded</a>
+    <a href="/admin?status=down" class="px-3 py-1 rounded bg-red-500 text-white hover:opacity-80 {% if current_filter == 'down' %}ring-2 ring-yellow-400{% endif %}">Down</a>
+  </div>
+
+  <!-- Service cards -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     {% for service in services %}
-      <form method="POST" action="/update/{{ service.id }}" class="flex items-center justify-between bg-gray-700 px-4 py-2 rounded">
+    <div class="bg-gray-700 p-4 rounded shadow space-y-2">
+      <div class="flex justify-between items-center">
         <div>
-          <strong>{{ service.name }}</strong> - {{ service.description }} <br>
-          <small class="text-gray-400">Last updated: {{ service.last_updated }}</small>
+          <strong class="text-white">{{ service.name }}</strong>
+          <p class="text-gray-300 text-sm">{{ service.description }}</p>
+          <p class="text-gray-500 text-xs mt-1">Last updated: {{ service.last_updated }}</p>
         </div>
-        <div class="flex space-x-2 items-center">
-          <select name="status" class="px-2 py-1 rounded bg-gray-800 text-white">
+        <div>
+          {% if service.status == 'up' %}
+            <span class="bg-green-400 text-black text-xs font-bold px-2 py-1 rounded-full">UP</span>
+          {% elif service.status == 'degraded' %}
+            <span class="bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded-full">DEGRADED</span>
+          {% else %}
+            <span class="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">DOWN</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Update + Delete forms -->
+      <div class="flex justify-between items-center mt-3">
+        <form method="POST" action="/update/{{ service.id }}" class="flex space-x-2">
+          <select name="status" class="px-2 py-1 rounded bg-gray-800 text-white text-sm">
             <option value="up" {% if service.status == 'up' %}selected{% endif %}>Up</option>
             <option value="degraded" {% if service.status == 'degraded' %}selected{% endif %}>Degraded</option>
             <option value="down" {% if service.status == 'down' %}selected{% endif %}>Down</option>
           </select>
-          <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded">Update</button>
-      </form>
-      <form method="POST" action="/delete/{{ service.id }}">
-          <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded">Delete</button>
-      </form>
-        </div>
+          <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">Update</button>
+        </form>
+        <form method="POST" action="/delete/{{ service.id }}">
+          <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm">Delete</button>
+        </form>
+      </div>
+    </div>
     {% endfor %}
   </div>
 </div>
