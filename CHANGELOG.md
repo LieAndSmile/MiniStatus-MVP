@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/) and uses the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [v1.6.0] - 2025-05-13
+### Changed
+- Separated remote host monitoring from local port monitoring
+- Improved UI organization by moving remote host monitoring exclusively to Remote Hosts tab
+- Simplified Ports dashboard to focus solely on local listening ports
+- Enhanced clarity of service monitoring by removing duplicate information
+
+### Removed
+- Remote ports section from Ports dashboard to avoid confusion with Remote Hosts monitoring
+- Redundant service queries in ports route handler
+
 ## [v1.5.0] - 2025-05-13
 ### Added
 - New `ServiceSync` class in `services/sync_service.py` for centralized monitoring

@@ -1,14 +1,14 @@
-from . import db
 from datetime import datetime
+from app.extensions import db
 
 class Service(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(64), unique=True, nullable=False)
-    status = db.Column(db.String(20), nullable=False, default="up")  # up, degraded, down
-    description = db.Column(db.String(128))
+    name = db.Column(db.String(100), nullable=False)
+    status = db.Column(db.String(20), default='unknown')
+    description = db.Column(db.String(200))
     last_updated = db.Column(db.DateTime, default=datetime.utcnow)
-    host = db.Column(db.String(255), nullable=True)  # e.g., "127.0.0.1" or "google.com"
-    port = db.Column(db.Integer, nullable=True)      # e.g., 80, 443, 8080
+    host = db.Column(db.String(100))
+    port = db.Column(db.Integer)
 
 
 class Incident(db.Model):

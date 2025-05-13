@@ -19,12 +19,18 @@
   </script>
 </head>
 <body class="bg-gray-900 text-white font-sans">
-  <nav class="bg-gray-800 px-6 py-4 flex justify-between items-center shadow-md">
-    <div class="text-yellow-400 font-bold text-xl">MiniStatus</div>
-    <div class="space-x-4 text-white">
-      <a href="/" class="hover:underline">Status</a>
-      <a href="/admin" class="hover:underline">Admin</a>
-      <a href="/ports" class="text-gray-300 hover:text-white px-3">Ports</a>
+  <nav class="bg-gray-900">
+    <div class="container mx-auto px-4">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center">
+          <a href="{{ url_for('admin.dashboard') }}" class="text-white font-bold text-xl">MiniStatus</a>
+          <div class="ml-10 flex items-baseline space-x-4">
+            <a href="{{ url_for('admin.dashboard') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
+            <a href="{{ url_for('ports.ports_dashboard') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Ports</a>
+            <a href="{{ url_for('remote.remote_dashboard') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Remote Hosts</a>
+          </div>
+        </div>
+      </div>
     </div>
   </nav>
 

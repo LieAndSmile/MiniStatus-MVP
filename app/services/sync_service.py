@@ -1,7 +1,8 @@
 import subprocess
 from datetime import datetime
 import socket
-from app import db
+import time
+from app.extensions import db
 from app.models import Service
 from app.utils.helpers import interpret_docker_status
 from app.utils.ports import get_local_listening_ports
@@ -128,11 +129,72 @@ class ServiceSync:
             return [], f"Error saving to database: {e}"
 
     @staticmethod
+    def sync_remote_hosts(timeout=3, retry_count=1):
+        """
+        Sync remote host statuses with retry and latency measurement
+        
+        Args:
+            timeout (int): Socket connection timeout in seconds
+            retry_count (int): Number of retries before marking as down
+        """
+        services = Service.query.filter(
+            Service.host.isnot(None),
+            Service.port.isnot(None)
+        ).all()
+        
+        updated_services = []
+        
+        for svc in services:
+            latency = None
+            error_msg = None
+            is_up = False
+            
+            # Try connection with retry
+            for attempt in range(retry_count + 1):
+                try:
+                    start_time = time.time()
+                    with socket.create_connection((svc.host, svc.port), timeout=timeout) as conn:
+                        latency = (time.time() - start_time) * 1000  # Convert to ms
+                        is_up = True
+                        break
+                except socket.timeout:
+                    error_msg = "Connection timed out"
+                except ConnectionRefusedError:
+                    error_msg = "Connection refused"
+                except socket.gaierror:
+                    error_msg = "DNS resolution failed"
+                except Exception as e:
+                    error_msg = str(e)
+                
+                # If not last attempt, wait briefly before retry
+                if attempt < retry_count:
+                    time.sleep(1)
+            
+            # Update service status
+            if is_up:
+                svc.status = "up"
+                svc.description = f"Latency: {latency:.1f}ms"
+            else:
+                svc.status = "down"
+                svc.description = f"Error: {error_msg}"
+            
+            svc.last_updated = datetime.utcnow()
+            updated_services.append(f"{svc.name} ({svc.host}:{svc.port}) → {svc.status}")
+
+        try:
+            db.session.commit()
+            return updated_services, None
+        except Exception as e:
+            db.session.rollback()
+            return [], f"Error saving to database: {e}"
+
+    @staticmethod
     def sync_all():
         """Sync all services (Docker, systemd, and ports)"""
         results = {
             'docker': ServiceSync.sync_docker(),
             'systemd': ServiceSync.sync_systemd(),
-            'ports': ServiceSync.sync_ports()
+            'ports': ServiceSync.sync_ports(),
+            'remote': ServiceSync.sync_remote_hosts()
         }
         return results 

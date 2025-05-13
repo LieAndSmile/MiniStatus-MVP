@@ -3,42 +3,6 @@
 
 {% block content %}
 <div class="space-y-12">
-
-  <!-- REMOTE MONITORED PORTS -->
-  <section>
-    <h2 class="text-2xl font-bold text-yellow-400 mb-4">Monitored Remote Ports</h2>
-    <div class="overflow-x-auto">
-      <table class="min-w-full bg-gray-800 text-white rounded shadow">
-        <thead>
-          <tr class="text-left border-b border-gray-700">
-            <th class="py-2 px-4">Service</th>
-            <th class="py-2 px-4">Host</th>
-            <th class="py-2 px-4">Port</th>
-            <th class="py-2 px-4">Status</th>
-            <th class="py-2 px-4">Last Checked</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for service in remote_services %}
-          <tr class="hover:bg-gray-700 border-b border-gray-700">
-            <td class="py-2 px-4 font-semibold">{{ service.name }}</td>
-            <td class="py-2 px-4">{{ service.host }}</td>
-            <td class="py-2 px-4">{{ service.port }}</td>
-            <td class="py-2 px-4">
-              <span class="{% if service.status == 'up' %}text-status-up{% elif service.status == 'down' %}text-status-down{% else %}text-status-degraded{% endif %}">
-                {% if service.status == 'up' %}🟢 Up{% elif service.status == 'down' %}🔴 Down{% else %}🟡 Degraded{% endif %}
-              </span>
-            </td>
-            <td class="py-2 px-4 text-sm text-gray-400">
-              {{ service.last_updated.strftime('%Y-%m-%d %H:%M:%S') }} UTC
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
-
   <!-- LOCAL PORTS GROUPED BY SERVICE -->
   <section>
     <h2 class="text-2xl font-bold text-yellow-400 mb-4">Ports Listening on This Server</h2>
@@ -64,6 +28,5 @@
       {% endfor %}
     </div>
   </section>
-
 </div>
 {% endblock %}

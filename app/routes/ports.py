@@ -17,6 +17,6 @@ PORT_LABELS = {
 
 @ports_bp.route("/ports")
 def ports_dashboard():
-    services = Service.query.filter(Service.host != None, Service.port != None).all()
+    """Display local ports dashboard"""
     local_ports = get_local_listening_ports()
-    return render_template("ports.html", services=services, local_ports=local_ports, port_labels=PORT_LABELS)
+    return render_template("ports.html", local_ports=local_ports, port_labels=PORT_LABELS)
