@@ -25,8 +25,10 @@
 Create a `.env` file in the root of the project:
 
 ```env
-SECRET_KEY=your-random-secret-key
-ADMIN_SECRET=your-admin-password
+FLASK_APP=run.py
+FLASK_ENV=development
+SECRET_KEY=supersecretkey123
+ADMIN_SECRET=admin123
 ```
 
 Or copy the example:
@@ -115,16 +117,6 @@ Chart lives in: `charts/ministatus/`
 If you like the project, give it a ⭐ or open an issue for feedback or bugs.
 
 > Want a hosted version or have feature ideas? Let us know via [Issues](https://github.com/yourproject/issues) or Discussions.
-
----
-
-## 📦 Releases
-
-**Latest:** `v1.1.0` – *May 12, 2025*  
-Modularized route structure using Flask Blueprints. Cleaned up `/admin`, `/report`, and `/sync` logic.
-
-See full [CHANGELOG.md](./CHANGELOG.md) for version history.
-
 
 ---
 
