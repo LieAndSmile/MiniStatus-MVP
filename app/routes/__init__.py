@@ -1,3 +1,6 @@
+"""
+Routes package initialization
+"""
 from .admin import admin_bp
 from .api import api_bp
 from .sync import sync_bp
