@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/) and uses the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
+
+## [v1.5.0] - 2025-05-13
+### Added
+- New `ServiceSync` class in `services/sync_service.py` for centralized monitoring
+- Bulk sync operation via `/sync-all` endpoint
+- Comprehensive error handling across all sync operations
+- Transaction management for database operations
+
+### Changed
+- Refactored sync functionality into dedicated service class
+- Improved code organization with new `services` directory
+- Enhanced error reporting and user feedback
+- Updated route handlers to use new ServiceSync class
+- Improved session management in admin routes
+
+### Fixed
+- More robust port checking with proper timeout handling
+- Better error handling for Docker and systemd command failures
+- Enhanced database transaction management
+
 ## [v1.4.0] - 2025-05-12
 ### Added
 - Redesigned /ports page with dark theme and grouped UI
@@ -18,7 +38,6 @@ This project follows [Semantic Versioning](https://semver.org/) and uses the [Ke
 - Add uptime logging (ServiceLog model)
 - Add auto-sync via scheduler
 - Add alert notifications
-
 
 
 ## [1.3.0] - 2025-05-12
