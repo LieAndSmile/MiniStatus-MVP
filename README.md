@@ -5,6 +5,7 @@
 - ✅ Track service health manually or via API
 - 🔐 Admin panel with password protection
 - 📡 Docker & systemd sync
+- 🌓 Dark/Light theme with persistent preference
 - 🎯 Built with Flask + SQLite, minimal resources
 - 🐳 Easy to deploy (Docker, Kubernetes, or manually)
 
@@ -14,8 +15,6 @@
   <img src="./docs/DarkTheme.png" width="120%" />
   <img src="./docs/LightTheme.png" width="120%" />
 </p>
-
-
 
 ---
 
@@ -30,8 +29,6 @@
 Create a `.env` file in the root of the project:
 
 ```env
-FLASK_APP=run.py
-FLASK_ENV=development
 SECRET_KEY=supersecretkey123
 ADMIN_SECRET=admin123
 ```
@@ -43,26 +40,60 @@ cp .env.example .env
 
 ---
 
-### 🐳 Run with Docker (Production)
+### 🐳 Docker Deployment Options
+
+#### Quick Start (using pre-built image)
 ```bash
-docker-compose --env-file .env up --build -d
+# Pull the latest image
+docker pull rilmay/ministatus:latest
+
+# Create a directory for persistent data
+mkdir -p instance
+
+# Run the container
+docker run -d \
+  --name ministatus \
+  -p 5000:5000 \
+  -v $(pwd)/instance:/app/instance \
+  -e SECRET_KEY=your-secret-key \
+  -e ADMIN_SECRET=your-admin-secret \
+  --restart unless-stopped \
+  rilmay/ministatus:latest
 ```
+
+#### Using Docker Compose
+
+1. **Production Mode**
+```bash
+# Using production configuration
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+2. **Development Mode**
+```bash
+# Using development configuration with live reload
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+```
+
+3. **Stop and Cleanup**
+```bash
+# Stop containers
+docker-compose down
+
+# Remove persistent data (optional)
+sudo rm -rf instance/
+```
+
 Access the app at: [http://localhost:5000](http://localhost:5000)
 
 ---
 
-### 🧪 Run in Dev Mode
-```bash
-docker-compose -f docker-compose.dev.yml --env-file .env.dev up --build
-```
-Flask's dev server + volume mounts for live edits.
-
----
-
-## 🔐 Admin Panel
+### 🔐 Admin Panel
 - Visit `/admin?auth=your-admin-password`
 - Add, update, or delete services
 - Sync Docker or systemd services
+- Monitor local ports
+- Track remote host status
 
 ---
 
@@ -100,21 +131,25 @@ Chart lives in: `charts/ministatus/`
 | Docker & systemd sync         | ✅ Done  |
 | `/report` API w/ key auth     | ✅ Done  |
 | Admin panel (web UI)          | ✅ Done  |
+| Dark/Light theme support      | ✅ Done  |
+| Local port monitoring         | ✅ Done  |
+| Remote host monitoring        | ✅ Done  |
+| Collapsible sidebar          | ✅ Done  |
 | Telegram/Slack alerts         | ⏳ Planned |
-| Public status page            | ⏳ Planned |
 | Multi-project support         | ⏳ Planned |
 | Incident history + notes      | ⏳ Planned |
 
 ---
 
 ## 🔜 Roadmap (MiniStatus Pro)
-- [ ] Public read-only status page (`/public`)
 - [ ] Telegram & Slack alerting
 - [ ] Incident history & resolution notes
 - [ ] Multi-project dashboard
 - [ ] Role-based auth (`admin`, `viewer`)
 - [ ] JSON & CSV export
 - [ ] GitHub deploy webhook support
+- [ ] Custom theme support
+- [ ] Service grouping & tags
 
 ---
 
