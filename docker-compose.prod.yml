@@ -1,4 +1,3 @@
-
 version: "3.8"
 
 services:
@@ -7,9 +6,14 @@ services:
     container_name: ministatus
     ports:
       - "5000:5000"
+    volumes:
+      - ./instance:/app/instance
     environment:
-      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=5000
+      - FLASK_DEBUG=False
       - SECRET_KEY=${SECRET_KEY}
       - ADMIN_SECRET=${ADMIN_SECRET}
-    command: gunicorn --bind 0.0.0.0:5000 run:app
+    command: gunicorn --bind 0.0.0.0:5000 --workers 4 --threads 2 run:app
     restart: unless-stopped
