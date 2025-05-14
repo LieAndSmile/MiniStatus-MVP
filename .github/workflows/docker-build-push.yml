@@ -20,7 +20,7 @@ jobs:
         with:
           images: rilmay/ministatus
           tags: |
-            type=raw,value=latest,enable={{is.default}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha,format=short
