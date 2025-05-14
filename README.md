@@ -10,7 +10,12 @@
 
 > No Prometheus. No Grafana. Just clean uptime visibility.
 
-![MiniStatus Dashboard](./docs/preview.png)
+<p align="center">
+  <img src="./docs/DarkTheme.png" width="120%" />
+  <img src="./docs/LightTheme.png" width="120%" />
+</p>
+
+
 
 ---
 
