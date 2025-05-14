@@ -1,60 +1,65 @@
 {% extends "base.html" %}
 
+{% block header %}Remote Hosts Monitor{% endblock %}
+
 {% block content %}
-<div class="container mx-auto px-4 py-8">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-gray-200">Remote Hosts Monitor</h1>
-        <div class="flex space-x-4">
-            <button onclick="toggleAddForm()" 
-                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
-                Add Host
-            </button>
-            <a href="{{ url_for('remote.sync_remote') }}" 
-               class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                Sync Now
-            </a>
-        </div>
+<div class="space-y-6">
+    <div class="flex justify-end space-x-4">
+        <button onclick="toggleAddForm()" 
+                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-status-up-light dark:bg-status-up-dark hover:bg-status-up-light/90 dark:hover:bg-status-up-dark/90 transition-colors duration-200">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Host
+        </button>
+        <a href="{{ url_for('remote.sync_remote') }}" 
+           class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-light-primary dark:bg-dark-primary hover:bg-light-accent dark:hover:bg-dark-hover transition-colors duration-200">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Sync Now
+        </a>
     </div>
 
     <!-- Add Host Form (Hidden by default) -->
-    <div id="addHostForm" class="hidden mb-6">
+    <div id="addHostForm" class="hidden">
         <form action="{{ url_for('remote.add_host') }}" method="POST" 
-              class="bg-gray-800 p-6 rounded-lg shadow-lg">
-            <div class="grid grid-cols-1 gap-6">
+              class="bg-light-card dark:bg-dark-card p-6 rounded-lg shadow-lg border border-light-border dark:border-dark-border">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label class="text-gray-300 text-sm font-bold mb-2" for="name">Service Name</label>
+                    <label class="text-light-text dark:text-dark-text text-sm font-medium mb-2" for="name">Service Name</label>
                     <input type="text" id="name" name="name" required
-                           class="w-full px-3 py-2 bg-gray-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           class="mt-1 w-full px-3 py-2 bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border text-light-text dark:text-dark-text rounded-md focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary"
                            placeholder="e.g., Google HTTPS">
                 </div>
                 <div>
-                    <label class="text-gray-300 text-sm font-bold mb-2" for="host">Hostname</label>
+                    <label class="text-light-text dark:text-dark-text text-sm font-medium mb-2" for="host">Hostname</label>
                     <input type="text" id="host" name="host" required
-                           class="w-full px-3 py-2 bg-gray-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           class="mt-1 w-full px-3 py-2 bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border text-light-text dark:text-dark-text rounded-md focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary"
                            placeholder="e.g., google.com">
                 </div>
                 <div>
-                    <label class="text-gray-300 text-sm font-bold mb-2" for="port">Port</label>
+                    <label class="text-light-text dark:text-dark-text text-sm font-medium mb-2" for="port">Port</label>
                     <input type="number" id="port" name="port" required
-                           class="w-full px-3 py-2 bg-gray-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           class="mt-1 w-full px-3 py-2 bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border text-light-text dark:text-dark-text rounded-md focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary"
                            placeholder="e.g., 443">
                 </div>
                 <div>
-                    <label class="text-gray-300 text-sm font-bold mb-2" for="description">Description</label>
+                    <label class="text-light-text dark:text-dark-text text-sm font-medium mb-2" for="description">Description</label>
                     <input type="text" id="description" name="description"
-                           class="w-full px-3 py-2 bg-gray-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           class="mt-1 w-full px-3 py-2 bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border text-light-text dark:text-dark-text rounded-md focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary"
                            placeholder="Optional description">
                 </div>
-                <div class="flex justify-end space-x-4">
-                    <button type="button" onclick="toggleAddForm()"
-                            class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
-                        Cancel
-                    </button>
-                    <button type="submit"
-                            class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
-                        Add Host
-                    </button>
-                </div>
+            </div>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button type="button" onclick="toggleAddForm()"
+                        class="px-4 py-2 border border-light-border dark:border-dark-border text-light-text dark:text-dark-text rounded-md hover:bg-light-hover dark:hover:bg-dark-hover transition-colors duration-200">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="px-4 py-2 bg-status-up-light dark:bg-status-up-dark text-white rounded-md hover:bg-status-up-light/90 dark:hover:bg-status-up-dark/90 transition-colors duration-200">
+                    Add Host
+                </button>
             </div>
         </form>
     </div>
@@ -62,62 +67,62 @@
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="mb-4 p-4 rounded {% if category == 'error' %}bg-red-600{% else %}bg-green-600{% endif %} text-white">
+                <div class="p-4 rounded-lg {% if category == 'error' %}bg-status-down-light/10 dark:bg-status-down-dark/10 border border-status-down-light dark:border-status-down-dark text-status-down-light dark:text-status-down-dark{% else %}bg-status-up-light/10 dark:bg-status-up-dark/10 border border-status-up-light dark:border-status-up-dark text-status-up-light dark:text-status-up-dark{% endif %}">
                     {{ message }}
                 </div>
             {% endfor %}
         {% endif %}
     {% endwith %}
 
-    <div class="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-        <table class="min-w-full divide-y divide-gray-700">
-            <thead class="bg-gray-900">
+    <div class="bg-light-card dark:bg-dark-card rounded-lg shadow-lg overflow-hidden border border-light-border dark:border-dark-border">
+        <table class="min-w-full divide-y divide-light-border dark:divide-dark-border">
+            <thead class="bg-light-secondary dark:bg-dark-secondary">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Service</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Host:Port</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Details</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Last Updated</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Service</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Host:Port</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Details</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Last Updated</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-700">
+            <tbody class="divide-y divide-light-border dark:divide-dark-border">
                 {% for service in services %}
-                <tr class="hover:bg-gray-700">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200">
+                <tr class="hover:bg-light-hover dark:hover:bg-dark-hover transition-colors duration-200">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-light-text dark:text-dark-text">
                         {{ service.name }}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-light-text dark:text-dark-text">
                         {{ service.host }}:{{ service.port }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                             {% if service.status == 'up' %}
-                                bg-green-100 text-green-800
+                                bg-status-up-light/10 dark:bg-status-up-dark/10 text-status-up-light dark:text-status-up-dark
                             {% elif service.status == 'down' %}
-                                bg-red-100 text-red-800
+                                bg-status-down-light/10 dark:bg-status-down-dark/10 text-status-down-light dark:text-status-down-dark
                             {% else %}
-                                bg-yellow-100 text-yellow-800
+                                bg-status-degraded-light/10 dark:bg-status-degraded-dark/10 text-status-degraded-light dark:text-status-degraded-dark
                             {% endif %}">
                             {% if service.status == 'up' %}🟢{% elif service.status == 'down' %}🔴{% else %}🟡{% endif %}
                             {{ service.status|upper }}
                         </span>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-light-text dark:text-dark-text">
                         {{ service.description }}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-light-muted dark:text-dark-muted">
                         {{ service.last_updated.strftime('%Y-%m-%d %H:%M:%S') if service.last_updated }}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
                         <form action="{{ url_for('remote.delete_host', service_id=service.id) }}" method="POST" class="inline">
-                            <button type="submit" class="text-red-500 hover:text-red-700">Delete</button>
+                            <button type="submit" class="text-status-down-light dark:text-status-down-dark hover:text-status-down-light/80 dark:hover:text-status-down-dark/80 transition-colors duration-200">Delete</button>
                         </form>
                     </td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="6" class="px-6 py-4 text-center text-gray-400">
+                    <td colspan="6" class="px-6 py-4 text-center text-light-muted dark:text-dark-muted">
                         No remote services configured. Add one using the "Add Host" button above.
                     </td>
                 </tr>

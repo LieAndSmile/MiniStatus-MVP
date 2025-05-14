@@ -1,41 +1,175 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
   <meta charset="UTF-8">
   <title>{% block title %}MiniStatus{% endblock %}</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Add Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
   <script>
     tailwind.config = {
+      darkMode: 'class',
       theme: {
         extend: {
           colors: {
-            'status-up': '#00e676',
-            'status-down': '#ff3d00',
-            'status-degraded': '#fdd835',
+            'status': {
+              'up': {
+                'light': '#059669',     // Green-600
+                'dark': '#00e676'       // Original green
+              },
+              'down': {
+                'light': '#DC2626',     // Red-600
+                'dark': '#ff3d00'       // Original red
+              },
+              'degraded': {
+                'light': '#D97706',     // Amber-600
+                'dark': '#fdd835'       // Original yellow
+              }
+            },
+            'dark': {
+              'primary': '#006466',     // Caribbean Current
+              'secondary': '#065A60',   // Midnight green
+              'tertiary': '#0B525B',    // Midnight green darker
+              'quaternary': '#144552',  // Darker green
+              'nav': '#16161a',      // Sidebar background
+              'bg': '#1e1f22',       // Main content background
+              'card': '#242629',     // Card background
+              'hover': '#272640',       // Space cadet
+              'accent': '#312244',      // Dark purple
+              'text': '#E0E1DD',        // Light gray
+              'muted': '#9CA3AF',        // Gray-400
+              'border': '#374151'
+            },
+            'light': {
+              'primary': '#0369A1',     // Sky-700
+              'secondary': '#E0F2FE',   // Sky-50
+              'tertiary': '#7DD3FC',    // Sky-300
+              'quaternary': '#38BDF8',  // Sky-400
+              'nav': '#FFFFFF',         // White
+              'bg': '#F8FAFC',          // Slate-50
+              'card': '#FFFFFF',
+              'hover': '#BAE6FD',       // Sky-200
+              'accent': '#0284C7',      // Sky-600
+              'text': '#0F172A',        // Slate-900
+              'muted': '#475569',        // Slate-600
+              'border': '#E5E7EB'
+            }
           }
         }
       }
     }
+
+    // Theme toggle functionality
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+
+    function toggleTheme() {
+      if (document.documentElement.classList.contains('dark')) {
+        document.documentElement.classList.remove('dark')
+        localStorage.theme = 'light'
+      } else {
+        document.documentElement.classList.add('dark')
+        localStorage.theme = 'dark'
+      }
+    }
+
+    // Sidebar collapse functionality
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const mainContent = document.getElementById('main-content');
+      const navLabels = document.querySelectorAll('.nav-label');
+      const isCollapsed = sidebar.classList.contains('w-16');
+      
+      if (isCollapsed) {
+        sidebar.classList.remove('w-16');
+        sidebar.classList.add('w-64');
+        mainContent.classList.remove('ml-16');
+        mainContent.classList.add('ml-64');
+        navLabels.forEach(label => label.classList.remove('hidden'));
+      } else {
+        sidebar.classList.remove('w-64');
+        sidebar.classList.add('w-16');
+        mainContent.classList.remove('ml-64');
+        mainContent.classList.add('ml-16');
+        navLabels.forEach(label => label.classList.add('hidden'));
+      }
+    }
   </script>
 </head>
-<body class="bg-gray-900 text-white font-sans">
-  <nav class="bg-gray-900">
-    <div class="container mx-auto px-4">
-      <div class="flex items-center justify-between h-16">
-        <div class="flex items-center">
-          <a href="{{ url_for('admin.dashboard') }}" class="text-white font-bold text-xl">MiniStatus</a>
-          <div class="ml-10 flex items-baseline space-x-4">
-            <a href="{{ url_for('admin.dashboard') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
-            <a href="{{ url_for('ports.ports_dashboard') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Ports</a>
-            <a href="{{ url_for('remote.remote_dashboard') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Remote Hosts</a>
-          </div>
-        </div>
-      </div>
+<body class="h-full bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text font-sans transition-colors duration-200">
+  <!-- Sidebar -->
+  <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 transition-all duration-300 ease-in-out bg-light-nav dark:bg-dark-nav border-r border-light-border dark:border-dark-border">
+    <!-- Logo section -->
+    <div class="flex items-center justify-between h-16 px-4 border-b border-light-border dark:border-dark-border">
+      <a href="{{ url_for('admin.dashboard') }}" class="flex items-center space-x-2 overflow-hidden">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 flex-shrink-0 text-light-primary dark:text-dark-text" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span class="text-xl font-bold text-light-primary dark:text-dark-text truncate nav-label">MiniStatus</span>
+      </a>
+      <button onclick="toggleSidebar()" class="p-2 rounded-lg hover:bg-light-hover dark:hover:bg-dark-hover">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+        </svg>
+      </button>
     </div>
-  </nav>
 
-  <main class="p-6 max-w-5xl mx-auto space-y-6">
-    {% block content %}{% endblock %}
-  </main>
+    <!-- Navigation Links -->
+    <nav class="p-4 space-y-2">
+      <a href="{{ url_for('admin.dashboard') }}" 
+         class="flex items-center space-x-3 p-3 rounded-lg {% if request.endpoint == 'admin.dashboard' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
+        <span class="nav-label">Dashboard</span>
+      </a>
+
+      <a href="{{ url_for('ports.ports_dashboard') }}"
+         class="flex items-center space-x-3 p-3 rounded-lg {% if request.endpoint == 'ports.ports_dashboard' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+        </svg>
+        <span class="nav-label">Ports</span>
+      </a>
+
+      <a href="{{ url_for('remote.remote_dashboard') }}"
+         class="flex items-center space-x-3 p-3 rounded-lg {% if request.endpoint == 'remote.remote_dashboard' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" />
+        </svg>
+        <span class="nav-label">Remote Hosts</span>
+      </a>
+
+      <!-- Theme Toggle -->
+      <button onclick="toggleTheme()" 
+              class="w-full flex items-center space-x-3 p-3 rounded-lg text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text transition-colors duration-200">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
+        <span class="nav-label">Toggle Theme</span>
+      </button>
+    </nav>
+  </aside>
+
+  <!-- Main Content -->
+  <div id="main-content" class="ml-64 transition-all duration-300 ease-in-out bg-light-bg dark:bg-dark-bg min-h-screen">
+    <!-- Content Header -->
+    <header class="h-16 bg-light-nav dark:bg-dark-nav border-b border-light-border dark:border-dark-border px-6 flex items-center justify-between">
+      <h1 class="text-xl font-bold text-light-text dark:text-dark-text">{% block header %}Dashboard{% endblock %}</h1>
+      
+      <!-- User/Settings Menu could go here -->
+    </header>
+
+    <!-- Page Content -->
+    <main class="p-6 space-y-6 bg-light-bg dark:bg-dark-bg">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
 </body>
 </html>

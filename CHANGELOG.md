@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/) and uses the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [v1.7.0] - 2025-05-13
+### Added
+- Comprehensive theme system with light/dark mode support
+- Theme persistence using localStorage
+- Collapsible sidebar navigation
+- Reusable component system with metric cards and service rows
+- Modern card-based layout across all pages
+
+### Changed
+- Complete UI redesign with consistent styling
+- Enhanced color scheme for better accessibility
+- Improved status indicators for up/down/degraded states
+- Better form styling and input fields
+- Modernized table layouts with proper spacing
+- Refined hover and focus states
+- Smoother transitions between states
+
+### Fixed
+- Sidebar collapse behavior and text overlap
+- Theme consistency across all pages
+- Proper color contrast in both themes
+- Mobile responsiveness issues
+
 ## [v1.6.0] - 2025-05-13
 ### Changed
 - Separated remote host monitoring from local port monitoring
