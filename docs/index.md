@@ -1,4 +1,3 @@
-
 # 📡 MiniStatus
 
 **MiniStatus** is a self-hosted micro status page to monitor the health of services running in your homelab, VPS, or cloud setup.
@@ -26,18 +25,28 @@ It supports:
 
 ### ⚙️ Environment Setup
 
-You must create a `.env` file in the root of the project:
+You must create a `.env` file in the root of the project with the following variables:
 
 ```env
-SECRET_KEY=your-random-secret-key
-ADMIN_SECRET=your-admin-password
+# Flask config
+FLASK_APP=run.py
+FLASK_ENV=development
+
+# Security
+SECRET_KEY=your-secret-key-here
+
+# Admin auth
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=your-admin-password-here
 ```
 
-To start, just copy the example file:
+To start, just copy the template file:
 
 ```bash
-cp .env.example
+cp env.template .env
 ```
+
+Then edit the `.env` file to set your own secure values for `SECRET_KEY` and `ADMIN_PASSWORD`.
 
 ---
 
@@ -54,7 +63,7 @@ Access the app at: [http://localhost:5000](http://localhost:5000)
 ### 🧪 Run in Dev Mode
 
 ```bash
-docker-compose -f docker-compose.dev.yml --env-file .env.dev up --build
+docker-compose -f docker-compose.dev.yml --env-file .env up --build
 ```
 
 This uses volume mounts and Flask's dev server.
@@ -63,7 +72,10 @@ This uses volume mounts and Flask's dev server.
 
 ## 🛠️ Admin Panel
 
-- Visit `/admin?auth=your-admin-password`
+- Visit `/admin` or click the "Admin" link
+- Log in with:
+  - Username: `admin` (or your custom ADMIN_USERNAME)
+  - Password: Your configured ADMIN_PASSWORD
 - Add, update, or delete services
 - Sync Docker or systemd services
 
@@ -84,13 +96,8 @@ Customize it with your own values:
 ```bash
 helm install ministatus ./charts/ministatus \
   --set env.SECRET_KEY="yoursecret" \
-  --set env.ADMIN_SECRET="youradmin"
-```
-
-### 🔁 Upgrade
-
-```bash
-helm upgrade ministatus ./charts/ministatus --set image.tag=v1.0.0
+  --set env.ADMIN_USERNAME="admin" \
+  --set env.ADMIN_PASSWORD="youradmin"
 ```
 
 ### 🔁 Upgrade
@@ -106,7 +113,6 @@ helm uninstall ministatus
 ```
 
 > The chart lives in: `charts/ministatus/`
-
 
 ---
 
