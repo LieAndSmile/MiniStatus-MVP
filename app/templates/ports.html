@@ -1,29 +1,32 @@
 {% extends "base.html" %}
 {% block title %}Port Monitor{% endblock %}
 
+{% block header %}Ports Listening on This Server{% endblock %}
+
 {% block content %}
 <div class="space-y-12">
   <!-- LOCAL PORTS GROUPED BY SERVICE -->
   <section>
-    <h2 class="text-2xl font-bold text-yellow-400 mb-4">Ports Listening on This Server</h2>
     <div class="space-y-3">
       {% for port in local_ports %}
-      <div class="bg-gray-800 p-4 rounded-lg shadow flex justify-between items-center">
-        <div>
-          <div class="text-white font-semibold text-sm">
-            {{ port.label or "Unlabeled Port" }} — {{ port.port }}
+      <div class="bg-light-card dark:bg-dark-card p-4 rounded-lg shadow border border-light-border dark:border-dark-border hover:border-light-primary dark:hover:border-dark-primary transition-colors duration-200">
+        <div class="flex justify-between items-center">
+          <div>
+            <div class="text-light-text dark:text-dark-text font-semibold text-sm">
+              {{ port.label or "Unlabeled Port" }} — {{ port.port }}
+            </div>
+            <div class="text-light-muted dark:text-dark-muted text-xs">
+              {{ port.address.split('%')[0] }} | {{ port.protocol.upper() }}
+            </div>
           </div>
-          <div class="text-gray-400 text-xs">
-            {{ port.address.split('%')[0] }} | {{ port.protocol.upper() }}
+          {% if port.label %}
+          <div class="text-lg">
+            {% if "ssh" in port.label|lower %}🛡️{% elif "http" in port.label|lower %}🌐
+            {% elif "https" in port.label|lower %}🔒{% elif "flask" in port.label|lower %}🔧
+            {% elif "node" in port.label|lower %}⚙️{% endif %}
           </div>
+          {% endif %}
         </div>
-        {% if port.label %}
-        <div class="text-lg">
-          {% if "ssh" in port.label|lower %}🛡️{% elif "http" in port.label|lower %}🌐
-          {% elif "https" in port.label|lower %}🔒{% elif "flask" in port.label|lower %}🔧
-          {% elif "node" in port.label|lower %}⚙️{% endif %}
-        </div>
-        {% endif %}
       </div>
       {% endfor %}
     </div>

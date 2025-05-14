@@ -1,79 +1,117 @@
 {% extends "base.html" %}
+{% from "components/metric_card.html" import metric_card %}
+{% from "components/service_row.html" import service_row %}
 
-{% block title %}Admin - MiniStatus{% endblock %}
+{% block header %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="bg-gray-800 p-6 rounded-xl shadow-xl">
-  <h1 class="text-4xl font-bold text-yellow-400 mb-6 text-center">MiniStatus Admin</h1>
-
-  <!-- Sync buttons -->
-  <div class="flex justify-end space-x-4 mb-6">
-    {% if has_docker %}
-      <a href="/sync" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded">Sync Docker</a>
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="rounded-lg p-4 mb-4 {% if category == 'error' %}bg-status-down-light dark:bg-status-down-dark bg-opacity-10 dark:bg-opacity-10 border border-status-down-light dark:border-status-down-dark text-status-down-light dark:text-status-down-dark{% else %}bg-status-up-light dark:bg-status-up-dark bg-opacity-10 dark:bg-opacity-10 border border-status-up-light dark:border-status-up-dark text-status-up-light dark:text-status-up-dark{% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
     {% endif %}
-    {% if has_systemctl %}
-      <a href="/sync-systemd" class="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-2 rounded">Sync Systemd</a>
-    {% endif %}
-    <a href="/logout" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded">Logout</a>
-  </div>
+{% endwith %}
 
-  <!-- Add service form -->
-  <form method="POST" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-    <input name="name" type="text" placeholder="Service Name" class="px-4 py-2 rounded bg-gray-700 text-white" required>
-    <select name="status" class="px-4 py-2 rounded bg-gray-700 text-white">
-      <option value="up">Up</option>
-      <option value="degraded">Degraded</option>
-      <option value="down">Down</option>
-    </select>
-    <input name="description" type="text" placeholder="Description" class="px-4 py-2 rounded bg-gray-700 text-white">
-    <button type="submit" class="md:col-span-3 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded mt-2">Add Service</button>
-  </form>
+<!-- Metrics Overview -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    {{ metric_card(
+        "Total Services",
+        services|length,
+        '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" /></svg>'
+    ) }}
+    
+    {{ metric_card(
+        "Services Up",
+        services|selectattr("status", "equalto", "up")|list|length,
+        '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>'
+    ) }}
+    
+    {{ metric_card(
+        "Services Down",
+        services|selectattr("status", "equalto", "down")|list|length,
+        '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>'
+    ) }}
+    
+    {{ metric_card(
+        "Degraded Services",
+        services|selectattr("status", "equalto", "degraded")|list|length,
+        '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>'
+    ) }}
+</div>
 
-  <!-- Filter Buttons -->
-  <div class="flex justify-center mb-6 space-x-4">
-    <a href="/admin" class="px-3 py-1 rounded bg-gray-700 text-white hover:bg-gray-600 {% if not current_filter %}ring-2 ring-yellow-400{% endif %}">All</a>
-    <a href="/admin?status=up" class="px-3 py-1 rounded bg-green-400 text-black hover:opacity-80 {% if current_filter == 'up' %}ring-2 ring-yellow-400{% endif %}">Up</a>
-    <a href="/admin?status=degraded" class="px-3 py-1 rounded bg-yellow-400 text-black hover:opacity-80 {% if current_filter == 'degraded' %}ring-2 ring-yellow-400{% endif %}">Degraded</a>
-    <a href="/admin?status=down" class="px-3 py-1 rounded bg-red-500 text-white hover:opacity-80 {% if current_filter == 'down' %}ring-2 ring-yellow-400{% endif %}">Down</a>
-  </div>
-
-  <!-- Service cards -->
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    {% for service in services %}
-    <div class="bg-gray-700 p-4 rounded shadow space-y-2">
-      <div class="flex justify-between items-center">
-        <div>
-          <strong class="text-white">{{ service.name }}</strong>
-          <p class="text-gray-300 text-sm">{{ service.description }}</p>
-          <p class="text-gray-500 text-xs mt-1">Last updated: {{ service.last_updated }}</p>
+<!-- Actions Bar -->
+<div class="bg-light-card dark:bg-dark-card rounded-lg p-4 border border-light-border dark:border-dark-border mt-6">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+        <!-- Filter -->
+        <div class="flex items-center space-x-2">
+            <span class="text-light-muted dark:text-dark-muted">Filter:</span>
+            <a href="{{ url_for('admin.admin') }}" 
+               class="px-3 py-1 rounded-md {% if not current_filter %}bg-light-primary dark:bg-dark-primary text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} text-sm transition-colors duration-200">
+                All
+            </a>
+            <a href="{{ url_for('admin.admin', status='up') }}"
+               class="px-3 py-1 rounded-md {% if current_filter == 'up' %}bg-status-up-light dark:bg-status-up-dark text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} text-sm transition-colors duration-200">
+                Up
+            </a>
+            <a href="{{ url_for('admin.admin', status='down') }}"
+               class="px-3 py-1 rounded-md {% if current_filter == 'down' %}bg-status-down-light dark:bg-status-down-dark text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} text-sm transition-colors duration-200">
+                Down
+            </a>
+            <a href="{{ url_for('admin.admin', status='degraded') }}"
+               class="px-3 py-1 rounded-md {% if current_filter == 'degraded' %}bg-status-degraded-light dark:bg-status-degraded-dark text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} text-sm transition-colors duration-200">
+                Degraded
+            </a>
         </div>
-        <div>
-          {% if service.status == 'up' %}
-            <span class="bg-green-400 text-black text-xs font-bold px-2 py-1 rounded-full">UP</span>
-          {% elif service.status == 'degraded' %}
-            <span class="bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded-full">DEGRADED</span>
-          {% else %}
-            <span class="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">DOWN</span>
-          {% endif %}
-        </div>
-      </div>
 
-      <!-- Update + Delete forms -->
-      <div class="flex justify-between items-center mt-3">
-        <form method="POST" action="/update/{{ service.id }}" class="flex space-x-2">
-          <select name="status" class="px-2 py-1 rounded bg-gray-800 text-white text-sm">
-            <option value="up" {% if service.status == 'up' %}selected{% endif %}>Up</option>
-            <option value="degraded" {% if service.status == 'degraded' %}selected{% endif %}>Degraded</option>
-            <option value="down" {% if service.status == 'down' %}selected{% endif %}>Down</option>
-          </select>
-          <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">Update</button>
-        </form>
-        <form method="POST" action="/delete/{{ service.id }}">
-          <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm">Delete</button>
-        </form>
-      </div>
+        <!-- Sync Actions -->
+        <div class="flex items-center space-x-2">
+            {% if has_docker %}
+            <a href="{{ url_for('sync.sync_docker_services') }}"
+               class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-light-primary dark:bg-dark-primary hover:bg-light-accent dark:hover:bg-dark-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-light-accent dark:focus:ring-dark-accent transition-colors duration-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Sync Docker
+            </a>
+            {% endif %}
+            
+            {% if has_systemctl %}
+            <a href="{{ url_for('sync.sync_systemd_services') }}"
+               class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-light-primary dark:bg-dark-primary hover:bg-light-accent dark:hover:bg-dark-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-light-accent dark:focus:ring-dark-accent transition-colors duration-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                Sync Systemd
+            </a>
+            {% endif %}
+            
+            <a href="{{ url_for('sync.sync_ports') }}"
+               class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-light-primary dark:bg-dark-primary hover:bg-light-accent dark:hover:bg-dark-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-light-accent dark:focus:ring-dark-accent transition-colors duration-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                </svg>
+                Check Ports
+            </a>
+        </div>
     </div>
+</div>
+
+<!-- Services List -->
+<div class="mt-6 space-y-4">
+    {% for service in services %}
+        {{ service_row(service) }}
+    {% else %}
+        <div class="text-center py-12">
+            <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-light-muted dark:text-dark-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-light-text dark:text-dark-text">No services found</h3>
+            <p class="mt-1 text-sm text-light-muted dark:text-dark-muted">Get started by adding a service or syncing with Docker/Systemd.</p>
+        </div>
     {% endfor %}
-  </div>
 </div>
 {% endblock %}

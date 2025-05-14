@@ -1,0 +1,31 @@
+{% macro metric_card(title, value, icon=None, trend=None, trend_value=None) %}
+<div class="bg-light-card dark:bg-dark-card rounded-xl p-6 shadow-sm border border-light-border dark:border-dark-border">
+    <div class="flex items-center justify-between">
+        <div class="space-y-2">
+            <p class="text-light-muted dark:text-dark-muted text-sm font-medium">{{ title }}</p>
+            <p class="text-2xl font-bold text-light-text dark:text-dark-text">{{ value }}</p>
+        </div>
+        {% if icon %}
+        <div class="rounded-full p-3 bg-light-secondary dark:bg-dark-secondary text-light-primary dark:text-dark-text">
+            {{ icon | safe }}
+        </div>
+        {% endif %}
+    </div>
+    {% if trend %}
+    <div class="mt-4 flex items-center space-x-2">
+        {% if trend == 'up' %}
+        <svg class="w-4 h-4 text-status-up-light dark:text-status-up-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+        </svg>
+        {% elif trend == 'down' %}
+        <svg class="w-4 h-4 text-status-down-light dark:text-status-down-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+        </svg>
+        {% endif %}
+        <span class="text-sm font-medium {% if trend == 'up' %}text-status-up-light dark:text-status-up-dark{% elif trend == 'down' %}text-status-down-light dark:text-status-down-dark{% endif %}">
+            {{ trend_value }}
+        </span>
+    </div>
+    {% endif %}
+</div>
+{% endmacro %} 
