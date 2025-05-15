@@ -2,19 +2,10 @@ version: "3.8"
 
 services:
   ministatus:
-    build: .
     container_name: ministatus-dev
-    ports:
-      - "5000:5000"
     volumes:
-      - .:/app
-      - ./instance:/app/instance
+      - .:/app  # Mount entire codebase for development
     environment:
-      - PYTHONUNBUFFERED=1
-      - FLASK_HOST=0.0.0.0
-      - FLASK_PORT=5000
       - FLASK_DEBUG=True
-      - SECRET_KEY=${SECRET_KEY}
-      - ADMIN_SECRET=${ADMIN_SECRET}
     command: python run.py
-    # No restart policy in dev for easier debugging
+    restart: "no"  # No restart in dev for easier debugging

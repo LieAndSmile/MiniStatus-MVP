@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/) and uses the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [v1.7.1] - 2025-05-15
+### Fixed
+- Fixed Docker configuration issues with proper environment variable handling
+- Resolved URL routing errors in admin dashboard for sync operations
+- Fixed endpoint naming consistency between routes and templates
+- Improved Docker Compose configurations with clearer separation:
+  * `docker-compose.yml`: Base configuration
+  * `docker-compose.dev.yml`: Development settings
+  * `docker-compose.prod.yml`: Production configuration with Gunicorn
+  * `docker-compose.simple.yml`: Simple deployment with pre-built image
+- Updated documentation for different deployment scenarios
+- Fixed template caching issues affecting UI updates
+
+### Changed
+- Reorganized Docker Compose files for better clarity
+- Improved error handling in sync operations
+- Enhanced deployment documentation in README
+
 ## [v1.7.0] - 2025-05-13
 ### Added
 - Comprehensive theme system with light/dark mode support

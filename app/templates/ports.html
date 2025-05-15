@@ -4,6 +4,17 @@
 {% block header %}Ports Listening on This Server{% endblock %}
 
 {% block content %}
+<!-- Action Button -->
+<div class="mb-6">
+    <a href="{{ url_for('sync.sync_ports') }}" 
+       class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-light-primary dark:bg-dark-primary hover:bg-light-accent dark:hover:bg-dark-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-light-accent dark:focus:ring-dark-accent transition-colors duration-200">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        Check Ports
+    </a>
+</div>
+
 <div class="space-y-12">
   <!-- LOCAL PORTS GROUPED BY SERVICE -->
   <section>

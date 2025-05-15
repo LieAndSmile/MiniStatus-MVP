@@ -36,7 +36,7 @@ def admin_required(f):
 # -------------------------------
 # SYNC DOCKER SERVICES
 # -------------------------------
-@sync_bp.route("/sync", methods=["GET"])
+@sync_bp.route("/sync-docker", methods=["GET"])
 @admin_required
 def sync_docker_services():
     updated_services, error = ServiceSync.sync_docker()
@@ -66,8 +66,9 @@ def sync_ports():
     updated_services, error = ServiceSync.sync_ports()
     if error:
         flash(error, 'error')
-        return redirect(url_for('admin.dashboard'))
-    return render_template("sync.html", updated_services=updated_services)
+        return redirect(url_for('ports.ports_dashboard'))
+    flash('Successfully checked all ports!', 'success')
+    return redirect(url_for('ports.ports_dashboard'))
 
 @sync_bp.route("/sync-all")
 @admin_required
