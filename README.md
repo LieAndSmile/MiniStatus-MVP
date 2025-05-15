@@ -2,9 +2,10 @@
 
 **MiniStatus** is a lightweight, self-hosted service status dashboard built for developers, homelabs, and small teams.
 
-Version: 1.7.1
+Version: 1.7.4
 
 - ✅ Track service health manually or via API
+- 🔍 Advanced search and filtering capabilities
 - 🔐 Admin panel with password protection
 - 📡 Docker & systemd sync
 - 🌓 Dark/Light theme with persistent preference
@@ -150,6 +151,8 @@ Chart lives in: `charts/ministatus/`
 | Local port monitoring         | ✅ Done  |
 | Remote host monitoring        | ✅ Done  |
 | Collapsible sidebar          | ✅ Done  |
+| Real-time search & filters    | ✅ Done  |
+| Dynamic sorting              | ✅ Done  |
 | Telegram/Slack alerts         | ⏳ Planned |
 | Multi-project support         | ⏳ Planned |
 | Incident history + notes      | ⏳ Planned |

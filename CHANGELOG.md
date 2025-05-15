@@ -4,6 +4,74 @@ All notable changes to this project will be documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/) and uses the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [v1.7.4] - 2024-03-16
+### Added
+- Enhanced public dashboard with advanced filtering capabilities:
+  * Real-time search functionality for services
+  * Dynamic sorting options (Name A-Z/Z-A, Status, Last Updated)
+  * Status-based filtering (All, Up, Down, Degraded)
+  * Responsive grid layout for service cards
+- Improved service card design:
+  * Status indicators with appropriate colors
+  * Last update timestamps
+  * Service descriptions
+  * Hover effects and transitions
+
+### Changed
+- Reorganized template structure:
+  * Moved public dashboard to dedicated `public/` directory
+  * Removed legacy template files
+  * Improved template hierarchy
+- Enhanced route handling for public dashboard:
+  * Added proper filter parameter support
+  * Optimized database queries for filtered results
+
+### Fixed
+- Resolved template precedence issues
+- Fixed public dashboard filter functionality
+- Improved template organization for better maintainability
+
+## [v1.7.3] - 2024-03-15
+### Fixed
+- Fixed Docker container detection in Ports dashboard
+  * Added proper Docker socket permissions handling
+  * Container now uses host's Docker group ID for secure access
+  * Improved error logging for Docker operations
+- Enhanced container security
+  * Removed unnecessary root group access
+  * Implemented least-privilege principle for Docker socket access
+  * Added fallback group ID handling for different environments
+
+### Security
+- Improved Docker socket permission handling
+  * Container now runs with host's Docker group permissions
+  * Removed direct socket chmod operations
+  * Added documentation for secure Docker socket mounting
+
+## [v1.7.2] - 2024-03-15
+### Added
+- Enhanced port scanning functionality with three distinct sections:
+  - Host Machine Ports (External Services)
+  - Docker Containers (Container Services)
+  - Container System Services (Internal Services)
+- Secure host port scanning capability
+  - Scans common service ports (SSH, HTTP, databases, etc.)
+  - Shows port status (open/closed/unknown)
+  - Service type detection
+  - Error handling and reporting
+- Improved UI for port display
+  - Color-coded status indicators
+  - Service-specific icons
+  - Detailed port information
+  - Better section organization
+
+### Security
+- Implemented secure host port scanning
+  - Limited to common service ports
+  - Timeout-based scanning
+  - No elevated privileges required
+  - Container-based perspective
+
 ## [v1.7.1] - 2025-05-15
 ### Fixed
 - Fixed Docker configuration issues with proper environment variable handling
