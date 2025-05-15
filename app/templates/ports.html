@@ -85,15 +85,13 @@
 {% endif %}
 
 <!-- No Results Message -->
-{% if not local_ports %}
-<div class="bg-light-card dark:bg-dark-card p-4 rounded-lg text-light-muted dark:text-dark-muted text-center">
+<div id="no-results-message" class="{% if not local_ports and not scanning %}bg-light-card dark:bg-dark-card p-4 rounded-lg text-light-muted dark:text-dark-muted text-center{% else %}hidden{% endif %}">
     {% if current_filter != 'all' %}
         No {{ current_filter }} ports found.
     {% else %}
         No ports found.
     {% endif %}
 </div>
-{% endif %}
 
 <div class="space-y-12">
   <!-- HOST PORTS -->
@@ -282,6 +280,10 @@ function toggleSection(sectionId) {
 function scanPorts() {
     const loadingIndicator = document.getElementById('loading-indicator');
     const scanStatus = document.getElementById('scan-status');
+    const noResultsMessage = document.getElementById('no-results-message');
+    
+    // Hide no results message during scan
+    noResultsMessage.classList.add('hidden');
     
     loadingIndicator.classList.remove('hidden');
     scanStatus.classList.remove('hidden');
@@ -294,10 +296,12 @@ function scanPorts() {
                 updatePortsUI(data.ports);
             } else {
                 console.error('Error scanning ports:', data.message);
+                noResultsMessage.classList.remove('hidden');
             }
         })
         .catch(error => {
             console.error('Error:', error);
+            noResultsMessage.classList.remove('hidden');
         })
         .finally(() => {
             loadingIndicator.classList.add('hidden');
@@ -306,12 +310,16 @@ function scanPorts() {
 }
 
 function updatePortsUI(ports) {
+    const noResultsMessage = document.getElementById('no-results-message');
+    
     // Group ports by type
     const groupedPorts = {
         'host': ports.filter(p => p.type === 'host'),
         'docker': ports.filter(p => p.type === 'docker'),
         'system': ports.filter(p => p.type === 'system')
     };
+    
+    let totalPorts = 0;
     
     // Update each section
     Object.entries(groupedPorts).forEach(([type, portList]) => {
@@ -328,15 +336,22 @@ function updatePortsUI(ports) {
                     <div class="bg-light-card dark:bg-dark-card p-4 rounded-lg text-light-muted dark:text-dark-muted text-center">
                         No ${type} ports found.
                     </div>`;
-                return;
+            } else {
+                totalPorts += portList.length;
+                portList.forEach(port => {
+                    const portElement = createPortElement(port, type);
+                    content.appendChild(portElement);
+                });
             }
-            
-            portList.forEach(port => {
-                const portElement = createPortElement(port, type);
-                content.appendChild(portElement);
-            });
         }
     });
+    
+    // Show/hide no results message based on total ports found
+    if (totalPorts === 0) {
+        noResultsMessage.classList.remove('hidden');
+    } else {
+        noResultsMessage.classList.add('hidden');
+    }
 }
 
 function createPortElement(port, type) {

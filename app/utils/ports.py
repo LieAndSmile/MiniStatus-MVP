@@ -280,18 +280,23 @@ def parse_port_line(line, source='ss'):
 
 def get_host_address():
     """Get the host machine's address from the container's perspective"""
-    # First try to get the default gateway (host) address
-    try:
-        result = subprocess.run(["ip", "route", "show", "default"], capture_output=True, text=True)
-        if result.returncode == 0:
-            match = re.search(r'default via (\d+\.\d+\.\d+\.\d+)', result.stdout)
-            if match:
-                return match.group(1)
-    except:
-        pass
-    
-    # Fallback to default Docker host
-    return "host.docker.internal" if os.environ.get("DOCKER_HOST_INTERNAL") else "172.17.0.1"
+    # Check if we're running in Docker
+    if os.path.exists('/.dockerenv'):
+        # First try to get the default gateway (host) address
+        try:
+            result = subprocess.run(["ip", "route", "show", "default"], capture_output=True, text=True)
+            if result.returncode == 0:
+                match = re.search(r'default via (\d+\.\d+\.\d+\.\d+)', result.stdout)
+                if match:
+                    return match.group(1)
+        except:
+            pass
+        
+        # Fallback to default Docker host
+        return "host.docker.internal" if os.environ.get("DOCKER_HOST_INTERNAL") else "172.17.0.1"
+    else:
+        # If not in Docker, use localhost
+        return "127.0.0.1"
 
 def scan_host_port(host, port, protocol='tcp'):
     """Scan a specific port on the host"""
