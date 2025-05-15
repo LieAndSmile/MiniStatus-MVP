@@ -3,38 +3,188 @@
 {% block title %}Status Dashboard{% endblock %}
 
 {% block content %}
-<div class="bg-blue-800 text-white text-center py-2 rounded mb-4 shadow">
-  🚀 <strong>Public View</strong> — Read-only service status for external visibility
+<div class="bg-gradient-to-r from-dark-primary to-dark-secondary text-white text-center py-3 rounded-lg mb-6 shadow-lg backdrop-blur-sm">
+  <div class="flex items-center justify-center space-x-2">
+    <span class="text-2xl">🚀</span>
+    <div>
+      <strong class="text-lg">Public View</strong>
+      <p class="text-sm opacity-90 mt-1">Read-only service status for external visibility</p>
+    </div>
+  </div>
 </div>
 
-<div class="container mx-auto p-6">
-  <h1 class="text-3xl font-bold mb-4">Service Status</h1>
+<div class="container mx-auto">
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
+    <h1 class="text-3xl font-bold text-light-text dark:text-dark-text mb-4 md:mb-0">
+      Service Status
+    </h1>
+    <div class="text-sm text-light-muted dark:text-dark-muted">
+      Last refresh: {{ services[0].updated_at if services else 'Never' }}
+      <button onclick="window.location.reload()" class="ml-2 text-light-primary dark:text-dark-primary hover:text-light-accent dark:hover:text-dark-accent transition-colors duration-200">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      </button>
+    </div>
+  </div>
 
-  <!-- Filter buttons -->
-  <div class="flex gap-2 mb-6">
-    <a href="/?filter=all" class="btn">All</a>
-    <a href="/?filter=up" class="btn">Up</a>
-    <a href="/?filter=down" class="btn">Down</a>
-    <a href="/?filter=degraded" class="btn">Degraded</a>
+  <!-- Search and Filter Controls -->
+  <div class="flex flex-col lg:flex-row gap-4 mb-8 bg-light-card dark:bg-dark-card p-4 rounded-xl border border-light-border dark:border-dark-border">
+    <!-- Search Bar -->
+    <div class="flex-grow">
+      <div class="relative">
+        <input type="text" 
+               id="service-search" 
+               placeholder="Search services..." 
+               class="w-full px-4 py-2.5 bg-light-bg dark:bg-dark-nav border border-light-border dark:border-dark-border rounded-lg text-light-text dark:text-dark-text placeholder-light-muted dark:placeholder-dark-muted focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary focus:border-transparent transition-all duration-200">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute right-3 top-3 text-light-muted dark:text-dark-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      </div>
+    </div>
+
+    <!-- Sort Dropdown -->
+    <div class="w-full lg:w-48">
+      <select id="service-sort" class="w-full px-3 py-2.5 bg-light-bg dark:bg-dark-nav border border-light-border dark:border-dark-border rounded-lg text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary focus:border-transparent transition-all duration-200">
+        <option value="name-asc">Name A-Z</option>
+        <option value="name-desc">Name Z-A</option>
+        <option value="status-up">Status (Up First)</option>
+        <option value="status-down">Status (Down First)</option>
+        <option value="updated">Last Updated</option>
+      </select>
+    </div>
+
+    <!-- Filter Buttons -->
+    <div class="flex flex-wrap gap-2">
+      <a href="/?filter=all" 
+         class="px-4 py-2 rounded-lg font-medium {% if not filter or filter == 'all' %}bg-light-primary dark:bg-dark-primary text-white{% else %}bg-light-card dark:bg-dark-card text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-all duration-200">
+        All
+      </a>
+      <a href="/?filter=up" 
+         class="px-4 py-2 rounded-lg font-medium {% if filter == 'up' %}bg-status-up-light dark:bg-status-up-dark text-white{% else %}bg-light-card dark:bg-dark-card text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-all duration-200">
+        Up
+      </a>
+      <a href="/?filter=down" 
+         class="px-4 py-2 rounded-lg font-medium {% if filter == 'down' %}bg-status-down-light dark:bg-status-down-dark text-white{% else %}bg-light-card dark:bg-dark-card text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-all duration-200">
+        Down
+      </a>
+      <a href="/?filter=degraded" 
+         class="px-4 py-2 rounded-lg font-medium {% if filter == 'degraded' %}bg-status-degraded-light dark:bg-status-degraded-dark text-white{% else %}bg-light-card dark:bg-dark-card text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-all duration-200">
+        Degraded
+      </a>
+    </div>
   </div>
 
   <!-- Services grid -->
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  <div id="services-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
     {% for service in services %}
-    <div class="bg-gray-800 rounded-xl p-4 shadow-md">
-      <div class="text-lg font-semibold">{{ service.name }}</div>
-      <div class="text-sm text-gray-400">{{ service.description or "No description." }}</div>
-      <div class="mt-2">
-        <span class="inline-block px-3 py-1 rounded-full text-sm font-medium
-          {% if service.status == 'up' %}bg-green-600
-          {% elif service.status == 'down' %}bg-red-600
-          {% else %}bg-yellow-500{% endif %}">
-          {{ service.status | capitalize }}
-        </span>
+    <div class="service-card bg-light-card dark:bg-dark-card rounded-xl p-5 shadow-lg border border-light-border dark:border-dark-border hover:border-light-primary dark:hover:border-dark-primary transition-all duration-300" 
+         data-name="{{ service.name }}" 
+         data-status="{{ service.status }}"
+         data-updated="{{ service.updated_at }}">
+      <div class="flex items-start justify-between">
+        <div class="flex-grow">
+          <div class="text-lg font-semibold text-light-text dark:text-dark-text">{{ service.name }}</div>
+          <div class="text-sm text-light-muted dark:text-dark-muted mt-1">{{ service.description or "No description." }}</div>
+        </div>
+        <div class="ml-4">
+          <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+            {% if service.status == 'up' %}bg-status-up-light/20 dark:bg-status-up-dark/20 text-status-up-light dark:text-status-up-dark ring-1 ring-status-up-light/50 dark:ring-status-up-dark/50
+            {% elif service.status == 'down' %}bg-status-down-light/20 dark:bg-status-down-dark/20 text-status-down-light dark:text-status-down-dark ring-1 ring-status-down-light/50 dark:ring-status-down-dark/50
+            {% else %}bg-status-degraded-light/20 dark:bg-status-degraded-dark/20 text-status-degraded-light dark:text-status-degraded-dark ring-1 ring-status-degraded-light/50 dark:ring-status-degraded-dark/50{% endif %}">
+            {{ service.status | capitalize }}
+          </span>
+        </div>
       </div>
-      <div class="text-xs text-gray-500 mt-2">Last updated: {{ service.updated_at }}</div>
+      <div class="flex items-center mt-4 text-xs text-light-muted dark:text-dark-muted">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Last updated: {{ service.updated_at }}
+      </div>
     </div>
     {% endfor %}
   </div>
+
+  <!-- No Results Message -->
+  <div id="no-results" class="hidden">
+    <div class="text-center py-12">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-light-muted dark:text-dark-muted mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+      <h3 class="text-xl font-semibold text-light-text dark:text-dark-text mb-2">No services found</h3>
+      <p class="text-light-muted dark:text-dark-muted">Try adjusting your search or filter criteria</p>
+    </div>
+  </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('service-search');
+    const sortSelect = document.getElementById('service-sort');
+    const servicesGrid = document.getElementById('services-grid');
+    const noResults = document.getElementById('no-results');
+
+    function getServiceCards() {
+        return Array.from(document.querySelectorAll('.service-card'));
+    }
+
+    function filterServices(searchTerm) {
+        const cards = getServiceCards();
+        const term = searchTerm.toLowerCase();
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+            const text = card.textContent.toLowerCase();
+            const isVisible = text.includes(term);
+            card.style.display = isVisible ? 'block' : 'none';
+            if (isVisible) visibleCount++;
+        });
+
+        // Show/hide no results message
+        noResults.style.display = visibleCount === 0 ? 'block' : 'none';
+        servicesGrid.style.display = visibleCount === 0 ? 'none' : 'grid';
+    }
+
+    function sortServices(sortType) {
+        const cards = getServiceCards();
+        
+        cards.sort((a, b) => {
+            switch (sortType) {
+                case 'name-asc':
+                    return a.dataset.name.localeCompare(b.dataset.name);
+                case 'name-desc':
+                    return b.dataset.name.localeCompare(a.dataset.name);
+                case 'status-up':
+                    return (b.dataset.status === 'up') - (a.dataset.status === 'up') ||
+                           a.dataset.name.localeCompare(b.dataset.name);
+                case 'status-down':
+                    return (b.dataset.status === 'down') - (a.dataset.status === 'down') ||
+                           a.dataset.name.localeCompare(b.dataset.name);
+                case 'updated':
+                    return new Date(b.dataset.updated) - new Date(a.dataset.updated);
+                default:
+                    return 0;
+            }
+        });
+
+        // Remove and re-append cards in sorted order
+        cards.forEach(card => card.remove());
+        cards.forEach(card => servicesGrid.appendChild(card));
+    }
+
+    // Event Listeners
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            filterServices(e.target.value);
+        });
+    }
+
+    if (sortSelect) {
+        sortSelect.addEventListener('change', (e) => {
+            sortServices(e.target.value);
+        });
+    }
+});
+</script>
 {% endblock %}
