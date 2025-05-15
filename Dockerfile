@@ -37,6 +37,11 @@ RUN mkdir -p /app && \
     useradd -m -s /bin/bash -g appgroup app && \
     chown -R app:appgroup /app
 
+# Create docker group with the same GID as host
+ARG DOCKER_GID=110
+RUN groupadd -g ${DOCKER_GID} docker && \
+    usermod -aG docker app
+
 WORKDIR /app
 
 # Copy Python packages from builder

@@ -8,13 +8,13 @@
 <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
     <!-- Left Side: Scan Button -->
     <div class="flex items-center space-x-4">
-        <a href="{{ url_for('sync.sync_ports') }}" 
+        <button onclick="scanPorts()" 
            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-light-primary dark:bg-dark-primary hover:bg-light-accent dark:hover:bg-dark-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-light-accent dark:focus:ring-dark-accent transition-colors duration-200">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
             Check Ports
-        </a>
+        </button>
     </div>
 
     <!-- Middle: Search Bar -->
@@ -277,6 +277,121 @@ function toggleSection(sectionId) {
     
     // Save states to localStorage
     localStorage.setItem('portSectionStates', JSON.stringify(sectionStates));
+}
+
+function scanPorts() {
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const scanStatus = document.getElementById('scan-status');
+    
+    loadingIndicator.classList.remove('hidden');
+    scanStatus.classList.remove('hidden');
+    
+    // Make AJAX request to scan ports
+    fetch('/api/ports/scan')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                updatePortsUI(data.ports);
+            } else {
+                console.error('Error scanning ports:', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        })
+        .finally(() => {
+            loadingIndicator.classList.add('hidden');
+            scanStatus.classList.add('hidden');
+        });
+}
+
+function updatePortsUI(ports) {
+    // Group ports by type
+    const groupedPorts = {
+        'host': ports.filter(p => p.type === 'host'),
+        'docker': ports.filter(p => p.type === 'docker'),
+        'system': ports.filter(p => p.type === 'system')
+    };
+    
+    // Update each section
+    Object.entries(groupedPorts).forEach(([type, portList]) => {
+        const sectionId = type === 'host' ? 'host-ports' : 
+                         type === 'docker' ? 'docker-containers' : 
+                         'system-services';
+        const content = document.getElementById(`${sectionId}-content`);
+        
+        if (content) {
+            content.innerHTML = ''; // Clear existing content
+            
+            if (portList.length === 0) {
+                content.innerHTML = `
+                    <div class="bg-light-card dark:bg-dark-card p-4 rounded-lg text-light-muted dark:text-dark-muted text-center">
+                        No ${type} ports found.
+                    </div>`;
+                return;
+            }
+            
+            portList.forEach(port => {
+                const portElement = createPortElement(port, type);
+                content.appendChild(portElement);
+            });
+        }
+    });
+}
+
+function createPortElement(port, type) {
+    const div = document.createElement('div');
+    div.className = 'bg-light-card dark:bg-dark-card p-4 rounded-lg shadow border border-light-border dark:border-dark-border hover:border-light-primary dark:hover:border-dark-primary transition-colors duration-200';
+    
+    let icon = '⚙️';
+    if (type === 'host') {
+        if (port.label && port.label.toLowerCase().includes('ssh')) icon = '🛡️';
+        else if (port.label && port.label.toLowerCase().includes('http')) icon = '🌐';
+        else if (port.label && port.label.toLowerCase().includes('https')) icon = '🔒';
+        else if (port.label && port.label.toLowerCase().includes('ftp')) icon = '📁';
+        else if (port.label && port.label.toLowerCase().includes('smtp')) icon = '📧';
+        else if (port.label && port.label.toLowerCase().includes('dns')) icon = '📡';
+        else if (port.label && (port.label.toLowerCase().includes('sql') || port.label.toLowerCase().includes('db'))) icon = '💾';
+        else if (port.label && port.label.toLowerCase().includes('mongo')) icon = '🍃';
+        else if (port.label && port.label.toLowerCase().includes('redis')) icon = '🔄';
+        else icon = '🖥️';
+    } else if (type === 'docker') {
+        icon = '🐳';
+    }
+    
+    let statusIcon = '⚪';
+    if (port.status === 'open') statusIcon = '🟢';
+    else if (port.status === 'closed') statusIcon = '🔴';
+    
+    let html = `
+        <div class="flex justify-between items-center">
+            <div class="flex-grow">
+                <div class="text-light-text dark:text-dark-text font-semibold text-sm flex items-center">
+                    <span class="mr-2">${statusIcon}</span>
+                    <span>${port.label || port.container_name || port.service_name || 'Unknown Service'}</span>
+                    <span class="ml-2 text-light-muted dark:text-dark-muted">— Port ${port.port}</span>
+                </div>
+                <div class="text-light-muted dark:text-dark-muted text-xs space-y-1">
+                    <div>${port.address ? port.address.split('%')[0] : 'localhost'} | ${port.protocol ? port.protocol.toUpperCase() : 'TCP'}</div>`;
+    
+    if (type === 'docker' && port.container_port) {
+        html += `<div class="text-light-accent dark:text-dark-accent">Internal Port: ${port.container_port}</div>`;
+    }
+    
+    if (port.error) {
+        html += `<div class="text-red-500">Error: ${port.error}</div>`;
+    }
+    
+    html += `
+                </div>
+            </div>
+            <div class="text-lg ml-4">
+                <span title="${type.charAt(0).toUpperCase() + type.slice(1)} Service">${icon}</span>
+            </div>
+        </div>`;
+    
+    div.innerHTML = html;
+    return div;
 }
 
 // Initialize sections on page load

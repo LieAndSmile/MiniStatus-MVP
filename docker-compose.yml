@@ -2,7 +2,10 @@ version: "3.8"
 
 services:
   ministatus:
-    build: .
+    build:
+      context: .
+      args:
+        DOCKER_GID: 110
     container_name: ministatus
     ports:
       - "5000:5000"
@@ -16,6 +19,4 @@ services:
       - FLASK_DEBUG=False
       - SECRET_KEY=${SECRET_KEY}
       - ADMIN_SECRET=${ADMIN_SECRET}
-    group_add:
-      - ${DOCKER_GROUP_ID:-999}  # Use host's docker group ID or fallback to 999
     restart: unless-stopped
