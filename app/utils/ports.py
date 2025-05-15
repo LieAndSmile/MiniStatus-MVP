@@ -390,3 +390,40 @@ def get_local_listening_ports():
     sorted_ports = sorted(ports, key=lambda x: int(x['port']))
     print(f"Final sorted ports: {sorted_ports}")  # Debug log
     return sorted_ports
+
+def scan_ports():
+    """Scan all ports and return combined results"""
+    print("Starting port scan...")  # Debug log
+    
+    # Get Docker container ports
+    docker_ports = get_docker_container_ports()
+    print(f"Docker ports: {docker_ports}")  # Debug log
+    
+    # Get system service ports
+    system_ports = get_ports_from_ss() or get_ports_from_netstat()
+    print(f"System ports: {system_ports}")  # Debug log
+    
+    # Get host ports
+    host_ports = get_host_ports()
+    print(f"Host ports: {host_ports}")  # Debug log
+    
+    # Combine all results
+    all_ports = []
+    
+    # Add Docker ports
+    all_ports.extend(docker_ports)
+    
+    # Add system ports
+    for port in system_ports:
+        if not any(p['port'] == port['port'] for p in all_ports):
+            port['type'] = 'system'
+            all_ports.append(port)
+    
+    # Add host ports
+    for port in host_ports:
+        if not any(p['port'] == port['port'] for p in all_ports):
+            port['type'] = 'host'
+            all_ports.append(port)
+    
+    print(f"All ports: {all_ports}")  # Debug log
+    return all_ports

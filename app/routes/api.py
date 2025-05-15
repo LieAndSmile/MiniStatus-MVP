@@ -3,8 +3,9 @@ from app.models import Service
 from app import db
 from datetime import datetime
 import os
+from app.utils.ports import scan_ports
 
-api_bp = Blueprint("api", __name__)
+api_bp = Blueprint("api", __name__, url_prefix='/api')
 
 @api_bp.route("/report", methods=["POST"])
 def report_status():
@@ -38,3 +39,18 @@ def report_status():
 
     db.session.commit()
     return jsonify({"message": f"Service '{name}' updated to '{status}'"})
+
+@api_bp.route('/ports/scan')
+def scan_ports_api():
+    """API endpoint to scan ports and return results as JSON"""
+    try:
+        ports = scan_ports()
+        return jsonify({
+            'status': 'success',
+            'ports': ports
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500

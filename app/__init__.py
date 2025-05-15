@@ -23,6 +23,7 @@ def create_app():
         from app.routes.remote import remote_bp
         from app.routes.ports import ports_bp
         from app.routes.public import public_bp
+        from app.routes.api import api_bp
 
         # Register blueprints - public routes first
         app.register_blueprint(public_bp)  # For public routes
@@ -30,6 +31,7 @@ def create_app():
         app.register_blueprint(sync_bp)
         app.register_blueprint(remote_bp)
         app.register_blueprint(ports_bp)
+        app.register_blueprint(api_bp)  # API routes
 
         # Create database tables
         db.create_all()
