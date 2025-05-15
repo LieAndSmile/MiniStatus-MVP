@@ -1,32 +1,33 @@
-
 {% extends "base.html" %}
 
 {% block title %}Sync Results - MiniStatus{% endblock %}
 
-{% block content %}
-<div class="max-w-3xl mx-auto bg-gray-800 p-6 rounded-xl shadow-xl">
-  <h2 class="text-2xl font-bold text-yellow-400 mb-4 text-center">Sync Results</h2>
+{% block header %}Sync Results{% endblock %}
 
+{% block content %}
+<div class="bg-light-card dark:bg-dark-card rounded-lg p-6 border border-light-border dark:border-dark-border">
   {% if updated_services %}
-    <ul class="space-y-2">
+    <div class="space-y-2">
       {% for item in updated_services %}
-        <li class="bg-gray-700 px-4 py-2 rounded text-white">
+        <div class="bg-light-hover dark:bg-dark-hover px-4 py-2 rounded-lg text-light-text dark:text-dark-text flex items-center">
           {% if '→ up' in item %}
-            <span class="text-green-400">🟢</span> {{ item }}
+            <span class="text-status-up-light dark:text-status-up-dark mr-2">●</span>
           {% elif '→ degraded' in item %}
-            <span class="text-yellow-400">🟡</span> {{ item }}
+            <span class="text-status-degraded-light dark:text-status-degraded-dark mr-2">●</span>
           {% else %}
-            <span class="text-red-400">🔴</span> {{ item }}
+            <span class="text-status-down-light dark:text-status-down-dark mr-2">●</span>
           {% endif %}
-        </li>
+          {{ item }}
+        </div>
       {% endfor %}
-    </ul>
+    </div>
   {% else %}
-    <p class="text-gray-300">No services updated.</p>
+    <p class="text-light-muted dark:text-dark-muted">No services updated.</p>
   {% endif %}
 
   <div class="mt-6 text-center">
-    <a href="/admin" class="text-yellow-400 hover:underline">← Back to Admin</a>
+    <a href="{{ url_for('admin.dashboard') }}" 
+       class="text-light-primary dark:text-dark-primary hover:underline">← Back to Admin</a>
   </div>
 </div>
 {% endblock %}

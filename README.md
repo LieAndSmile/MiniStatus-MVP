@@ -2,6 +2,8 @@
 
 **MiniStatus** is a lightweight, self-hosted service status dashboard built for developers, homelabs, and small teams.
 
+Version: 1.7.1
+
 - ✅ Track service health manually or via API
 - 🔐 Admin panel with password protection
 - 📡 Docker & systemd sync
@@ -44,8 +46,8 @@ cp .env.example .env
 
 #### Quick Start (using pre-built image)
 ```bash
-# Pull the latest image
-docker pull rilmay/ministatus:latest
+# Pull the latest image (or specific version)
+docker pull rilmay/ministatus:latest  # or rilmay/ministatus:1.7.1
 
 # Create a directory for persistent data
 mkdir -p instance
@@ -58,15 +60,17 @@ docker run -d \
   -e SECRET_KEY=your-secret-key \
   -e ADMIN_SECRET=your-admin-secret \
   --restart unless-stopped \
-  rilmay/ministatus:latest
+  rilmay/ministatus:1.7.1  # Using specific version recommended
 ```
 
 #### Using Docker Compose
 
-1. **Production Mode**
+We provide several Docker Compose configurations for different use cases:
+
+1. **Simple Deployment** (recommended for most users)
 ```bash
-# Using production configuration
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Using pre-built image with minimal configuration
+docker-compose -f docker-compose.simple.yml up -d
 ```
 
 2. **Development Mode**
@@ -75,7 +79,13 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
 ```
 
-3. **Stop and Cleanup**
+3. **Production Mode**
+```bash
+# Using production configuration with Gunicorn
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+4. **Stop and Cleanup**
 ```bash
 # Stop containers
 docker-compose down
@@ -83,6 +93,11 @@ docker-compose down
 # Remove persistent data (optional)
 sudo rm -rf instance/
 ```
+
+The different configurations provide:
+- `simple`: Pre-built image, minimal setup required
+- `dev`: Live code reload, debugging enabled
+- `prod`: Gunicorn server, optimized for production
 
 Access the app at: [http://localhost:5000](http://localhost:5000)
 

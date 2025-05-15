@@ -1,6 +1,7 @@
 # app/utils/ports.py
 
 import subprocess
+import socket
 
 PORT_LABELS = {
     "22": "SSH",
@@ -9,21 +10,44 @@ PORT_LABELS = {
     "3306": "MySQL",
     "5432": "PostgreSQL",
     "6379": "Redis",
-    "5000": "Flask Dev Server"
+    "5000": "Flask Dev Server",
+    "8080": "HTTP Alternate",
+    "1883": "MQTT",
+    "9100": "Node Exporter",
+    "9090": "Prometheus",
+    "3000": "Grafana"
 }
 
-def get_local_listening_ports():
-    result = subprocess.run(["ss", "-tuln"], capture_output=True, text=True)
-    lines = result.stdout.strip().split("\n")
+def get_ports_from_ss():
+    try:
+        result = subprocess.run(["ss", "-tuln"], capture_output=True, text=True)
+        if result.returncode == 0:
+            return result.stdout.strip().split("\n")[1:]  # Skip header
+    except:
+        return []
+    return []
 
-    ports = []
-    for line in lines[1:]:
+def get_ports_from_netstat():
+    try:
+        result = subprocess.run(["netstat", "-tuln"], capture_output=True, text=True)
+        if result.returncode == 0:
+            return result.stdout.strip().split("\n")[2:]  # Skip headers
+    except:
+        return []
+    return []
+
+def parse_port_line(line, source='ss'):
+    try:
         parts = line.split()
-        if len(parts) < 5:
-            continue
+        if not parts:
+            return None
 
-        proto = parts[0]
-        local_address = parts[4]
+        if source == 'ss':
+            proto = parts[0]
+            local_address = parts[4]
+        else:  # netstat
+            proto = parts[0]
+            local_address = parts[3]
 
         # handle IPv4 and IPv6 addresses
         if "[" in local_address:  # IPv6
@@ -31,15 +55,44 @@ def get_local_listening_ports():
             addr = addr.strip("[]")
         else:
             if ":" not in local_address:
-                continue
+                return None
             addr, port = local_address.rsplit(":", 1)
 
-        label = PORT_LABELS.get(port)
-        ports.append({
+        # Skip if not a valid port number
+        try:
+            port_num = int(port)
+            if port_num < 1 or port_num > 65535:
+                return None
+        except ValueError:
+            return None
+
+        return {
             "protocol": proto,
             "address": addr,
             "port": port,
-            "label": label
-        })
+            "label": PORT_LABELS.get(port)
+        }
+    except:
+        return None
 
-    return ports
+def get_local_listening_ports():
+    ports_dict = {}  # Use dict to avoid duplicates
+
+    # Try ss command first
+    for line in get_ports_from_ss():
+        port_info = parse_port_line(line, 'ss')
+        if port_info:
+            key = f"{port_info['port']}_{port_info['protocol']}"
+            ports_dict[key] = port_info
+
+    # Try netstat as backup
+    for line in get_ports_from_netstat():
+        port_info = parse_port_line(line, 'netstat')
+        if port_info:
+            key = f"{port_info['port']}_{port_info['protocol']}"
+            if key not in ports_dict:
+                ports_dict[key] = port_info
+
+    # Convert dict to list and sort by port number
+    ports = list(ports_dict.values())
+    return sorted(ports, key=lambda x: int(x['port']))

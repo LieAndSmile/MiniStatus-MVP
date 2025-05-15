@@ -104,11 +104,8 @@
   <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 transition-all duration-300 ease-in-out bg-light-nav dark:bg-dark-nav border-r border-light-border dark:border-dark-border">
     <!-- Logo section -->
     <div class="flex items-center justify-between h-16 px-4 border-b border-light-border dark:border-dark-border">
-      <a href="{{ url_for('admin.dashboard') }}" class="flex items-center space-x-2 overflow-hidden">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 flex-shrink-0 text-light-primary dark:text-dark-text" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <span class="text-xl font-bold text-light-primary dark:text-dark-text truncate nav-label">MiniStatus</span>
+      <a href="{{ url_for('public.index') }}" class="flex items-center space-x-2 overflow-hidden">
+        <div class="text-2xl font-bold text-light-text dark:text-dark-text">MiniStatus</div>
       </a>
       <button onclick="toggleSidebar()" class="p-2 rounded-lg hover:bg-light-hover dark:hover:bg-dark-hover">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
