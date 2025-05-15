@@ -67,6 +67,8 @@ def sync_ports():
     if error:
         flash(error, 'error')
         return redirect(url_for('ports.ports_dashboard'))
+    # Set a session variable to indicate which page should show the message
+    session['show_ports_message'] = True
     flash('Successfully checked all ports!', 'success')
     return redirect(url_for('ports.ports_dashboard'))
 

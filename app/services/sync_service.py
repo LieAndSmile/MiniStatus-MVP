@@ -5,7 +5,7 @@ import time
 from app.extensions import db
 from app.models import Service
 from app.utils.helpers import interpret_docker_status
-from app.utils.ports import get_local_listening_ports
+from app.utils.ports import get_local_listening_ports, get_docker_container_ports
 
 class ServiceSync:
     @staticmethod
@@ -57,7 +57,8 @@ class ServiceSync:
         """Sync systemd service statuses"""
         try:
             result = subprocess.check_output([
-                "systemctl", "list-units", "--type=service", "--all", "--no-pager"
+                "systemctl", "list-units", "--type=service",
+                "--all", "--no-pager", "--plain"
             ])
             output = result.decode("utf-8").strip().split("\n")
         except Exception as e:
@@ -66,18 +67,23 @@ class ServiceSync:
         updated_services = []
 
         for line in output:
-            if ".service" not in line:
+            if not line.strip() or "UNIT" in line:  # Skip empty lines and header
                 continue
 
             parts = line.split()
-            if len(parts) < 4:
+            if len(parts) < 3:
                 continue
 
-            unit_name = parts[0]
-            active_state = parts[2]
-            sub_state = parts[3]
-            name = unit_name.replace(".service", "")
-            status = "up" if active_state == "active" and sub_state == "running" else "down"
+            name = parts[0].replace(".service", "")
+            raw_status = parts[2].lower()
+
+            # Map systemd status to our status format
+            if "running" in raw_status:
+                status = "up"
+            elif "dead" in raw_status or "failed" in raw_status:
+                status = "down"
+            else:
+                status = "degraded"
 
             svc = Service.query.filter_by(name=name).first()
             if svc:
@@ -87,7 +93,7 @@ class ServiceSync:
                 svc = Service(
                     name=name,
                     status=status,
-                    description=f"Systemd service: {unit_name}",
+                    description=f"Systemd service '{name}'",
                     last_updated=datetime.utcnow()
                 )
                 db.session.add(svc)
@@ -103,83 +109,66 @@ class ServiceSync:
 
     @staticmethod
     def sync_ports():
-        """Sync port statuses for monitored services"""
-        services = Service.query.filter(
-            Service.host.isnot(None),
-            Service.port.isnot(None)
-        ).all()
-        
-        updated_services = []
-
-        for svc in services:
-            try:
-                with socket.create_connection((svc.host, svc.port), timeout=3):
-                    svc.status = "up"
-            except Exception:
-                svc.status = "down"
-
-            svc.last_updated = datetime.utcnow()
-            updated_services.append(f"{svc.name} → {svc.status}")
-
+        """Sync port statuses including Docker container ports"""
         try:
+            # Get all ports including Docker container ports
+            ports = get_local_listening_ports()
+            
+            # Update services based on port status
+            updated_services = []
+            for port_info in ports:
+                name = port_info.get('container_name', f"Port {port_info['port']}")
+                status = "up"  # If we can see the port, it's up
+                
+                svc = Service.query.filter_by(name=name).first()
+                if svc:
+                    svc.status = status
+                    svc.last_updated = datetime.utcnow()
+                else:
+                    description = (
+                        f"Docker container port {port_info['port']}/{port_info['protocol']}"
+                        if port_info.get('container_name')
+                        else f"Port {port_info['port']}/{port_info['protocol']}"
+                    )
+                    svc = Service(
+                        name=name,
+                        status=status,
+                        description=description,
+                        last_updated=datetime.utcnow()
+                    )
+                    db.session.add(svc)
+                
+                updated_services.append(f"{name} → {status}")
+            
             db.session.commit()
             return updated_services, None
         except Exception as e:
             db.session.rollback()
-            return [], f"Error saving to database: {e}"
+            return [], f"Error syncing ports: {e}"
 
     @staticmethod
     def sync_remote_hosts(timeout=3, retry_count=1):
-        """
-        Sync remote host statuses with retry and latency measurement
-        
-        Args:
-            timeout (int): Socket connection timeout in seconds
-            retry_count (int): Number of retries before marking as down
-        """
+        """Sync remote host statuses"""
         services = Service.query.filter(
             Service.host.isnot(None),
             Service.port.isnot(None)
         ).all()
         
         updated_services = []
-        
+
         for svc in services:
-            latency = None
-            error_msg = None
-            is_up = False
-            
-            # Try connection with retry
-            for attempt in range(retry_count + 1):
+            success = False
+            for _ in range(retry_count):
                 try:
-                    start_time = time.time()
-                    with socket.create_connection((svc.host, svc.port), timeout=timeout) as conn:
-                        latency = (time.time() - start_time) * 1000  # Convert to ms
-                        is_up = True
+                    with socket.create_connection((svc.host, svc.port), timeout=timeout):
+                        success = True
                         break
-                except socket.timeout:
-                    error_msg = "Connection timed out"
-                except ConnectionRefusedError:
-                    error_msg = "Connection refused"
-                except socket.gaierror:
-                    error_msg = "DNS resolution failed"
-                except Exception as e:
-                    error_msg = str(e)
-                
-                # If not last attempt, wait briefly before retry
-                if attempt < retry_count:
-                    time.sleep(1)
+                except:
+                    time.sleep(1)  # Wait before retry
             
-            # Update service status
-            if is_up:
-                svc.status = "up"
-                svc.description = f"Latency: {latency:.1f}ms"
-            else:
-                svc.status = "down"
-                svc.description = f"Error: {error_msg}"
-            
+            svc.status = "up" if success else "down"
             svc.last_updated = datetime.utcnow()
-            updated_services.append(f"{svc.name} ({svc.host}:{svc.port}) → {svc.status}")
+            updated_services.append(f"{svc.name} → {svc.status}")
 
         try:
             db.session.commit()

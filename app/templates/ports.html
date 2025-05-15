@@ -4,43 +4,390 @@
 {% block header %}Ports Listening on This Server{% endblock %}
 
 {% block content %}
-<!-- Action Button -->
-<div class="mb-6">
-    <a href="{{ url_for('sync.sync_ports') }}" 
-       class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-light-primary dark:bg-dark-primary hover:bg-light-accent dark:hover:bg-dark-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-light-accent dark:focus:ring-dark-accent transition-colors duration-200">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-        Check Ports
-    </a>
+<!-- Action Bar -->
+<div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+    <!-- Left Side: Scan Button -->
+    <div class="flex items-center space-x-4">
+        <a href="{{ url_for('sync.sync_ports') }}" 
+           class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-light-primary dark:bg-dark-primary hover:bg-light-accent dark:hover:bg-dark-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-light-accent dark:focus:ring-dark-accent transition-colors duration-200">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Check Ports
+        </a>
+    </div>
+
+    <!-- Middle: Search Bar -->
+    <div class="flex-grow mx-4">
+        <div class="relative">
+            <input type="text" 
+                   id="port-search" 
+                   placeholder="Search ports, services, or containers..." 
+                   class="w-full px-4 py-2 border border-light-border dark:border-dark-border rounded-md bg-light-card dark:bg-dark-card text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute right-3 top-2.5 text-light-muted dark:text-dark-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+        </div>
+    </div>
+
+    <!-- Right Side: Filter and Sort Controls -->
+    <div class="flex flex-wrap items-center gap-2">
+        <!-- Sort Dropdown -->
+        <select id="port-sort" class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded-md bg-light-card dark:bg-dark-card text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary">
+            <option value="port-asc">Port Number ↑</option>
+            <option value="port-desc">Port Number ↓</option>
+            <option value="name-asc">Name A-Z</option>
+            <option value="name-desc">Name Z-A</option>
+            <option value="type">Group by Type</option>
+        </select>
+
+        <!-- Status Filters -->
+        <a href="{{ url_for('ports.ports_dashboard') }}" 
+           class="px-3 py-1 rounded-md {% if current_filter == 'all' %}bg-light-primary dark:bg-dark-primary text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors duration-200">
+            All
+        </a>
+        <a href="{{ url_for('ports.ports_dashboard', filter='open') }}"
+           class="px-3 py-1 rounded-md {% if current_filter == 'open' %}bg-status-up-light dark:bg-status-up-dark text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors duration-200">
+            Open
+        </a>
+        <a href="{{ url_for('ports.ports_dashboard', filter='closed') }}"
+           class="px-3 py-1 rounded-md {% if current_filter == 'closed' %}bg-status-down-light dark:bg-status-down-dark text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors duration-200">
+            Closed
+        </a>
+    </div>
 </div>
 
+<!-- Loading Indicator -->
+<div id="loading-indicator" class="hidden fixed top-0 left-0 w-full h-1 bg-light-primary dark:bg-dark-primary animate-pulse"></div>
+
+<!-- Port Scan Progress -->
+<div id="scan-status" class="hidden mb-6 p-4 rounded-lg bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border">
+  <div class="flex items-center">
+    <svg class="animate-spin h-5 w-5 mr-3 text-light-primary dark:text-dark-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+    <span class="text-light-text dark:text-dark-text">Scanning ports...</span>
+  </div>
+</div>
+
+{% if session.get('show_ports_message', False) %}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="p-4 mb-6 rounded-lg {% if category == 'error' %}bg-status-down-light/10 dark:bg-status-down-dark/10 border border-status-down-light dark:border-status-down-dark text-status-down-light dark:text-status-down-dark{% else %}bg-status-up-light/10 dark:bg-status-up-dark/10 border border-status-up-light dark:border-status-up-dark text-status-up-light dark:text-status-up-dark{% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+  {% if session.pop('show_ports_message', None) %}{% endif %}
+{% endif %}
+
+<!-- No Results Message -->
+{% if not local_ports %}
+<div class="bg-light-card dark:bg-dark-card p-4 rounded-lg text-light-muted dark:text-dark-muted text-center">
+    {% if current_filter != 'all' %}
+        No {{ current_filter }} ports found.
+    {% else %}
+        No ports found.
+    {% endif %}
+</div>
+{% endif %}
+
 <div class="space-y-12">
-  <!-- LOCAL PORTS GROUPED BY SERVICE -->
+  <!-- HOST PORTS -->
   <section>
-    <div class="space-y-3">
-      {% for port in local_ports %}
+    <div class="flex items-center justify-between cursor-pointer mb-4" onclick="toggleSection('host-ports')">
+      <h2 class="text-xl font-semibold text-light-text dark:text-dark-text flex items-center">
+        Host Machine Ports
+        <span class="text-sm font-normal text-light-muted dark:text-dark-muted ml-2">
+          (External Services)
+        </span>
+      </h2>
+      <svg id="host-ports-icon" class="w-6 h-6 text-light-muted dark:text-dark-muted transform transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+      </svg>
+    </div>
+    <div id="host-ports-content" class="space-y-3">
+      {% for port in local_ports if port.type == 'host' %}
       <div class="bg-light-card dark:bg-dark-card p-4 rounded-lg shadow border border-light-border dark:border-dark-border hover:border-light-primary dark:hover:border-dark-primary transition-colors duration-200">
         <div class="flex justify-between items-center">
-          <div>
-            <div class="text-light-text dark:text-dark-text font-semibold text-sm">
-              {{ port.label or "Unlabeled Port" }} — {{ port.port }}
+          <div class="flex-grow">
+            <div class="text-light-text dark:text-dark-text font-semibold text-sm flex items-center">
+              <span class="mr-2">
+                {% if port.status == 'open' %}
+                  🟢
+                {% elif port.status == 'closed' %}
+                  🔴
+                {% else %}
+                  ⚪
+                {% endif %}
+              </span>
+              <span>{{ port.label }}</span>
+              <span class="ml-2 text-light-muted dark:text-dark-muted">— Port {{ port.port }}</span>
             </div>
-            <div class="text-light-muted dark:text-dark-muted text-xs">
-              {{ port.address.split('%')[0] }} | {{ port.protocol.upper() }}
+            <div class="text-light-muted dark:text-dark-muted text-xs space-y-1">
+              <div>{{ port.address }} | {{ port.protocol.upper() }}</div>
+              <div class="text-{{ 'green' if port.status == 'open' else 'red' if port.status == 'closed' else 'gray' }}-500">
+                Status: {{ port.status|title }}
+              </div>
+              {% if port.error %}
+              <div class="text-red-500">
+                Error: {{ port.error }}
+              </div>
+              {% endif %}
             </div>
           </div>
-          {% if port.label %}
-          <div class="text-lg">
-            {% if "ssh" in port.label|lower %}🛡️{% elif "http" in port.label|lower %}🌐
-            {% elif "https" in port.label|lower %}🔒{% elif "flask" in port.label|lower %}🔧
-            {% elif "node" in port.label|lower %}⚙️{% endif %}
+          <div class="text-lg ml-4">
+            {% if "ssh" in port.label|lower %}
+              <span title="SSH Service">🛡️</span>
+            {% elif "http" in port.label|lower %}
+              <span title="HTTP Service">🌐</span>
+            {% elif "https" in port.label|lower %}
+              <span title="HTTPS Service">🔒</span>
+            {% elif "ftp" in port.label|lower %}
+              <span title="FTP Service">📁</span>
+            {% elif "smtp" in port.label|lower or "mail" in port.label|lower %}
+              <span title="Mail Service">📧</span>
+            {% elif "dns" in port.label|lower %}
+              <span title="DNS Service">📡</span>
+            {% elif "sql" in port.label|lower or "db" in port.label|lower %}
+              <span title="Database Service">💾</span>
+            {% elif "mongo" in port.label|lower %}
+              <span title="MongoDB">🍃</span>
+            {% elif "redis" in port.label|lower %}
+              <span title="Redis">🔄</span>
+            {% else %}
+              <span title="Host Service">🖥️</span>
+            {% endif %}
           </div>
-          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- DOCKER CONTAINERS -->
+  <section>
+    <div class="flex items-center justify-between cursor-pointer mb-4" onclick="toggleSection('docker-containers')">
+      <h2 class="text-xl font-semibold text-light-text dark:text-dark-text flex items-center">
+        Docker Containers
+        <span class="text-sm font-normal text-light-muted dark:text-dark-muted ml-2">
+          (Container Services)
+        </span>
+      </h2>
+      <svg id="docker-containers-icon" class="w-6 h-6 text-light-muted dark:text-dark-muted transform transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+      </svg>
+    </div>
+    <div id="docker-containers-content" class="space-y-3">
+      {% for port in local_ports if port.type == 'docker' %}
+      <div class="bg-light-card dark:bg-dark-card p-4 rounded-lg shadow border border-light-border dark:border-dark-border hover:border-light-primary dark:hover:border-dark-primary transition-colors duration-200">
+        <div class="flex justify-between items-center">
+          <div class="flex-grow">
+            <div class="text-light-text dark:text-dark-text font-semibold text-sm flex items-center">
+              <span class="mr-2">🐳</span>
+              <span>{{ port.container_name }}</span>
+              <span class="ml-2 text-light-muted dark:text-dark-muted">— Port {{ port.port }}</span>
+            </div>
+            <div class="text-light-muted dark:text-dark-muted text-xs space-y-1">
+              <div>{{ port.address.split('%')[0] }} | {{ port.protocol.upper() }}</div>
+              <div class="text-light-accent dark:text-dark-accent">
+                Internal Port: {{ port.container_port }}
+              </div>
+              {% if port.error %}
+              <div class="text-red-500">
+                Error: {{ port.error }}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          <div class="text-lg ml-4">
+            <span title="Docker Container">🐳</span>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- CONTAINER SYSTEM SERVICES -->
+  <section>
+    <div class="flex items-center justify-between cursor-pointer mb-4" onclick="toggleSection('system-services')">
+      <h2 class="text-xl font-semibold text-light-text dark:text-dark-text flex items-center">
+        Container System Services
+        <span class="text-sm font-normal text-light-muted dark:text-dark-muted ml-2">
+          (Internal Services)
+        </span>
+      </h2>
+      <svg id="system-services-icon" class="w-6 h-6 text-light-muted dark:text-dark-muted transform transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+      </svg>
+    </div>
+    <div id="system-services-content" class="space-y-3">
+      {% for port in local_ports if port.type == 'system' %}
+      <div class="bg-light-card dark:bg-dark-card p-4 rounded-lg shadow border border-light-border dark:border-dark-border hover:border-light-primary dark:hover:border-dark-primary transition-colors duration-200">
+        <div class="flex justify-between items-center">
+          <div class="flex-grow">
+            <div class="text-light-text dark:text-dark-text font-semibold text-sm flex items-center">
+              <span class="mr-2">⚙️</span>
+              <span>{{ port.service_name }}</span>
+              <span class="ml-2 text-light-muted dark:text-dark-muted">— Port {{ port.port }}</span>
+            </div>
+            <div class="text-light-muted dark:text-dark-muted text-xs space-y-1">
+              <div>{{ port.address }} | {{ port.protocol.upper() }}</div>
+              {% if port.error %}
+              <div class="text-red-500">
+                Error: {{ port.error }}
+              </div>
+              {% endif %}
+            </div>
+          </div>
         </div>
       </div>
       {% endfor %}
     </div>
   </section>
 </div>
+
+<script>
+// Store section states in localStorage
+const sectionStates = JSON.parse(localStorage.getItem('portSectionStates')) || {
+    'host-ports': true,
+    'docker-containers': true,
+    'system-services': true
+};
+
+function toggleSection(sectionId) {
+    const content = document.getElementById(`${sectionId}-content`);
+    const icon = document.getElementById(`${sectionId}-icon`);
+    
+    // Toggle the state
+    sectionStates[sectionId] = !sectionStates[sectionId];
+    
+    // Update the UI
+    if (sectionStates[sectionId]) {
+        content.style.display = 'block';
+        icon.style.transform = 'rotate(0deg)';
+    } else {
+        content.style.display = 'none';
+        icon.style.transform = 'rotate(-90deg)';
+    }
+    
+    // Save states to localStorage
+    localStorage.setItem('portSectionStates', JSON.stringify(sectionStates));
+}
+
+// Initialize sections on page load
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize section states
+    Object.keys(sectionStates).forEach(sectionId => {
+        const content = document.getElementById(`${sectionId}-content`);
+        const icon = document.getElementById(`${sectionId}-icon`);
+        
+        if (!sectionStates[sectionId]) {
+            content.style.display = 'none';
+            icon.style.transform = 'rotate(-90deg)';
+        }
+    });
+
+    // Search and Sort Functionality
+    const searchInput = document.getElementById('port-search');
+    const sortSelect = document.getElementById('port-sort');
+    const sections = ['host-ports', 'docker-containers', 'system-services'];
+    
+    function getPortElements() {
+        const elements = [];
+        sections.forEach(section => {
+            const content = document.getElementById(`${section}-content`);
+            if (content) {
+                elements.push(...Array.from(content.children).filter(el => el.classList.contains('bg-light-card')));
+            }
+        });
+        return elements;
+    }
+    
+    function filterPorts(searchTerm) {
+        const ports = getPortElements();
+        const term = searchTerm.toLowerCase();
+        
+        ports.forEach(port => {
+            const text = port.textContent.toLowerCase();
+            port.style.display = text.includes(term) ? 'block' : 'none';
+        });
+        
+        // Show/hide "no results" message for each section
+        sections.forEach(section => {
+            const content = document.getElementById(`${section}-content`);
+            const visiblePorts = Array.from(content.children).filter(el => 
+                el.classList.contains('bg-light-card') && el.style.display !== 'none'
+            ).length;
+            
+            let noResults = content.querySelector('.no-results');
+            if (visiblePorts === 0) {
+                if (!noResults) {
+                    noResults = document.createElement('div');
+                    noResults.className = 'no-results text-light-muted dark:text-dark-muted text-center py-4';
+                    noResults.textContent = 'No matching ports found in this section';
+                    content.appendChild(noResults);
+                }
+            } else if (noResults) {
+                noResults.remove();
+            }
+        });
+    }
+    
+    function sortPorts(sortType) {
+        sections.forEach(section => {
+            const content = document.getElementById(`${section}-content`);
+            const ports = Array.from(content.children).filter(el => el.classList.contains('bg-light-card'));
+            
+            ports.sort((a, b) => {
+                switch (sortType) {
+                    case 'port-asc':
+                        return extractPortNumber(a) - extractPortNumber(b);
+                    case 'port-desc':
+                        return extractPortNumber(b) - extractPortNumber(a);
+                    case 'name-asc':
+                        return extractName(a).localeCompare(extractName(b));
+                    case 'name-desc':
+                        return extractName(b).localeCompare(extractName(a));
+                    case 'type':
+                        return 0; // No additional sorting needed as they're already grouped by type
+                    default:
+                        return 0;
+                }
+            });
+            
+            // Remove all ports and re-add them in sorted order
+            ports.forEach(port => port.remove());
+            ports.forEach(port => content.appendChild(port));
+        });
+    }
+    
+    function extractPortNumber(element) {
+        const portText = element.textContent.match(/Port (\d+)/);
+        return portText ? parseInt(portText[1]) : 0;
+    }
+    
+    function extractName(element) {
+        const nameElement = element.querySelector('.font-semibold');
+        return nameElement ? nameElement.textContent.trim() : '';
+    }
+    
+    // Event Listeners
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            filterPorts(e.target.value);
+        });
+    }
+    
+    if (sortSelect) {
+        sortSelect.addEventListener('change', (e) => {
+            sortPorts(e.target.value);
+        });
+    }
+});
+</script>
 {% endblock %}

@@ -8,6 +8,7 @@ services:
       - "5000:5000"
     volumes:
       - ./instance:/app/instance
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - PYTHONUNBUFFERED=1
       - FLASK_HOST=0.0.0.0
@@ -15,4 +16,6 @@ services:
       - FLASK_DEBUG=False
       - SECRET_KEY=${SECRET_KEY}
       - ADMIN_SECRET=${ADMIN_SECRET}
+    group_add:
+      - ${DOCKER_GROUP_ID:-999}  # Use host's docker group ID or fallback to 999
     restart: unless-stopped
