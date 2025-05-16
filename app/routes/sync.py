@@ -1,5 +1,5 @@
 # Importing necessary Flask tools and modules
-from flask import Blueprint, render_template, redirect, url_for, session, flash
+from flask import Blueprint, render_template, redirect, url_for, session, flash, request
 from functools import wraps
 
 # Importing a helper function that interprets raw Docker status strings
@@ -39,11 +39,13 @@ def admin_required(f):
 @sync_bp.route("/sync-docker", methods=["GET"])
 @admin_required
 def sync_docker_services():
-    updated_services, error = ServiceSync.sync_docker()
+    no_auto_tag = request.args.get('no_auto_tag') == '1'
+    updated_services, error = ServiceSync.sync_docker(no_auto_tag=no_auto_tag)
     if error:
         flash(error, 'error')
         return redirect(url_for('admin.dashboard'))
-    return render_template("sync.html", updated_services=updated_services)
+    note = "Auto-tagging was skipped." if no_auto_tag else None
+    return render_template("sync.html", updated_services=updated_services, note=note)
 
 # -------------------------------
 # SYNC SYSTEMD SERVICES
@@ -51,11 +53,13 @@ def sync_docker_services():
 @sync_bp.route("/sync-systemd")
 @admin_required
 def sync_systemd_services():
-    updated_services, error = ServiceSync.sync_systemd()
+    no_auto_tag = request.args.get('no_auto_tag') == '1'
+    updated_services, error = ServiceSync.sync_systemd(no_auto_tag=no_auto_tag)
     if error:
         flash(error, 'error')
         return redirect(url_for('admin.dashboard'))
-    return render_template("sync.html", updated_services=updated_services)
+    note = "Auto-tagging was skipped." if no_auto_tag else None
+    return render_template("sync.html", updated_services=updated_services, note=note)
 
 # -------------------------------
 # PORTS CHECK
@@ -63,14 +67,15 @@ def sync_systemd_services():
 @sync_bp.route("/sync-ports")
 @admin_required
 def sync_ports():
-    updated_services, error = ServiceSync.sync_ports()
+    no_auto_tag = request.args.get('no_auto_tag') == '1'
+    updated_services, error = ServiceSync.sync_ports(no_auto_tag=no_auto_tag)
     if error:
         flash(error, 'error')
         return redirect(url_for('ports.ports_dashboard'))
-    # Set a session variable to indicate which page should show the message
     session['show_ports_message'] = True
     flash('Successfully checked all ports!', 'success')
-    return redirect(url_for('ports.ports_dashboard'))
+    note = "Auto-tagging was skipped." if no_auto_tag else None
+    return render_template("sync.html", updated_services=updated_services, note=note)
 
 @sync_bp.route("/sync-all")
 @admin_required
