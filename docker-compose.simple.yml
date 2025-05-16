@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   ministatus:
-    image: rilmay/ministatus:latest  # Or specific version tag
+    image: rilmay/ministatus:1.0.0  # Stable version
     container_name: ministatus
     ports:
       - "5000:5000"

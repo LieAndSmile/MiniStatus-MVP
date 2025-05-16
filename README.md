@@ -2,7 +2,7 @@
 
 **MiniStatus** is a lightweight, self-hosted service status dashboard built for developers, homelabs, and small teams.
 
-Version: 1.7.4
+Version: 1.0.0
 
 - ✅ Track service health manually or via API
 - 🔍 Advanced search and filtering capabilities
@@ -47,8 +47,8 @@ cp .env.example .env
 
 #### Quick Start (using pre-built image)
 ```bash
-# Pull the latest image (or specific version)
-docker pull rilmay/ministatus:latest  # or rilmay/ministatus:1.7.1
+# Pull the stable version
+docker pull rilmay/ministatus:1.0.0
 
 # Create a directory for persistent data
 mkdir -p instance
@@ -61,7 +61,7 @@ docker run -d \
   -e SECRET_KEY=your-secret-key \
   -e ADMIN_SECRET=your-admin-secret \
   --restart unless-stopped \
-  rilmay/ministatus:1.7.1  # Using specific version recommended
+  rilmay/ministatus:1.0.0
 ```
 
 #### Using Docker Compose
@@ -153,9 +153,6 @@ Chart lives in: `charts/ministatus/`
 | Collapsible sidebar          | ✅ Done  |
 | Real-time search & filters    | ✅ Done  |
 | Dynamic sorting              | ✅ Done  |
-| Telegram/Slack alerts         | ⏳ Planned |
-| Multi-project support         | ⏳ Planned |
-| Incident history + notes      | ⏳ Planned |
 
 ---
 
@@ -174,7 +171,7 @@ Chart lives in: `charts/ministatus/`
 ## ⭐ Support & Feedback
 If you like the project, give it a ⭐ or open an issue for feedback or bugs.
 
-> Want a hosted version or have feature ideas? Let us know via [Issues](https://github.com/yourproject/issues) or Discussions.
+> Found a bug or have a suggestion? Let us know via [Issues](https://github.com/yourproject/issues).
 
 ---
 
