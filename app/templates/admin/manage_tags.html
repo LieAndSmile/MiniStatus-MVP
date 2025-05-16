@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block header %}Manage Tags{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto">
+    <h2 class="text-lg font-semibold mb-4">Add Tag</h2>
+    <form method="post" action="{{ url_for('admin.manage_tags') }}" class="flex gap-2 mb-6">
+        <input name="name" placeholder="Tag name" maxlength="32" required class="px-2 py-1 border rounded">
+        <input name="color" placeholder="Color (e.g. green, gray)" maxlength="16" class="px-2 py-1 border rounded">
+        <button type="submit" class="px-4 py-1 bg-light-primary dark:bg-dark-primary text-white rounded">Add</button>
+    </form>
+    <h2 class="text-lg font-semibold mb-2">Existing Tags</h2>
+    <ul class="space-y-2">
+        {% for tag in tags %}
+        <li class="flex items-center gap-2">
+            <span style="background:{{ tag.color }};padding:2px 8px;border-radius:8px;color:white;">{{ tag.name }}</span>
+            <form method="post" action="{{ url_for('admin.delete_tag', tag_id=tag.id) }}" style="display:inline;">
+                <button type="submit" onclick="return confirm('Delete tag?')" class="text-xs text-red-600 ml-2">Delete</button>
+            </form>
+        </li>
+        {% else %}
+        <li class="text-light-muted dark:text-dark-muted">No tags yet.</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %} 

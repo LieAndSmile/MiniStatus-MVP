@@ -11,7 +11,8 @@ def remote_dashboard():
     """Display remote hosts monitoring dashboard"""
     services = Service.query.filter(
         Service.host.isnot(None),
-        Service.port.isnot(None)
+        Service.port.isnot(None),
+        Service.is_remote == True
     ).all()
     return render_template('remote.html', services=services)
 
@@ -41,7 +42,8 @@ def add_host():
             name=name,
             host=host,
             port=int(port),
-            description=description
+            description=description,
+            is_remote=True
         )
         db.session.add(service)
         db.session.commit()
@@ -95,7 +97,7 @@ def add_example_hosts():
 
     for host in example_hosts:
         if not Service.query.filter_by(name=host['name']).first():
-            service = Service(**host)
+            service = Service(**host, is_remote=True)
             db.session.add(service)
     
     try:
