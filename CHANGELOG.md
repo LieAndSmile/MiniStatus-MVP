@@ -39,4 +39,28 @@ This project follows [Semantic Versioning](https://semver.org/) and uses the [Ke
   * Security best practices
   * Deployment scenarios
 
+## [1.1.0] - 2025-05-16
+### Added
+- **Customizable Auto-Tag Rules:**
+  - Support for `auto_tag_rules.yaml` or `auto_tag_rules.json` in the project root for defining auto-tagging logic.
+  - Rules can be edited and reloaded without code changes.
+  - YAML/JSON config is optional; if not present, falls back to database/UI rules.
+- **Admin UI for Auto-Tag Rules:**
+  - Manage auto-tag rules from `/admin/auto-tag-rules` (add, edit, delete, enable/disable) with no restart required.
+- **`--no-auto-tag` Flag:**
+  - All sync endpoints and scripts accept a `?no_auto_tag=1` query parameter or argument to skip auto-tagging during sync.
+- **Transparency:**
+  - The admin dashboard now displays a note under each service showing which tags would be auto-assigned ("Auto-tagged as: ...").
+  - Auto-tagging actions are logged to the console for auditability.
+- **Docker Support:**
+  - The app supports bind-mounting the config file for Docker deployments, or using the admin UI for all rule management.
+
+### Changed
+- Improved documentation and user experience for tag and rule management.
+- Default tags and rules are now easier to extend and customize.
+
+### Migration Notes
+- If you want to use only the admin UI for rules, remove or ignore the YAML/JSON config file.
+- For Docker, mount your config file or use the UI as needed.
+
 

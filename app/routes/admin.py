@@ -5,6 +5,7 @@ from app.extensions import db
 from app.utils.system_check import has_docker, has_systemctl
 from functools import wraps
 import os
+from app.utils.auto_tag import get_auto_tagged_for_service
 
 admin_bp = Blueprint("admin", __name__, url_prefix='/admin')
 
@@ -54,13 +55,26 @@ def dashboard():
 
     services = services.all()
     tags = Tag.query.all()
+    # Determine auto-tagged info for each service
+    auto_tagged_map = {}
+    for svc in services:
+        svc_data = {
+            'name': svc.name,
+            'description': svc.description,
+            'port': svc.port,
+            'source': getattr(svc, 'source', None),
+            'host': svc.host
+        }
+        auto_tags = get_auto_tagged_for_service(svc_data)
+        auto_tagged_map[svc.id] = auto_tags
     return render_template("admin.html",
                          services=services,
                          tags=tags,
                          selected_tag_ids=tag_ids,
                          no_tags=no_tags,
                          has_docker=has_docker(),
-                         has_systemctl=has_systemctl())
+                         has_systemctl=has_systemctl(),
+                         auto_tagged_map=auto_tagged_map)
 
 @admin_bp.route("/login", methods=["GET", "POST"])
 def login():

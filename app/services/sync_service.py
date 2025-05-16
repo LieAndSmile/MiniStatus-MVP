@@ -10,7 +10,7 @@ from app.utils.auto_tag import auto_assign_tags
 
 class ServiceSync:
     @staticmethod
-    def sync_docker():
+    def sync_docker(no_auto_tag=False):
         """Sync Docker container statuses"""
         try:
             result = subprocess.check_output([
@@ -32,21 +32,24 @@ class ServiceSync:
             status = interpret_docker_status(raw_status)
 
             svc = Service.query.filter_by(name=name).first()
-            # Always update tags
-            tag_names = auto_assign_tags({
-                'name': name,
-                'description': f"Docker container '{name}'",
-                'port': None,
-                'source': 'docker',
-                'host': None
-            })
-            svc_tags = []
-            for tag_name in tag_names:
-                tag = Tag.query.filter_by(name=tag_name).first()
-                if not tag:
-                    tag = Tag(name=tag_name)
-                    db.session.add(tag)
-                svc_tags.append(tag)
+            # Always update tags unless no_auto_tag
+            if not no_auto_tag:
+                tag_names = auto_assign_tags({
+                    'name': name,
+                    'description': f"Docker container '{name}'",
+                    'port': None,
+                    'source': 'docker',
+                    'host': None
+                }, log=True)
+                svc_tags = []
+                for tag_name in tag_names:
+                    tag = Tag.query.filter_by(name=tag_name).first()
+                    if not tag:
+                        tag = Tag(name=tag_name)
+                        db.session.add(tag)
+                    svc_tags.append(tag)
+            else:
+                svc_tags = svc.tags if svc else []
             if svc:
                 svc.status = status
                 svc.last_updated = datetime.utcnow()
@@ -72,7 +75,7 @@ class ServiceSync:
             return [], f"Error saving to database: {e}"
 
     @staticmethod
-    def sync_systemd():
+    def sync_systemd(no_auto_tag=False):
         """Sync systemd service statuses"""
         try:
             result = subprocess.check_output([
@@ -105,21 +108,24 @@ class ServiceSync:
                 status = "degraded"
 
             svc = Service.query.filter_by(name=name).first()
-            # Always update tags
-            tag_names = auto_assign_tags({
-                'name': name,
-                'description': f"Systemd service '{name}'",
-                'port': None,
-                'source': 'systemd',
-                'host': None
-            })
-            svc_tags = []
-            for tag_name in tag_names:
-                tag = Tag.query.filter_by(name=tag_name).first()
-                if not tag:
-                    tag = Tag(name=tag_name)
-                    db.session.add(tag)
-                svc_tags.append(tag)
+            # Always update tags unless no_auto_tag
+            if not no_auto_tag:
+                tag_names = auto_assign_tags({
+                    'name': name,
+                    'description': f"Systemd service '{name}'",
+                    'port': None,
+                    'source': 'systemd',
+                    'host': None
+                }, log=True)
+                svc_tags = []
+                for tag_name in tag_names:
+                    tag = Tag.query.filter_by(name=tag_name).first()
+                    if not tag:
+                        tag = Tag(name=tag_name)
+                        db.session.add(tag)
+                    svc_tags.append(tag)
+            else:
+                svc_tags = svc.tags if svc else []
             if svc:
                 svc.status = status
                 svc.last_updated = datetime.utcnow()
@@ -145,7 +151,7 @@ class ServiceSync:
             return [], f"Error saving to database: {e}"
 
     @staticmethod
-    def sync_ports():
+    def sync_ports(no_auto_tag=False):
         """Sync port statuses including Docker container ports"""
         try:
             # Get all ports including Docker container ports
@@ -178,20 +184,21 @@ class ServiceSync:
                         is_remote=True
                     )
                     # Auto-tagging
-                    tag_names = auto_assign_tags({
-                        'name': name,
-                        'description': description,
-                        'port': port,
-                        'source': 'port',
-                        'host': host
-                    })
-                    svc.tags = []
-                    for tag_name in tag_names:
-                        tag = Tag.query.filter_by(name=tag_name).first()
-                        if not tag:
-                            tag = Tag(name=tag_name)
-                            db.session.add(tag)
-                        svc.tags.append(tag)
+                    if not no_auto_tag:
+                        tag_names = auto_assign_tags({
+                            'name': name,
+                            'description': description,
+                            'port': port,
+                            'source': 'port',
+                            'host': host
+                        }, log=True)
+                        svc.tags = []
+                        for tag_name in tag_names:
+                            tag = Tag.query.filter_by(name=tag_name).first()
+                            if not tag:
+                                tag = Tag(name=tag_name)
+                                db.session.add(tag)
+                            svc.tags.append(tag)
                     db.session.add(svc)
                 updated_services.append(f"{name} → {status}")
             db.session.commit()

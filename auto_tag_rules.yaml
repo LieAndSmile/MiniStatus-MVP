@@ -1,0 +1,55 @@
+docker:
+  type: source
+  value: docker
+
+systemd:
+  type: source
+  value: systemd
+
+networking:
+  type: port
+  value: 80
+
+https:
+  type: port
+  value: 443
+
+ssh:
+  type: port
+  value: 22
+
+dns:
+  type: port
+  value: 53
+
+database:
+  type: description_regex
+  value: "(mysql|postgres|redis|mariadb|mongo|db)"
+
+internal:
+  type: host_regex
+  value: "^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.)"
+
+external:
+  type: host_regex
+  value: "^(?!10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.).+"
+
+monitoring:
+  type: description_regex
+  value: "(prometheus|grafana|uptime|glances)"
+
+proxy:
+  type: description_regex
+  value: "(nginx|haproxy|traefik)"
+
+critical:
+  type: name_contains
+  value: "api"
+
+optional:
+  type: name_contains
+  value: "test"
+
+n8n:
+  type: name_contains
+  value: "n8n" 
