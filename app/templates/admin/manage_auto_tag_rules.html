@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block header %}Manage Auto-Tag Rules{% endblock %}
+
+{% block content %}
+<style>
+select.custom-select {
+    background-color: #f8fafc;
+    color: #0f172a;
+    border: 1.5px solid #0284c7;
+    border-radius: 0.375rem;
+    transition: border 0.2s, box-shadow 0.2s;
+    font-size: 1rem;
+    line-height: 1.5rem;
+}
+.dark select.custom-select {
+    background-color: #1e1f22;
+    color: #e0e1dd;
+    border: 1.5px solid #38bdf8;
+}
+select.custom-select:focus {
+    outline: none;
+    border-color: #0369a1;
+    box-shadow: 0 0 0 2px #bae6fd;
+}
+</style>
+<div class="max-w-2xl mx-auto">
+    <h2 class="text-lg font-semibold mb-4">Add Auto-Tag Rule</h2>
+    <form method="post" action="{{ url_for('admin.manage_auto_tag_rules') }}" class="flex flex-wrap gap-2 mb-6 items-end">
+        <input name="tag_name" placeholder="Tag name" maxlength="32" required class="px-2 py-1 border border-light-border dark:border-dark-border rounded bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text">
+        <select name="rule_type" required class="custom-select px-2 py-1 border border-light-border dark:border-dark-border rounded bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text">
+            <option value="">Rule Type</option>
+            <option value="source">Source (docker/systemd)</option>
+            <option value="port">Port</option>
+            <option value="name_regex">Name Regex</option>
+            <option value="desc_regex">Description Regex</option>
+            <option value="host_regex">Host Regex</option>
+        </select>
+        <input name="rule_value" placeholder="Rule value (e.g. 80, docker, ^nginx$)" maxlength="128" required class="px-2 py-1 border border-light-border dark:border-dark-border rounded bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text">
+        <label class="flex items-center gap-1">
+            <input type="checkbox" name="enabled" checked>
+            <span class="text-green-600 dark:text-green-400">Enabled</span>
+        </label>
+        <button type="submit" class="px-4 py-1 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white rounded shadow">Add</button>
+    </form>
+    <h2 class="text-lg font-semibold mb-2">Existing Rules</h2>
+    <table class="w-full text-sm border">
+        <thead>
+            <tr class="bg-light-muted dark:bg-dark-muted">
+                <th class="p-2">Tag</th>
+                <th class="p-2">Type</th>
+                <th class="p-2">Value</th>
+                <th class="p-2">Enabled</th>
+                <th class="p-2">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for rule in rules %}
+            <tr class="border-t">
+                <td class="p-2">{{ rule.tag_name }}</td>
+                <td class="p-2">{{ rule.rule_type }}</td>
+                <td class="p-2">{{ rule.rule_value }}</td>
+                <td class="p-2">
+                    <form method="post" action="{{ url_for('admin.toggle_auto_tag_rule', rule_id=rule.id) }}" style="display:inline;">
+                        <button type="submit" class="px-2 py-1 rounded text-white {{ 'bg-green-600 hover:bg-green-700' if rule.enabled else 'bg-gray-400 hover:bg-gray-500' }}">
+                            {{ 'Yes' if rule.enabled else 'No' }}
+                        </button>
+                    </form>
+                </td>
+                <td class="p-2 flex gap-2">
+                    <a href="{{ url_for('admin.edit_auto_tag_rule', rule_id=rule.id) }}" class="px-2 py-1 bg-yellow-500 hover:bg-yellow-600 text-white rounded">Edit</a>
+                    <form method="post" action="{{ url_for('admin.delete_auto_tag_rule', rule_id=rule.id) }}" style="display:inline;" onsubmit="return confirm('Delete this rule?');">
+                        <button type="submit" class="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="p-2 text-center text-gray-500">No rules defined.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %} 

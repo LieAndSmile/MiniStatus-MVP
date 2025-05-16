@@ -2,12 +2,13 @@ from flask import Flask
 from dotenv import load_dotenv
 import os
 from app.extensions import db
+from app.routes.admin import ensure_default_tags
 
 def create_app():
     # Load environment variables from .env file
     load_dotenv()
 
-    app = Flask(__name__)
+    app = Flask(__name__, instance_relative_config=True)
 
     # Basic config
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///ministatus.db'
@@ -35,5 +36,7 @@ def create_app():
 
         # Create database tables
         db.create_all()
+
+        ensure_default_tags()
 
     return app

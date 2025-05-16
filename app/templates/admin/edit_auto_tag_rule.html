@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block header %}Edit Auto-Tag Rule{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto">
+    <form method="post" action="" class="space-y-4">
+        <div>
+            <label class="block text-sm font-medium mb-1">Tag Name</label>
+            <input name="tag_name" value="{{ rule.tag_name }}" maxlength="32" required class="w-full px-2 py-1 border rounded">
+        </div>
+        <div>
+            <label class="block text-sm font-medium mb-1">Rule Type</label>
+            <select name="rule_type" required class="w-full px-2 py-1 border rounded">
+                <option value="source" {% if rule.rule_type == 'source' %}selected{% endif %}>Source (docker/systemd)</option>
+                <option value="port" {% if rule.rule_type == 'port' %}selected{% endif %}>Port</option>
+                <option value="name_regex" {% if rule.rule_type == 'name_regex' %}selected{% endif %}>Name Regex</option>
+                <option value="desc_regex" {% if rule.rule_type == 'desc_regex' %}selected{% endif %}>Description Regex</option>
+                <option value="host_regex" {% if rule.rule_type == 'host_regex' %}selected{% endif %}>Host Regex</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-sm font-medium mb-1">Rule Value</label>
+            <input name="rule_value" value="{{ rule.rule_value }}" maxlength="128" required class="w-full px-2 py-1 border rounded">
+        </div>
+        <div>
+            <label class="flex items-center gap-2">
+                <input type="checkbox" name="enabled" {% if rule.enabled %}checked{% endif %}>
+                Enabled
+            </label>
+        </div>
+        <div>
+            <button type="submit" class="px-4 py-1 bg-light-primary dark:bg-dark-primary text-white rounded">Save</button>
+            <a href="{{ url_for('admin.manage_auto_tag_rules') }}" class="ml-2 text-blue-600">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %} 

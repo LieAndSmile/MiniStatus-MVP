@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 
-{% block header %}Add Service{% endblock %}
+{% block header %}{% if edit_mode %}Edit Service{% else %}Add Service{% endif %}{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto">
-    <form action="{{ url_for('admin.add_service') }}" method="POST" class="space-y-6">
+    <form action="{% if edit_mode %}{{ url_for('admin.edit_service', service_id=service.id) }}{% else %}{{ url_for('admin.add_service') }}{% endif %}" method="POST" class="space-y-6">
         <div class="bg-light-card dark:bg-dark-card rounded-lg p-6 border border-light-border dark:border-dark-border">
             <!-- Service Name -->
             <div class="mb-4">
                 <label for="name" class="block text-sm font-medium text-light-text dark:text-dark-text mb-2">Service Name</label>
                 <input type="text" id="name" name="name" required
                     class="w-full px-3 py-2 bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-md text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary"
-                    placeholder="e.g., nginx">
+                    placeholder="e.g., nginx" value="{{ service.name if service else '' }}">
             </div>
 
             <!-- Description -->
@@ -19,7 +19,7 @@
                 <label for="description" class="block text-sm font-medium text-light-text dark:text-dark-text mb-2">Description</label>
                 <input type="text" id="description" name="description"
                     class="w-full px-3 py-2 bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-md text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary"
-                    placeholder="Optional description">
+                    placeholder="Optional description" value="{{ service.description if service else '' }}">
             </div>
 
             <!-- Host -->
@@ -27,7 +27,7 @@
                 <label for="host" class="block text-sm font-medium text-light-text dark:text-dark-text mb-2">Host</label>
                 <input type="text" id="host" name="host"
                     class="w-full px-3 py-2 bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-md text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary"
-                    placeholder="e.g., localhost or remote.host.com">
+                    placeholder="e.g., localhost or remote.host.com" value="{{ service.host if service else '' }}">
             </div>
 
             <!-- Port -->
@@ -35,7 +35,34 @@
                 <label for="port" class="block text-sm font-medium text-light-text dark:text-dark-text mb-2">Port</label>
                 <input type="number" id="port" name="port"
                     class="w-full px-3 py-2 bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-md text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary"
-                    placeholder="e.g., 80">
+                    placeholder="e.g., 80" value="{{ service.port if service else '' }}">
+            </div>
+
+            <!-- Tags -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-light-text dark:text-dark-text mb-2">Tags</label>
+                <div class="mb-2 text-xs font-semibold text-light-muted dark:text-dark-muted">Default Tags</div>
+                <div class="flex flex-wrap gap-2 mb-2">
+                    {% set default_tag_names = [
+                        'docker', 'networking', 'database', 'internal', 'external', 'critical', 'n8n', 'optional'
+                    ] %}
+                    {% for tag in tags if tag.name in default_tag_names %}
+                        <label class="tag-pill">
+                            <input type="checkbox" name="tags" value="{{ tag.id }}" {% if service and tag in service.tags %}checked{% endif %}>
+                            <span>{{ tag.name }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+                <div class="mb-2 text-xs font-semibold text-light-muted dark:text-dark-muted">Custom Tags</div>
+                <div class="flex flex-wrap gap-2">
+                    {% for tag in tags if tag.name not in default_tag_names %}
+                        <label class="tag-pill">
+                            <input type="checkbox" name="tags" value="{{ tag.id }}" {% if service and tag in service.tags %}checked{% endif %}>
+                            <span>{{ tag.name }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+                <div class="text-xs text-light-muted dark:text-dark-muted mt-1">Click tags to select. You can select multiple.</div>
             </div>
 
             <!-- Submit Button -->
@@ -46,10 +73,48 @@
                 </a>
                 <button type="submit"
                     class="px-4 py-2 bg-light-primary dark:bg-dark-primary text-white rounded-md hover:bg-light-accent dark:hover:bg-dark-hover transition-colors duration-200">
-                    Add Service
+                    {% if edit_mode %}Update Service{% else %}Add Service{% endif %}
                 </button>
             </div>
         </div>
     </form>
 </div>
+<style>
+.tag-pill {
+    display: inline-block;
+    padding: 4px 14px;
+    border-radius: 16px;
+    border: 1px solid #444;
+    background: #222;
+    color: #fff;
+    font-size: 0.95em;
+    cursor: pointer;
+    margin-bottom: 4px;
+    margin-right: 6px;
+    transition: background 0.2s, color 0.2s, border 0.2s;
+}
+.tag-pill.selected, .tag-pill input:checked + span {
+    background: #2496ed;
+    color: #fff;
+    border: 1.5px solid #2496ed;
+}
+.tag-pill input[type="checkbox"] {
+    display: none;
+}
+</style>
+<script>
+// Highlight selected tag pills
+const tagPills = document.querySelectorAll('.tag-pill input[type="checkbox"]');
+tagPills.forEach(cb => {
+    function update() {
+        if (cb.checked) {
+            cb.parentElement.classList.add('selected');
+        } else {
+            cb.parentElement.classList.remove('selected');
+        }
+    }
+    cb.addEventListener('change', update);
+    update();
+});
+</script>
 {% endblock %} 

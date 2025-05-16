@@ -99,10 +99,43 @@
     </div>
 </div>
 
+<!-- Tag Filter Area -->
+<div class="bg-light-card dark:bg-dark-card rounded-lg p-4 border border-light-border dark:border-dark-border mt-6 mb-4">
+    <form method="get" class="flex flex-wrap items-center gap-3">
+        <label class="font-semibold mr-2">Filter by tags:</label>
+        {% for tag in tags %}
+            <label class="flex items-center gap-1">
+                <input type="checkbox" name="tag" value="{{ tag.id }}" {% if tag.id|string in selected_tag_ids %}checked{% endif %}>
+                <span style="background:{{ tag.color }};padding:2px 8px;border-radius:8px;color:white;font-size:0.85em;">{{ tag.name }}</span>
+            </label>
+        {% endfor %}
+        <label class="flex items-center gap-1 ml-4">
+            <input type="checkbox" name="no_tags" value="1" {% if no_tags %}checked{% endif %}>
+            <span class="text-xs">No tags</span>
+        </label>
+        <button type="submit" class="ml-4 px-3 py-1 bg-light-primary dark:bg-dark-primary text-white rounded hover:bg-light-accent dark:hover:bg-dark-hover transition-colors duration-200 text-sm">Apply</button>
+        <a href="{{ url_for('admin.dashboard') }}" class="ml-2 text-xs text-light-muted dark:text-dark-muted underline">Clear</a>
+    </form>
+</div>
+
 <!-- Services List -->
 <div class="mt-6 space-y-4">
     {% for service in services %}
-        {{ service_row(service) }}
+        <div class="bg-light-card dark:bg-dark-card rounded-lg p-4 border border-light-border dark:border-dark-border">
+            <div class="flex items-center justify-between">
+                <div>
+                    <span class="font-semibold">{{ service.name }}</span>
+                    <!-- Tag pills -->
+                    {% for tag in service.tags %}
+                        <span style="background:{{ tag.color }};padding:2px 8px;border-radius:8px;color:white;font-size:0.85em;margin-left:4px;">{{ tag.name }}</span>
+                    {% endfor %}
+                </div>
+                <div class="flex items-center gap-2">
+                    <a href="{{ url_for('admin.edit_service', service_id=service.id) }}" class="px-3 py-1 bg-light-primary dark:bg-dark-primary text-white rounded hover:bg-light-accent dark:hover:bg-dark-hover transition-colors duration-200 text-sm">Edit</a>
+                </div>
+            </div>
+            <!-- Optionally, show description, host, port, etc. -->
+        </div>
     {% else %}
         <div class="text-center py-12">
             <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-light-muted dark:text-dark-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
