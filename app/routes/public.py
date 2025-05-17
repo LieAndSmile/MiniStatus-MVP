@@ -1,18 +1,18 @@
 # app/routes/public.py
 
-from flask import Blueprint, render_template, request
-from app.models import Service
+from flask import Blueprint, render_template
+from app.utils.helpers import get_system_stats, get_system_identity, get_all_quick_links
 
 public_bp = Blueprint('public', __name__)
 
 @public_bp.route('/')
 def index():
-    """Main status page"""
-    filter_status = request.args.get('filter', 'all')
-    services = Service.query
-
-    if filter_status in ['up', 'down', 'degraded']:
-        services = services.filter(Service.status == filter_status)
-    
-    services = services.all()
-    return render_template('public/index.html', services=services, filter=filter_status)
+    """Homepage dashboard"""
+    system_stats = get_system_stats()
+    system_identity = get_system_identity()
+    quick_links = get_all_quick_links()
+    # Add more data for widgets as needed
+    return render_template('public/home.html',
+                           system_stats=system_stats,
+                           system_identity=system_identity,
+                           quick_links=quick_links)

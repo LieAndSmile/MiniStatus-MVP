@@ -2,7 +2,7 @@
 
 **MiniStatus** is a lightweight, self-hosted service status dashboard built for developers, homelabs, and small teams.
 
-Version: 1.0.0
+Version: 1.1.0
 
 - ✅ Track service health manually or via API
 - 🔍 Advanced search and filtering capabilities
@@ -48,21 +48,26 @@ cp .env.example .env
 #### Quick Start (using pre-built image)
 ```bash
 # Pull the stable version
-docker pull rilmay/ministatus:1.0.0
+docker pull rilmay/ministatus:1.1.0
 
 # Create a directory for persistent data
 mkdir -p instance
+
+# (Optional) Create or copy your auto_tag_rules.yaml for custom auto-tagging
+# cp auto_tag_rules.yaml.example auto_tag_rules.yaml
 
 # Run the container
 docker run -d \
   --name ministatus \
   -p 5000:5000 \
   -v $(pwd)/instance:/app/instance \
+  -v $(pwd)/auto_tag_rules.yaml:/app/auto_tag_rules.yaml:ro \
   -e SECRET_KEY=your-secret-key \
   -e ADMIN_SECRET=your-admin-secret \
   --restart unless-stopped \
-  rilmay/ministatus:1.0.0
-```
+  rilmay/ministatus:1.1.0
+
+# If you do not mount auto_tag_rules.yaml, you can manage auto-tag rules from the admin UI at /admin/auto-tag-rules.
 
 #### Using Docker Compose
 
@@ -165,6 +170,21 @@ Chart lives in: `charts/ministatus/`
 - [ ] GitHub deploy webhook support
 - [ ] Custom theme support
 - [ ] Service grouping & tags
+
+---
+
+## 🏷️ Auto-Tag Rules (v1.1.0+)
+
+You can customize how tags are automatically assigned to services:
+
+- **YAML/JSON Config:**
+  - Mount a config file (see above) for advanced or version-controlled rules.
+  - Edit and reload as needed.
+- **Admin UI:**
+  - Manage auto-tag rules from the web dashboard at `/admin/auto-tag-rules`.
+  - No restart required; changes take effect immediately.
+
+If both are present, the config file takes precedence. Remove or rename it to use the UI/database rules only.
 
 ---
 
