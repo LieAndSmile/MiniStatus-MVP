@@ -21,6 +21,85 @@ Version: 1.1.0
 
 ---
 
+## 📖 Help: MiniStatus Dashboard Feature Documentation
+
+### 1. Static GitHub Repos Panel
+Display a list of favorite or important GitHub repositories on your dashboard.
+- In `app/routes/public.py`, add your repos to the `github_repos` list.
+- This list is passed to the template and rendered as a panel on the homepage.
+- To add more repos, just add more dictionaries to the `github_repos` list.
+
+### 2. Using YAML Files for Configuration
+MiniStatus supports YAML files for configuration of certain features, making it easy to manage and version-control your dashboard settings.
+
+#### a. Auto-Tag Rules (`auto_tag_rules.yaml`)
+- **Purpose:** Automatically assign tags to services based on rules.
+- **Location:** Place your YAML file at the root of your project or mount it in Docker as `/app/auto_tag_rules.yaml`.
+- **Example format:**
+  ```yaml
+  rules:
+    - match: "docker"
+      tags: ["docker", "container"]
+    - match: "nginx"
+      tags: ["web", "reverse-proxy"]
+    - match: "postgres"
+      tags: ["database", "sql"]
+  ```
+- **How it works:** When a service name matches the `match` string, the listed tags are applied. You can manage these rules from the Admin UI at `/admin/auto-tag-rules` or by editing the YAML file directly.
+- **Reference:** See [MiniStatus-MVP GitHub Repo](https://github.com/LieAndSmile/MiniStatus-MVP) for more details.
+
+#### b. Services List (`services.yaml`)
+- **Purpose:** Define and manage the list of services to be monitored.
+- **Example format:**
+  ```yaml
+  services:
+    - name: nginx
+      description: "Web server"
+      tags: ["web", "reverse-proxy"]
+      url: "http://localhost"
+      status: "up"
+    - name: postgres
+      description: "Database server"
+      tags: ["database", "sql"]
+      url: "localhost:5432"
+      status: "down"
+  ```
+- **How it works:** Each service entry defines its name, description, tags, URL, and status. You can import or sync services from this file via the Admin UI or CLI.
+
+#### c. Quick Links (`quick_links.yaml`)
+- **Purpose:** Add custom quick links to the dashboard for easy access to tools and resources.
+- **Example format:**
+  ```yaml
+  links:
+    - name: Grafana
+      url: "http://grafana.local"
+      category: "Monitoring"
+      icon_url: "/static/icons/grafana.svg"
+    - name: GitLab
+      url: "http://gitlab.local"
+      category: "DevOps"
+      icon_url: "/static/icons/gitlab.svg"
+  ```
+- **How it works:** Each link appears in the Quick Links panel, grouped by category.
+
+### 3. How to Use These YAML Files
+- Mount or place the YAML files in your project root or the appropriate config directory.
+- For Docker: Mount them as volumes, e.g.:
+  ```bash
+  -v $(pwd)/auto_tag_rules.yaml:/app/auto_tag_rules.yaml:ro
+  -v $(pwd)/services.yaml:/app/services.yaml:ro
+  -v $(pwd)/quick_links.yaml:/app/quick_links.yaml:ro
+  ```
+- Edit and reload: Changes to YAML files are picked up automatically (or via a reload in the Admin UI).
+
+### 4. References
+- [MiniStatus-MVP GitHub Repo](https://github.com/LieAndSmile/MiniStatus-MVP)
+- See the repo's README for more advanced configuration and deployment options.
+
+If you need sample files or want to automate the loading of these YAMLs, let the development team know!
+
+---
+
 ## 🚀 Getting Started
 
 ### 📦 Requirements

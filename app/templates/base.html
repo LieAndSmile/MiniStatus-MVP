@@ -155,6 +155,13 @@
         </svg>
         <span class="nav-label">Auto-Tag Rules</span>
       </a>
+      <a href="{{ url_for('admin.help_page') }}"
+         class="flex items-center space-x-3 p-3 rounded-lg {% if request.endpoint == 'admin.help_page' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 14h.01M16 10h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" />
+        </svg>
+        <span class="nav-label">Admin Help</span>
+      </a>
 
       <!-- Theme Toggle -->
       <button onclick="toggleTheme()" 

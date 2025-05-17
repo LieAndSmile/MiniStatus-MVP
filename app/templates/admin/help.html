@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Admin Help - MiniStatus{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto py-8 px-4">
+  <h1 class="text-3xl font-bold mb-6 text-light-text dark:text-dark-text">MiniStatus Dashboard: Feature Documentation</h1>
+
+  <h2 class="text-2xl font-semibold mt-8 mb-2">1. Static GitHub Repos Panel</h2>
+  <p class="mb-2">Display a list of favorite or important GitHub repositories on your dashboard.</p>
+  <ul class="list-disc ml-6 mb-4">
+    <li>In <code>app/routes/public.py</code>, add your repos to the <code>github_repos</code> list.</li>
+    <li>This list is passed to the template and rendered as a panel on the homepage.</li>
+    <li>To add more repos, just add more dictionaries to the <code>github_repos</code> list.</li>
+  </ul>
+
+  <h2 class="text-2xl font-semibold mt-8 mb-2">2. Using YAML Files for Configuration</h2>
+  <p class="mb-2">MiniStatus supports YAML files for configuration of certain features, making it easy to manage and version-control your dashboard settings.</p>
+
+  <h3 class="text-xl font-semibold mt-6 mb-1">a. Auto-Tag Rules (<code>auto_tag_rules.yaml</code>)</h3>
+  <ul class="list-disc ml-6 mb-4">
+    <li>Purpose: Automatically assign tags to services based on rules.</li>
+    <li>Location: Place your YAML file at the root of your project or mount it in Docker as <code>/app/auto_tag_rules.yaml</code>.</li>
+    <li>Example format:
+      <pre class="bg-gray-100 dark:bg-gray-800 rounded p-2 text-xs mt-1">rules:
+  - match: "docker"
+    tags: ["docker", "container"]
+  - match: "nginx"
+    tags: ["web", "reverse-proxy"]
+  - match: "postgres"
+    tags: ["database", "sql"]
+</pre>
+    </li>
+    <li>How it works: When a service name matches the <code>match</code> string, the listed tags are applied. You can manage these rules from the Admin UI at <code>/admin/auto-tag-rules</code> or by editing the YAML file directly.</li>
+    <li>Reference: See <a href="https://github.com/LieAndSmile/MiniStatus-MVP" class="text-blue-600 underline" target="_blank">MiniStatus-MVP GitHub Repo</a> for more details.</li>
+  </ul>
+
+  <h3 class="text-xl font-semibold mt-6 mb-1">b. Services List (<code>services.yaml</code>)</h3>
+  <ul class="list-disc ml-6 mb-4">
+    <li>Purpose: Define and manage the list of services to be monitored.</li>
+    <li>Example format:
+      <pre class="bg-gray-100 dark:bg-gray-800 rounded p-2 text-xs mt-1">services:
+  - name: nginx
+    description: "Web server"
+    tags: ["web", "reverse-proxy"]
+    url: "http://localhost"
+    status: "up"
+  - name: postgres
+    description: "Database server"
+    tags: ["database", "sql"]
+    url: "localhost:5432"
+    status: "down"
+</pre>
+    </li>
+    <li>How it works: Each service entry defines its name, description, tags, URL, and status. You can import or sync services from this file via the Admin UI or CLI.</li>
+  </ul>
+
+  <h3 class="text-xl font-semibold mt-6 mb-1">c. Quick Links (<code>quick_links.yaml</code>)</h3>
+  <ul class="list-disc ml-6 mb-4">
+    <li>Purpose: Add custom quick links to the dashboard for easy access to tools and resources.</li>
+    <li>Example format:
+      <pre class="bg-gray-100 dark:bg-gray-800 rounded p-2 text-xs mt-1">links:
+  - name: Grafana
+    url: "http://grafana.local"
+    category: "Monitoring"
+    icon_url: "/static/icons/grafana.svg"
+  - name: GitLab
+    url: "http://gitlab.local"
+    category: "DevOps"
+    icon_url: "/static/icons/gitlab.svg"
+</pre>
+    </li>
+    <li>How it works: Each link appears in the Quick Links panel, grouped by category.</li>
+  </ul>
+
+  <h2 class="text-2xl font-semibold mt-8 mb-2">3. How to Use These YAML Files</h2>
+  <ul class="list-disc ml-6 mb-4">
+    <li>Mount or place the YAML files in your project root or the appropriate config directory.</li>
+    <li>For Docker: Mount them as volumes, e.g.:
+      <pre class="bg-gray-100 dark:bg-gray-800 rounded p-2 text-xs mt-1">-v $(pwd)/auto_tag_rules.yaml:/app/auto_tag_rules.yaml:ro
+-v $(pwd)/services.yaml:/app/services.yaml:ro
+-v $(pwd)/quick_links.yaml:/app/quick_links.yaml:ro
+</pre>
+    </li>
+    <li>Edit and reload: Changes to YAML files are picked up automatically (or via a reload in the Admin UI).</li>
+  </ul>
+
+  <h2 class="text-2xl font-semibold mt-8 mb-2">4. References</h2>
+  <ul class="list-disc ml-6 mb-4">
+    <li><a href="https://github.com/LieAndSmile/MiniStatus-MVP" class="text-blue-600 underline" target="_blank">MiniStatus-MVP GitHub Repo</a></li>
+    <li>See the repo's README for more advanced configuration and deployment options.</li>
+  </ul>
+
+  <div class="mt-8 text-sm text-gray-500 dark:text-gray-400">If you need sample files or want to automate the loading of these YAMLs, let the development team know!</div>
+</div>
+{% endblock %} 

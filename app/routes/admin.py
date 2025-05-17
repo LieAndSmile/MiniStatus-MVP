@@ -247,3 +247,8 @@ def toggle_auto_tag_rule(rule_id):
     db.session.commit()
     flash('Auto-tag rule status updated.', 'success')
     return redirect(url_for('admin.manage_auto_tag_rules'))
+
+@admin_bp.route('/help')
+@admin_required
+def help_page():
+    return render_template('admin/help.html')
