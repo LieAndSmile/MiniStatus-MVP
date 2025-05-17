@@ -1,0 +1,42 @@
+security_summary:
+  show:
+    firewall: true
+    apparmor: true
+    selinux: false
+    fail2ban: true
+    open_ports: true
+    ssh_logins: true
+    service_exposure: true
+    custom_checks: []  # For future extensibility
+
+  trusted_subnets:
+    - "192.168.0.0/16"
+    - "10.0.0.0/8"
+    - "127.0.0.1/8"
+
+  fail2ban:
+    show_internal_bans: false
+    show_jail_details: true
+    highlight_recent_bans: 3
+
+  ssh:
+    highlight_external_logins: true
+    login_history_count: 5
+    show_failed_attempts: true
+    failed_attempts_window_h: 24
+
+  ports:
+    label_internal_only: true
+    label_external_exposed: true
+    show_service_names: true
+
+  service_exposure:
+    show_public_services: true
+    show_internal_services: false
+    highlight_exposed: true
+
+  custom:
+    # For future custom scripts or checks
+    - name: "Check Root Login"
+      command: "grep 'root' /etc/passwd"
+      show_if: true 

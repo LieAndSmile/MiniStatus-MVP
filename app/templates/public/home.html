@@ -64,6 +64,79 @@
     </div>
   </div>
 
+  <!-- Security Summary Widget -->
+  <div class="w-full max-w-6xl mx-auto mb-8">
+    <div class="bg-light-card dark:bg-dark-card rounded-2xl shadow-lg p-6 border border-light-border dark:border-dark-border">
+      <h2 class="text-xl font-bold mb-3 text-light-text dark:text-dark-text flex items-center gap-2">
+        <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3l9 4.5v6c0 5.25-3.75 10-9 13-5.25-3-9-7.75-9-13v-6L12 3z"/></svg>
+        Security Summary
+      </h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-2">
+        <div>
+          <span class="font-semibold">SSH Logins:</span>
+          <span>{{ security_summary.ssh_logins|length }} recent</span>
+        </div>
+        <div>
+          <span class="font-semibold">Failed SSH Logins (24h):</span>
+          <span>
+            {% if security_summary.failed_ssh_logins_24h == 0 %}
+              0
+            {% elif security_summary.failed_ssh_logins_24h == 'N/A' %}
+              N/A
+            {% else %}
+              <span class="text-yellow-400">⚠️ {{ security_summary.failed_ssh_logins_24h }}</span>
+            {% endif %}
+          </span>
+        </div>
+        <div>
+          <span class="font-semibold">Open Ports:</span>
+          <span>{{ security_summary.open_ports|length }}</span>
+        </div>
+        <div>
+          <span class="font-semibold">Shell Users:</span>
+          <span>{{ security_summary.shell_users|length }}
+            ({{ security_summary.shell_users|map(attribute='name')|join(', ') }})
+          </span>
+        </div>
+        <div>
+          <span class="font-semibold">Suspicious UID 0 entries:</span>
+          <span>{% if security_summary.suspicious_uid0|length == 0 %}none{% else %}{{ security_summary.suspicious_uid0|join(', ') }}{% endif %}</span>
+        </div>
+        <div>
+          <span class="font-semibold">World-writable dirs in home:</span>
+          <span>{{ security_summary.world_writable_home|length }}</span>
+        </div>
+        <div>
+          <span class="font-semibold">Root login in /etc/passwd:</span>
+          <span>
+            {% if security_summary.root_login_shell == '/bin/bash' or security_summary.root_login_shell == '/bin/sh' %}
+              ✔️ (shell: {{ security_summary.root_login_shell }})
+            {% else %}
+              {{ security_summary.root_login_shell }}
+            {% endif %}
+          </span>
+        </div>
+        <div class="col-span-1 sm:col-span-2 md:col-span-3">
+          <span class="font-semibold">Outdated packages:</span>
+          <span>
+            {% if security_summary.outdated_packages and security_summary.outdated_packages|length > 0 %}
+              {{ security_summary.outdated_packages|length }} package(s) need upgrade
+              <details class="mt-1"><summary class="cursor-pointer text-blue-500">Show list</summary>
+                <ul class="list-disc ml-6 text-xs">
+                  {% for pkg in security_summary.outdated_packages %}
+                    <li>{{ pkg }}</li>
+                  {% endfor %}
+                </ul>
+              </details>
+            {% else %}
+              None
+            {% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- GitHub Repos Panel -->
   <div class="w-full max-w-6xl mx-auto mb-8">
     <div class="bg-light-card dark:bg-dark-card rounded-2xl shadow-lg p-6 border border-light-border dark:border-dark-border">

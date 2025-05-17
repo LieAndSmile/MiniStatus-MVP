@@ -277,3 +277,37 @@ If you like the project, give it a ⭐ or open an issue for feedback or bugs.
 ## 📄 License
 MIT © [LieAndSmile](https://github.com/LieAndSmile)
 
+## 🔐 Security Summary Widget
+
+The Security Summary widget provides a quick overview of key security-related metrics on your system:
+
+| Check                                | Description                                 |
+| ------------------------------------- | ------------------------------------------- |
+| ✅ Recent SSH logins                  | Shows the most recent successful SSH logins  |
+| ⚠️ Failed SSH logins (24h)            | Counts failed SSH login attempts in 24 hours |
+| ✅ Open ports (non-root scan)          | Lists open TCP/UDP ports using `ss`          |
+| 👤 Users with shell access             | Lists users with valid login shells          |
+| ⚠️ Suspicious users/groups             | Finds UID 0 users other than root            |
+| 📁 World-writable dirs in `$HOME`      | Warns about insecure file permissions        |
+| ⛔ Root login in /etc/passwd           | Shows if root login shell is enabled         |
+| 📦 Outdated packages                   | Shows number of upgradable packages          |
+
+**Example Output:**
+
+```
+SSH Logins: 5 recent
+Failed SSH Logins (24h): 3
+Open Ports: 25
+Shell Users: 3 (root, lis61, service)
+Suspicious UID 0 entries: none
+World-writable dirs in home: 0
+Root login in /etc/passwd: ✔️ (shell: /bin/bash)
+Outdated packages: 2 package(s) need upgrade
+```
+
+- The widget is card-style and appears on the dashboard.
+- Failed SSH logins in the last 24 hours are highlighted if present.
+- Outdated packages can be expanded to show details.
+
+---
+

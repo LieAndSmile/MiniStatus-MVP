@@ -1,7 +1,7 @@
 # app/routes/public.py
 
 from flask import Blueprint, render_template, request, session
-from app.utils.helpers import get_system_stats, get_system_identity, get_all_quick_links, get_public_holidays, generate_month_calendar
+from app.utils.helpers import get_system_stats, get_system_identity, get_all_quick_links, get_public_holidays, generate_month_calendar, get_security_summary
 from datetime import date
 
 public_bp = Blueprint('public', __name__)
@@ -55,6 +55,8 @@ def index():
         # Add more repos here if needed
     ]
 
+    security_summary = get_security_summary()
+
     return render_template('public/home.html',
                            system_stats=system_stats,
                            system_identity=system_identity,
@@ -63,4 +65,5 @@ def index():
                            today=today,
                            country=country,
                            countries=countries,
-                           github_repos=github_repos)
+                           github_repos=github_repos,
+                           security_summary=security_summary)
