@@ -146,14 +146,14 @@
         <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 01-8 0 4 4 0 018 0zM12 14v7m0 0H5a2 2 0 01-2-2v-5a2 2 0 012-2h14a2 2 0 012 2v5a2 2 0 01-2 2h-7z" />
         </svg>
-        <span>Tags</span>
+        <span class="nav-label">Tags</span>
       </a>
       <a href="{{ url_for('admin.manage_auto_tag_rules') }}"
          class="flex items-center space-x-3 p-3 rounded-lg {% if request.endpoint == 'admin.manage_auto_tag_rules' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6 0a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <span>Auto-Tag Rules</span>
+        <span class="nav-label">Auto-Tag Rules</span>
       </a>
 
       <!-- Theme Toggle -->
