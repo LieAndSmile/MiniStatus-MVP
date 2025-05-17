@@ -39,21 +39,29 @@ This project follows [Semantic Versioning](https://semver.org/) and uses the [Ke
   * Security best practices
   * Deployment scenarios
 
-## [1.1.0] - 2025-05-16
+## [1.1.0] - 2025-05-17
 ### Added
-- **Customizable Auto-Tag Rules:**
-  - Support for `auto_tag_rules.yaml` or `auto_tag_rules.json` in the project root for defining auto-tagging logic.
-  - Rules can be edited and reloaded without code changes.
-  - YAML/JSON config is optional; if not present, falls back to database/UI rules.
-- **Admin UI for Auto-Tag Rules:**
-  - Manage auto-tag rules from `/admin/auto-tag-rules` (add, edit, delete, enable/disable) with no restart required.
-- **`--no-auto-tag` Flag:**
-  - All sync endpoints and scripts accept a `?no_auto_tag=1` query parameter or argument to skip auto-tagging during sync.
-- **Transparency:**
-  - The admin dashboard now displays a note under each service showing which tags would be auto-assigned ("Auto-tagged as: ...").
-  - Auto-tagging actions are logged to the console for auditability.
-- **Docker Support:**
-  - The app supports bind-mounting the config file for Docker deployments, or using the admin UI for all rule management.
+- **Redesigned Public Homepage:**
+  - Modern, compact cards for System Health, System Identity, and Calendar widgets.
+  - Responsive layout and improved dark theme.
+- **Dynamic Quick Links Panel:**
+  - Auto-detects known services (Grafana, Pi-hole, Cockpit, Portainer, etc.).
+  - Supports manual additions via `quick_links.yaml` (YAML format).
+  - Displays app icons and categories in a responsive grid.
+- **Calendar Widget:**
+  - Integrated FullCalendar with country selector.
+  - Fetches and displays public holidays using the Nager.Date API.
+  - Compact, visually consistent with other cards.
+- **Backend Enhancements:**
+  - Utilities for system stats, identity, and service detection using `psutil` and `PyYAML`.
+- **UI/UX Improvements:**
+  - Sidebar label hiding when collapsed (using `.nav-label`).
+  - Main content area adapts to sidebar state.
+  - Improved card styling, spacing, and responsiveness.
+- **Documentation:**
+  - Updated README for v1.1.0 features and usage.
+- **Requirements:**
+  - Added `psutil` and `PyYAML` to `requirements.txt`.
 
 ### Changed
 - Improved documentation and user experience for tag and rule management.
@@ -62,5 +70,6 @@ This project follows [Semantic Versioning](https://semver.org/) and uses the [Ke
 ### Migration Notes
 - If you want to use only the admin UI for rules, remove or ignore the YAML/JSON config file.
 - For Docker, mount your config file or use the UI as needed.
+
 
 
