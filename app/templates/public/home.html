@@ -4,134 +4,142 @@
 
 {% block content %}
 <div class="container mx-auto py-8 px-2 sm:px-4 md:px-8 lg:px-8 xl:px-12 2xl:px-16">
-  <!-- Top row: Country + Calendar | System Health | System Identity -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start mb-10">
-    <!-- Country + Calendar Card -->
-    <div class="bg-light-card dark:bg-dark-card p-4 rounded-xl shadow w-full max-w-xs space-y-4 flex flex-col items-center border border-light-border dark:border-dark-border">
-      <div class="w-full">
-        <label for="calendar-country" class="text-sm text-light-muted dark:text-dark-muted">Country:</label>
-        <select id="calendar-country" class="mt-1 w-full bg-light-nav dark:bg-dark-nav border border-light-border dark:border-dark-border text-light-text dark:text-dark-text text-sm rounded focus:ring-2 focus:ring-dark-primary">
-          <option value="US">🇺🇸 United States</option>
-          <option value="GB">🇬🇧 United Kingdom</option>
-          <option value="DE">🇩🇪 Germany</option>
-          <option value="FR">🇫🇷 France</option>
-          <option value="RU">🇷🇺 Russia</option>
-          <option value="UA">🇺🇦 Ukraine</option>
-          <option value="PL">🇵🇱 Poland</option>
-          <option value="IT">🇮🇹 Italy</option>
-          <option value="ES">🇪🇸 Spain</option>
-          <option value="CN">🇨🇳 China</option>
-          <option value="JP">🇯🇵 Japan</option>
-          <option value="IN">🇮🇳 India</option>
-          <option value="BR">🇧🇷 Brazil</option>
-        </select>
-      </div>
-      <div id="calendar" class="rounded-lg w-full"></div>
-      <div id="calendar-events" class="mt-2 w-full text-center text-light-text dark:text-dark-text text-xs"></div>
-    </div>
-    <!-- System Health -->
-    <div class="bg-light-card dark:bg-dark-card rounded-xl shadow p-6 flex flex-col items-center border border-light-border dark:border-dark-border">
-      <h2 class="text-xl font-bold mb-4 text-light-text dark:text-dark-text">System Health</h2>
-      <div class="flex flex-col gap-2 w-full text-light-text dark:text-dark-text">
-        <div>CPU: <span class="font-mono">{{ system_stats.cpu }}%</span></div>
-        <div>RAM: <span class="font-mono">{{ system_stats.ram }}%</span></div>
-        <div>Disk: <span class="font-mono">{{ system_stats.disk }}%</span></div>
-        <div>Uptime: <span class="font-mono">{{ system_stats.uptime | string | replace('days', 'd') | replace('day', 'd') | replace(':', 'h ', 1) ~ 'm' }}</span></div>
-      </div>
-    </div>
-    <!-- System Identity -->
-    <div class="bg-light-card dark:bg-dark-card rounded-xl shadow p-6 flex flex-col items-center border border-light-border dark:border-dark-border">
-      <h2 class="text-xl font-bold mb-4 text-light-text dark:text-dark-text">System Identity</h2>
-      <div class="flex flex-col gap-2 w-full text-light-text dark:text-dark-text">
-        <div>🖥 Host: <span class="font-mono">{{ system_identity.hostname }}</span></div>
-        <div>🧪 OS: <span class="font-mono">{{ system_identity.os }}</span></div>
-        <div>🧷 Kernel: <span class="font-mono">{{ system_identity.kernel }}</span></div>
-      </div>
-    </div>
-  </div>
-  <!-- Quick Links Grid -->
-  <div>
-    <h2 class="text-xl font-bold mb-4 text-light-text dark:text-dark-text">Quick Links</h2>
-    {% if quick_links %}
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-        {% for link in quick_links %}
-        <div class="bg-light-card dark:bg-dark-card rounded-xl shadow p-4 border border-light-border dark:border-dark-border flex flex-col items-center">
-          <a href="{{ link.url }}" target="_blank" class="bg-light-nav dark:bg-dark-nav hover:bg-light-primary dark:hover:bg-dark-primary text-light-text dark:text-dark-text px-3 py-2 rounded-xl shadow flex items-center gap-2 transition relative group border border-light-border dark:border-dark-border hover:border-light-accent dark:hover:border-dark-accent mb-2" title="{{ link.name }}">
-            {% if link.icon %}
-              <img src="https://cdn.simpleicons.org/{{ link.icon | lower }}?color=6366f1&dark=fff" alt="{{ link.name }}" class="w-7 h-7 group-hover:scale-110 transition-transform" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/app.svg'">
-            {% else %}
-              <svg class="w-7 h-7 text-light-muted dark:text-dark-muted" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>
-            {% endif %}
-          </a>
-          <div class="text-sm font-semibold text-light-text dark:text-dark-text text-center">{{ link.name }}</div>
-          <div class="text-xs text-light-muted dark:text-dark-muted text-center">{{ link.category }}</div>
+  <!-- Header Block Group: System Health | System Identity | Calendar -->
+  <div class="w-full max-w-6xl mx-auto mb-8">
+    <div class="bg-light-card dark:bg-dark-card rounded-2xl shadow-lg p-6 flex flex-col md:flex-row gap-6 justify-between items-stretch border border-light-border dark:border-dark-border">
+      <!-- System Health -->
+      <div class="flex-1 flex flex-col items-center min-w-[220px] min-h-[180px] justify-center">
+        <h2 class="text-xl font-bold mb-3 text-light-text dark:text-dark-text text-center">System Health</h2>
+        <div class="flex flex-col gap-1 w-full text-light-text dark:text-dark-text text-center text-base">
+          <div>CPU: <span class="font-mono">{{ system_stats.cpu }}%</span></div>
+          <div>RAM: <span class="font-mono">{{ system_stats.ram }}%</span></div>
+          <div>Disk: <span class="font-mono">{{ system_stats.disk }}%</span></div>
+          <div>Uptime: <span class="font-mono">{{ system_stats.uptime }}</span></div>
         </div>
-        {% endfor %}
       </div>
-    {% else %}
-      <div class="text-gray-500">No known services detected.</div>
-    {% endif %}
+      <!-- System Identity -->
+      <div class="flex-1 flex flex-col items-center min-w-[220px] min-h-[180px] justify-center">
+        <h2 class="text-xl font-bold mb-3 text-light-text dark:text-dark-text text-center">System Identity</h2>
+        <div class="flex flex-col gap-1 w-full text-light-text dark:text-dark-text text-center text-base">
+          <div>Hostname: <span class="font-mono">{{ system_identity.hostname }}</span></div>
+          <div>OS: <span class="font-mono">{{ system_identity.os }}</span></div>
+          <div>Kernel: <span class="font-mono">{{ system_identity.kernel }}</span></div>
+        </div>
+      </div>
+      <!-- Calendar (server-side, compact) -->
+      <div class="flex-1 flex flex-col items-center min-w-[220px] min-h-[180px] justify-center">
+        <h2 class="text-xl font-bold mb-3 text-light-text dark:text-dark-text text-center">Calendar</h2>
+        <form method="post" class="mb-2 w-full flex justify-center">
+          <select name="country" class="rounded border px-2 py-1 bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text" onchange="this.form.submit()">
+            {% for code, name in countries %}
+              <option value="{{ code }}" {% if code == country %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+          </select>
+        </form>
+        <div class="w-[200px] h-[160px] flex items-center justify-center bg-light-bg dark:bg-dark-bg rounded-xl border border-light-border dark:border-dark-border">
+          <table class="w-full h-full text-xs text-center select-none">
+            <thead>
+              <tr>
+                {% for day in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
+                  <th class="font-semibold text-light-primary dark:text-dark-primary py-1">{{ day }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for week in calendar_weeks %}
+                <tr>
+                  {% for cell in week %}
+                    <td class="py-0.5 px-1 rounded-lg
+                      {% if not cell.in_month %} opacity-30 {% endif %}
+                      {% if cell.is_today %} bg-indigo-500 text-white font-bold {% elif cell.is_holiday %} bg-red-500 text-white font-bold {% else %} text-light-text dark:text-dark-text {% endif %}">
+                      {{ cell.day }}
+                    </td>
+                  {% endfor %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
-  <style>
-    body, .bg-dark-card { background: #181c23 !important; }
-    .fc { background: #232733 !important; color: #e5e7eb; border-radius: 1rem; }
-    .fc-toolbar-title, .fc-col-header-cell-cushion, .fc-daygrid-day-number { color: #e5e7eb !important; }
-    .fc-daygrid-day.fc-day-today { background: #6366f1 !important; color: #fff !important; border-radius: 50% !important; box-shadow: 0 0 0 2px #6366f1, 0 0 8px #6366f1; }
-    .fc-button-primary { background: #6366f1 !important; border: none; color: #fff !important; }
-    .fc-button-primary:not(:disabled):hover { background: #4f46e5 !important; }
-    .fc-daygrid-event { background: #2496ed !important; color: #fff !important; border-radius: 0.5rem; }
-    select#calendar-country, select#calendar-country option { background: #232733 !important; color: #e5e7eb !important; }
-    /* Compact calendar tweaks */
-    .fc .fc-scrollgrid-section-body, .fc .fc-daygrid-body { max-height: none !important; overflow: visible !important; }
-    .fc .fc-daygrid-body { min-height: 0 !important; }
-    .fc .fc-scrollgrid-sync-table { min-height: 0 !important; }
-    .fc .fc-daygrid { min-height: 0 !important; }
-    .fc .fc-daygrid-day { height: 1.8rem !important; font-size: 0.85rem !important; padding: 0.3rem !important; }
-    .fc .fc-toolbar { margin-bottom: 0.5rem !important; }
-    .fc .fc-toolbar-chunk { margin-bottom: 0 !important; }
-    .fc .fc-toolbar-title { font-size: 1.1rem !important; }
-    .fc .fc-button-group { height: 2rem !important; }
-    .fc .fc-button { height: 2rem !important; min-width: 2rem !important; font-size: 0.9rem !important; }
-  </style>
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      var calendarEl = document.getElementById('calendar');
-      var eventsEl = document.getElementById('calendar-events');
-      var countrySelect = document.getElementById('calendar-country');
-      var selectedCountry = countrySelect.value;
-      countrySelect.addEventListener('change', function() {
-        selectedCountry = this.value;
-        eventsEl.innerHTML = '';
-      });
-      var calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridMonth',
-        height: 'auto',
-        contentHeight: 'auto',
-        fixedWeekCount: false,
-        aspectRatio: 1.1,
-        handleWindowResize: true,
-        dateClick: function(info) {
-          fetch(`https://date.nager.at/api/v3/PublicHolidays/${info.date.getFullYear()}/${selectedCountry}`)
-            .then(res => res.json())
-            .then(data => {
-              const events = data.filter(ev => ev.date === info.dateStr);
-              if (events.length > 0) {
-                eventsEl.innerHTML = `<b>Events for ${info.dateStr} (${selectedCountry}):</b><br>` +
-                  events.map(ev => `<span>${ev.localName} (${ev.name})</span>`).join('<br>');
-              } else {
-                eventsEl.innerHTML = `<b>No public events for ${info.dateStr} (${selectedCountry})</b>`;
-              }
-            })
-            .catch(() => {
-              eventsEl.innerHTML = 'Could not fetch events.';
+
+  <!-- GitHub Repos Panel -->
+  <div class="w-full max-w-6xl mx-auto mb-8">
+    <div class="bg-light-card dark:bg-dark-card rounded-2xl shadow-lg p-6 border border-light-border dark:border-dark-border">
+      <h2 class="text-xl font-bold mb-3 text-light-text dark:text-dark-text flex items-center gap-2">
+        <svg class="w-6 h-6 text-gray-700 dark:text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.88-1.54-3.88-1.54-.53-1.34-1.3-1.7-1.3-1.7-1.06-.72.08-.71.08-.71 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.73 1.27 3.4.97.11-.75.41-1.27.74-1.56-2.55-.29-5.23-1.28-5.23-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 2.9-.39c.98.01 1.97.13 2.9.39 2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.69 5.41-5.25 5.7.42.36.79 1.09.79 2.2 0 1.59-.01 2.87-.01 3.26 0 .31.21.67.8.56C20.71 21.39 24 17.08 24 12c0-6.27-5.23-11.5-12-11.5z"/></svg>
+        GitHub Repos
+      </h2>
+      <ul>
+        {% for repo in github_repos %}
+          <li class="mb-2">
+            <a href="{{ repo.url }}" target="_blank" class="text-blue-600 hover:underline font-semibold">
+              {{ repo.name }}
+            </a>
+            <div class="text-xs text-gray-500">{{ repo.description }}</div>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <!-- Services Section with Tabs -->
+  <div class="w-full max-w-6xl mx-auto">
+    <div class="bg-light-card dark:bg-dark-card rounded-2xl shadow-lg p-6 border border-light-border dark:border-dark-border">
+      <h2 class="text-2xl font-bold mb-4 text-light-text dark:text-dark-text">Services</h2>
+      {% if quick_links %}
+        {% set categories = {} %}
+        {% for link in quick_links %}
+          {% set _ = categories.setdefault(link.category, []).append(link) %}
+        {% endfor %}
+        <!-- Tabs for categories -->
+        <div class="flex flex-wrap gap-2 mb-6 border-b border-light-border dark:border-dark-border">
+          {% for category in categories.keys() %}
+            <button class="tab-btn px-3 py-1.5 text-base font-semibold text-light-primary dark:text-dark-primary focus:outline-none border-b-2 border-transparent hover:border-light-primary dark:hover:border-dark-primary transition-all rounded-t" data-tab="{{ category|replace(' ', '_') }}">{{ category }}</button>
+          {% endfor %}
+        </div>
+        <!-- Tab content for each category -->
+        <div>
+          {% for category, links in categories.items() %}
+            <div class="tab-content" id="tab-{{ category|replace(' ', '_') }}" {% if loop.first %}style="display: grid;"{% else %}style="display: none;"{% endif %}>
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {% for link in links %}
+                <a href="{{ link.url }}" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center justify-center bg-light-bg dark:bg-dark-bg rounded-xl shadow p-3 transition-all hover:scale-105 hover:shadow-lg border border-light-border dark:border-dark-border min-h-[90px]">
+                  <div class="w-10 h-10 flex items-center justify-center rounded bg-gray-800/10 dark:bg-gray-200/10 mb-1 border border-gray-700/20 dark:border-gray-200/20">
+                    {% if link.icon_svg %}
+                      {{ link.icon_svg|safe }}
+                    {% else %}
+                      <img src="{{ link.icon_url }}" alt="{{ link.name }}" class="w-7 h-7 object-contain" />
+                    {% endif %}
+                  </div>
+                  <span class="text-sm font-medium text-light-text dark:text-dark-text text-center">{{ link.name }}</span>
+                </a>
+                {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+        <script>
+          document.addEventListener('DOMContentLoaded', function() {
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabBtns.forEach((btn, idx) => {
+              btn.addEventListener('click', function() {
+                tabBtns.forEach(b => b.classList.remove('border-light-primary', 'dark:border-dark-primary', 'bg-light-bg', 'dark:bg-dark-bg', 'font-extrabold'));
+                this.classList.add('border-light-primary', 'dark:border-dark-primary', 'bg-light-bg', 'dark:bg-dark-bg', 'font-extrabold');
+                tabContents.forEach(tc => tc.style.display = 'none');
+                document.getElementById('tab-' + this.dataset.tab).style.display = 'grid';
+              });
             });
-        }
-      });
-      calendar.render();
-    });
-  </script>
-  <!-- More widgets will be added here in the next steps -->
+            // Activate first tab by default
+            if (tabBtns.length) tabBtns[0].click();
+          });
+        </script>
+      {% else %}
+        <div class="text-light-text dark:text-dark-text">No services found.</div>
+      {% endif %}
+    </div>
+  </div>
 </div>
 {% endblock %} 
