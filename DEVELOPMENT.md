@@ -11,7 +11,7 @@
   * SQLAlchemy - ORM
   * SQLite - Database
   * Python Socket - Port monitoring
-  * Docker SDK - Container monitoring
+  * Docker SDK - Container monitoring (host only)
   * Systemd integration - Service monitoring
 
 * **Frontend**
@@ -20,9 +20,8 @@
   * Responsive design
 
 * **Deployment Options**
-  * Docker container
+  * Standalone Python application (app is not run in Docker)
   * Systemd service
-  * Kubernetes (Helm chart)
 
 * **Authentication**
   * Environment-based admin credentials
@@ -34,7 +33,7 @@
 
 1. **Service Monitoring**
    * `ServiceSync` class for centralized monitoring
-   * Docker container status tracking
+   * Docker container status tracking (host only)
    * Systemd service monitoring
    * Remote port availability checks
 
@@ -79,7 +78,7 @@
 * Comprehensive error handling
 
 ### Monitoring Features
-* Docker container status tracking
+* Docker container status tracking (host only)
 * Systemd service monitoring
 * Local port scanning
 * Remote port availability checks
@@ -144,4 +143,5 @@ We're currently enhancing the `/ports` dashboard with focus on:
 * [Flask Documentation](https://flask.palletsprojects.com/)
 * [SQLAlchemy Documentation](https://docs.sqlalchemy.org/)
 * [TailwindCSS Documentation](https://tailwindcss.com/docs)
-* [Docker SDK Documentation](https://docker-py.readthedocs.io/) 
+
+**Note:** MiniStatus can monitor Docker containers running on the same host, but the app itself is not run in Docker or Kubernetes. 

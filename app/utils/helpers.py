@@ -182,7 +182,7 @@ def get_detected_services():
             detected.append(svc_with_icon)
     return detected
 
-def load_manual_links(yaml_path="quick_links.yaml"):
+def load_manual_links(yaml_path="config/quick_links.yaml"):
     try:
         with open(yaml_path, 'r') as f:
             return yaml.safe_load(f) or []

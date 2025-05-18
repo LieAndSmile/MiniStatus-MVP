@@ -8,8 +8,8 @@ except ImportError:
     HAS_YAML = False
 
 CONFIG_PATHS = [
-    os.path.join(os.path.dirname(__file__), '../../auto_tag_rules.yaml'),
-    os.path.join(os.path.dirname(__file__), '../../auto_tag_rules.json'),
+    os.path.join(os.path.dirname(__file__), '../../config/auto_tag_rules.yaml'),
+    os.path.join(os.path.dirname(__file__), '../../config/auto_tag_rules.json'),
 ]
 
 # Default rules (Python lambdas)
