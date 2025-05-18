@@ -1,5 +1,0 @@
-🎉 MiniStatus is installed!
-
-Access it at http://<your-cluster-ip>:5000
-
-Admin panel: /admin?auth=<your-password>
