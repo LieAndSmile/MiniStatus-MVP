@@ -23,15 +23,10 @@ This project follows [Semantic Versioning](https://semver.org/) and uses the [Ke
   * Service descriptions
   * Collapsible sidebar
 - Deployment Options:
-  * Docker container with pre-built images
-  * Docker Compose configurations
-  * Kubernetes Helm chart
+  * Standalone Python application (app is not run in Docker)
 - Security Features:
   * Admin authentication
   * API key authentication
-  * Secure Docker socket handling
-  * Proper Docker socket permissions
-  * Least-privilege principle implementation
 - Documentation:
   * Installation guides
   * Configuration options
@@ -69,7 +64,7 @@ This project follows [Semantic Versioning](https://semver.org/) and uses the [Ke
 
 ### Migration Notes
 - If you want to use only the admin UI for rules, remove or ignore the YAML/JSON config file.
-- For Docker, mount your config file or use the UI as needed.
+- Docker, Docker Compose, and Kubernetes are not supported as deployment methods. The app is run as a standalone Python application, but can still monitor Docker containers on the host.
 
 
 

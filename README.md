@@ -32,6 +32,9 @@ Display a list of favorite or important GitHub repositories on your dashboard.
 ### 2. Using YAML Files for Configuration
 MiniStatus supports YAML files for configuration of certain features, making it easy to manage and version-control your dashboard settings.
 
+> **All YAML config files should now be placed in the `config/` directory in your project root.**
+> For example: `MiniStatus-MVP/config/auto_tag_rules.yaml`, `MiniStatus-MVP/config/quick_links.yaml`, etc.
+
 #### a. Auto-Tag Rules (`auto_tag_rules.yaml`)
 - **Purpose:** Automatically assign tags to services based on rules.
 - **Location:** Place your YAML file at the root of your project or mount it in Docker as `/app/auto_tag_rules.yaml`.
@@ -92,6 +95,12 @@ MiniStatus supports YAML files for configuration of certain features, making it 
   ```
 - Edit and reload: Changes to YAML files are picked up automatically (or via a reload in the Admin UI).
 
+Place all your YAML config files in the `config/` directory. For Docker, mount the entire config directory:
+```bash
+-v $(pwd)/config:/app/config:ro
+```
+Edit and reload: Changes to YAML files are picked up automatically (or via a reload in the Admin UI).
+
 ### 4. References
 - [MiniStatus-MVP GitHub Repo](https://github.com/LieAndSmile/MiniStatus-MVP)
 - See the repo's README for more advanced configuration and deployment options.
@@ -100,96 +109,28 @@ If you need sample files or want to automate the loading of these YAMLs, let the
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Getting Started (Standalone)
 
-### 📦 Requirements
-- Docker & Docker Compose
-- Python 3.12+ (for local use)
-- `.env` file with secrets
+### Quick Start
 
-### ⚙️ Environment Setup
-Create a `.env` file in the root of the project:
-
-```env
-SECRET_KEY=supersecretkey123
-ADMIN_SECRET=admin123
-```
-
-Or copy the example:
 ```bash
+git clone https://github.com/your-username/ministatus
+cd ministatus
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 cp .env.example .env
+python run.py
 ```
+
+- Edit `.env` to set your secrets and admin credentials.
+- Place all YAML config files in the `config/` directory.
+- Access the app at [http://localhost:5000](http://localhost:5000)
 
 ---
 
-### 🐳 Docker Deployment Options
-
-#### Quick Start (using pre-built image)
-```bash
-# Pull the stable version
-docker pull rilmay/ministatus:1.1.0
-
-# Create a directory for persistent data
-mkdir -p instance
-
-# (Optional) Create or copy your auto_tag_rules.yaml for custom auto-tagging
-# cp auto_tag_rules.yaml.example auto_tag_rules.yaml
-
-# Run the container
-docker run -d \
-  --name ministatus \
-  -p 5000:5000 \
-  -v $(pwd)/instance:/app/instance \
-  -v $(pwd)/auto_tag_rules.yaml:/app/auto_tag_rules.yaml:ro \
-  -e SECRET_KEY=your-secret-key \
-  -e ADMIN_SECRET=your-admin-secret \
-  --restart unless-stopped \
-  rilmay/ministatus:1.1.0
-
-# If you do not mount auto_tag_rules.yaml, you can manage auto-tag rules from the admin UI at /admin/auto-tag-rules.
-
-#### Using Docker Compose
-
-We provide several Docker Compose configurations for different use cases:
-
-1. **Simple Deployment** (recommended for most users)
-```bash
-# Using pre-built image with minimal configuration
-docker-compose -f docker-compose.simple.yml up -d
-```
-
-2. **Development Mode**
-```bash
-# Using development configuration with live reload
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
-```
-
-3. **Production Mode**
-```bash
-# Using production configuration with Gunicorn
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-```
-
-4. **Stop and Cleanup**
-```bash
-# Stop containers
-docker-compose down
-
-# Remove persistent data (optional)
-sudo rm -rf instance/
-```
-
-The different configurations provide:
-- `simple`: Pre-built image, minimal setup required
-- `dev`: Live code reload, debugging enabled
-- `prod`: Gunicorn server, optimized for production
-
-Access the app at: [http://localhost:5000](http://localhost:5000)
-
----
-
-### 🔐 Admin Panel
-- Visit `/admin?auth=your-admin-password`
+## 🔐 Admin Panel
+- Visit `/admin` and log in with your configured ADMIN_USERNAME and ADMIN_PASSWORD (default: admin/admin123)
 - Add, update, or delete services
 - Sync Docker or systemd services
 - Monitor local ports
