@@ -20,9 +20,8 @@
   * Responsive design
 
 * **Deployment Options**
-  * Standalone Python application (app is not run in Docker)
-  * Systemd service
-
+  * Standalone Python 
+  
 * **Authentication**
   * Environment-based admin credentials
   * X-API-Key for remote reporting
@@ -144,4 +143,3 @@ We're currently enhancing the `/ports` dashboard with focus on:
 * [SQLAlchemy Documentation](https://docs.sqlalchemy.org/)
 * [TailwindCSS Documentation](https://tailwindcss.com/docs)
 
-**Note:** MiniStatus can monitor Docker containers running on the same host, but the app itself is not run in Docker or Kubernetes. 
