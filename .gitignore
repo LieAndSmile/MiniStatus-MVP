@@ -75,4 +75,6 @@ htmlcov/
 .terraform.lock.hcl
 terraform.tfvars
 
+cookies.txt
+
 
