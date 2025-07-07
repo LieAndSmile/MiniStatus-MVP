@@ -10,7 +10,6 @@ Version: 1.1.0
 - 📡 Docker & systemd sync
 - 🌓 Dark/Light theme with persistent preference
 - 🎯 Built with Flask + SQLite, minimal resources
-- 🐳 Easy to deploy (Docker, Kubernetes, or manually)
 
 > No Prometheus. No Grafana. Just clean uptime visibility.
 
