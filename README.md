@@ -113,13 +113,30 @@ If you need sample files or want to automate the loading of these YAMLs, let the
 ### Quick Start
 
 ```bash
-git clone https://github.com/your-username/ministatus
-cd ministatus
+# 1. Update system
+sudo apt update && sudo apt upgrade -y
+
+# 2. Install required packages
+sudo apt install -y git python3 python3-venv python3-pip
+
+# 3. Clone the repository
+git clone https://github.com/LieAndSmile/MiniStatus-MVP.git
+cd MiniStatus-MVP
+
+# 4. Create and activate virtual environment
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+
+# 5. Install dependencies
+pip install -r requirements.txt || pip install flask flask_sqlalchemy flask_migrate python-dotenv psutil PyYAML requests
+
+# 6. Set up environment variables
 cp .env.example .env
+nano .env   # <-- set API_KEY and ADMIN_PASSWORD
+
+# 7. Run the application
 python run.py
+
 ```
 
 - Edit `.env` to set your secrets and admin credentials.
