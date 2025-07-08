@@ -28,7 +28,6 @@
 ## 🚀 Getting Started
 
 ### 📦 Requirements
-- Docker & Docker Compose
 - Python 3.12+ (for local use)
 - `.env` file with secrets
 
@@ -52,51 +51,6 @@ cp env.template .env
 Then edit the `.env` file with your secure values.
 
 ---
-
-### 🐳 Docker Deployment Options
-
-#### Quick Start (Pre-built Image)
-```bash
-# Pull the latest image
-docker pull rilmay/ministatus:latest
-
-# Create persistent storage
-mkdir -p instance
-
-# Run the container
-docker run -d \
-  --name ministatus \
-  -p 5000:5000 \
-  -v $(pwd)/instance:/app/instance \
-  -e SECRET_KEY=your-secret-key \
-  -e ADMIN_SECRET=your-admin-secret \
-  --restart unless-stopped \
-  rilmay/ministatus:latest
-```
-
-#### Using Docker Compose
-
-1. **Production Mode**
-```bash
-# Using production configuration
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-```
-
-2. **Development Mode**
-```bash
-# Using development configuration with live reload
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
-```
-
-3. **Stop and Cleanup**
-```bash
-# Stop containers
-docker-compose down
-
-# Remove persistent data (optional)
-sudo rm -rf instance/
-```
-
 Access the app at: [http://localhost:5000](http://localhost:5000)
 
 ---
