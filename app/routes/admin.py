@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from datetime import datetime
 from app.models import Service, Tag, AutoTagRule
 from app.extensions import db
-from app.utils.system_check import has_docker, has_systemctl
+from app.utils.system_check import has_systemctl
 from functools import wraps
 import os
 from app.utils.auto_tag import get_auto_tagged_for_service
@@ -10,7 +10,6 @@ from app.utils.auto_tag import get_auto_tagged_for_service
 admin_bp = Blueprint("admin", __name__, url_prefix='/admin')
 
 DEFAULT_TAGS = [
-    {"name": "docker", "color": "#2496ed"},
     {"name": "networking", "color": "#6366f1"},
     {"name": "database", "color": "#10b981"},
     {"name": "internal", "color": "#64748b"},
@@ -72,7 +71,6 @@ def dashboard():
                          tags=tags,
                          selected_tag_ids=tag_ids,
                          no_tags=no_tags,
-                         has_docker=has_docker(),
                          has_systemctl=has_systemctl(),
                          auto_tagged_map=auto_tagged_map)
 

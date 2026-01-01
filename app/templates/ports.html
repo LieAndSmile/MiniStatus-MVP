@@ -166,51 +166,7 @@
     </div>
   </section>
 
-  <!-- DOCKER CONTAINERS -->
-  <section>
-    <div class="flex items-center justify-between cursor-pointer mb-4" onclick="toggleSection('docker-containers')">
-      <h2 class="text-xl font-semibold text-light-text dark:text-dark-text flex items-center">
-        Docker Containers
-        <span class="text-sm font-normal text-light-muted dark:text-dark-muted ml-2">
-          (Container Services)
-        </span>
-      </h2>
-      <svg id="docker-containers-icon" class="w-6 h-6 text-light-muted dark:text-dark-muted transform transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-      </svg>
-    </div>
-    <div id="docker-containers-content" class="space-y-3">
-      {% for port in local_ports if port.type == 'docker' %}
-      <div class="bg-light-card dark:bg-dark-card p-4 rounded-lg shadow border border-light-border dark:border-dark-border hover:border-light-primary dark:hover:border-dark-primary transition-colors duration-200">
-        <div class="flex justify-between items-center">
-          <div class="flex-grow">
-            <div class="text-light-text dark:text-dark-text font-semibold text-sm flex items-center">
-              <span class="mr-2">🐳</span>
-              <span>{{ port.container_name }}</span>
-              <span class="ml-2 text-light-muted dark:text-dark-muted">— Port {{ port.port }}</span>
-            </div>
-            <div class="text-light-muted dark:text-dark-muted text-xs space-y-1">
-              <div>{{ port.address.split('%')[0] }} | {{ port.protocol.upper() }}</div>
-              <div class="text-light-accent dark:text-dark-accent">
-                Internal Port: {{ port.container_port }}
-              </div>
-              {% if port.error %}
-              <div class="text-red-500">
-                Error: {{ port.error }}
-              </div>
-              {% endif %}
-            </div>
-          </div>
-          <div class="text-lg ml-4">
-            <span title="Docker Container">🐳</span>
-          </div>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-  </section>
-
-  <!-- CONTAINER SYSTEM SERVICES -->
+  <!-- SYSTEM SERVICES -->
   <section>
     <div class="flex items-center justify-between cursor-pointer mb-4" onclick="toggleSection('system-services')">
       <h2 class="text-xl font-semibold text-light-text dark:text-dark-text flex items-center">
@@ -253,7 +209,6 @@
 // Store section states in localStorage
 const sectionStates = JSON.parse(localStorage.getItem('portSectionStates')) || {
     'host-ports': true,
-    'docker-containers': true,
     'system-services': true
 };
 
@@ -315,7 +270,6 @@ function updatePortsUI(ports) {
     // Group ports by type
     const groupedPorts = {
         'host': ports.filter(p => p.type === 'host'),
-        'docker': ports.filter(p => p.type === 'docker'),
         'system': ports.filter(p => p.type === 'system')
     };
     
@@ -323,9 +277,7 @@ function updatePortsUI(ports) {
     
     // Update each section
     Object.entries(groupedPorts).forEach(([type, portList]) => {
-        const sectionId = type === 'host' ? 'host-ports' : 
-                         type === 'docker' ? 'docker-containers' : 
-                         'system-services';
+        const sectionId = type === 'host' ? 'host-ports' : 'system-services';
         const content = document.getElementById(`${sectionId}-content`);
         
         if (content) {
@@ -370,8 +322,6 @@ function createPortElement(port, type) {
         else if (port.label && port.label.toLowerCase().includes('mongo')) icon = '🍃';
         else if (port.label && port.label.toLowerCase().includes('redis')) icon = '🔄';
         else icon = '🖥️';
-    } else if (type === 'docker') {
-        icon = '🐳';
     }
     
     let statusIcon = '⚪';
@@ -388,10 +338,6 @@ function createPortElement(port, type) {
                 </div>
                 <div class="text-light-muted dark:text-dark-muted text-xs space-y-1">
                     <div>${port.address ? port.address.split('%')[0] : 'localhost'} | ${port.protocol ? port.protocol.toUpperCase() : 'TCP'}</div>`;
-    
-    if (type === 'docker' && port.container_port) {
-        html += `<div class="text-light-accent dark:text-dark-accent">Internal Port: ${port.container_port}</div>`;
-    }
     
     if (port.error) {
         html += `<div class="text-red-500">Error: ${port.error}</div>`;
@@ -425,7 +371,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Search and Sort Functionality
     const searchInput = document.getElementById('port-search');
     const sortSelect = document.getElementById('port-sort');
-    const sections = ['host-ports', 'docker-containers', 'system-services'];
+    const sections = ['host-ports', 'system-services'];
     
     function getPortElements() {
         const elements = [];

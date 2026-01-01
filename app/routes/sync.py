@@ -2,17 +2,14 @@
 from flask import Blueprint, render_template, redirect, url_for, session, flash, request
 from functools import wraps
 
-# Importing a helper function that interprets raw Docker status strings
-from app.utils.helpers import interpret_docker_status
-
 # Importing your SQLAlchemy model and database instance
 from app.models import Service
-from app import db
+from app.extensions import db
 
 # Importing datetime to track when services were updated
 from datetime import datetime
 
-# Allows running shell commands like "docker" or "systemctl"
+# Allows running shell commands like "systemctl"
 import subprocess
 
 # Importing a helper function to check open ports
@@ -32,20 +29,6 @@ def admin_required(f):
             return redirect(url_for("admin.login"))
         return f(*args, **kwargs)
     return decorated_function
-
-# -------------------------------
-# SYNC DOCKER SERVICES
-# -------------------------------
-@sync_bp.route("/sync-docker", methods=["GET"])
-@admin_required
-def sync_docker_services():
-    no_auto_tag = request.args.get('no_auto_tag') == '1'
-    updated_services, error = ServiceSync.sync_docker(no_auto_tag=no_auto_tag)
-    if error:
-        flash(error, 'error')
-        return redirect(url_for('admin.dashboard'))
-    note = "Auto-tagging was skipped." if no_auto_tag else None
-    return render_template("sync.html", updated_services=updated_services, note=note)
 
 # -------------------------------
 # SYNC SYSTEMD SERVICES

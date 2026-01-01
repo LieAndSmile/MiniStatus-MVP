@@ -5,6 +5,30 @@ from app.extensions import db
 from app.routes.admin import ensure_default_tags
 
 def create_app():
+    # Auto-create .env file if it doesn't exist
+    env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+    if not os.path.exists(env_path):
+        import secrets
+        default_env = f"""# Flask config
+FLASK_APP=run.py
+FLASK_ENV=production
+FLASK_HOST=0.0.0.0
+FLASK_PORT=5000
+FLASK_DEBUG=False
+
+# Security
+SECRET_KEY={secrets.token_hex(32)}
+
+# Admin auth - CHANGE THESE!
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin123
+
+# API
+API_KEY=supersecret
+"""
+        with open(env_path, 'w') as f:
+            f.write(default_env)
+    
     # Load environment variables from .env file
     load_dotenv()
 

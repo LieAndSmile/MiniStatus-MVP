@@ -14,7 +14,6 @@ CONFIG_PATHS = [
 
 # Default rules (Python lambdas)
 DEFAULT_AUTO_TAG_RULES = {
-    'docker': lambda svc: svc.get('source') == 'docker',
     'systemd': lambda svc: svc.get('source') == 'systemd',
     'networking': lambda svc: str(svc.get('port')) in ['80','443','53','22','8080','8443'],
     'database': lambda svc: re.search(r"mysql|postgres|redis|mariadb|mongo|db", (svc.get('name','')+svc.get('description','')).lower()),

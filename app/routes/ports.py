@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, session, request, jsonify
 from app.models import Service, db
-from app.utils.ports import get_local_listening_ports, get_docker_container_ports, get_host_ports, get_ports_from_ss
+from app.utils.ports import get_local_listening_ports, get_host_ports, get_ports_from_ss
 import json
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
@@ -87,9 +87,7 @@ def ports_dashboard():
 def scan_section(section):
     """Scan a specific section of ports"""
     try:
-        if section == 'docker':
-            return get_docker_container_ports()
-        elif section == 'host':
+        if section == 'host':
             return get_host_ports()
         elif section == 'system':
             return get_ports_from_ss()
@@ -112,7 +110,6 @@ def scan_ports():
             # Scan all sections in parallel
             executor = get_executor()
             futures = {
-                executor.submit(scan_section, 'docker'): 'docker',
                 executor.submit(scan_section, 'host'): 'host',
                 executor.submit(scan_section, 'system'): 'system'
             }

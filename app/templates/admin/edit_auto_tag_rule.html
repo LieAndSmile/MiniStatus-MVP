@@ -12,7 +12,7 @@
         <div>
             <label class="block text-sm font-medium mb-1">Rule Type</label>
             <select name="rule_type" required class="w-full px-2 py-1 border rounded">
-                <option value="source" {% if rule.rule_type == 'source' %}selected{% endif %}>Source (docker/systemd)</option>
+                <option value="source" {% if rule.rule_type == 'source' %}selected{% endif %}>Source (systemd)</option>
                 <option value="port" {% if rule.rule_type == 'port' %}selected{% endif %}>Port</option>
                 <option value="name_regex" {% if rule.rule_type == 'name_regex' %}selected{% endif %}>Name Regex</option>
                 <option value="desc_regex" {% if rule.rule_type == 'desc_regex' %}selected{% endif %}>Description Regex</option>
