@@ -1,7 +1,3 @@
-docker:
-  type: source
-  value: docker
-
 systemd:
   type: source
   value: systemd

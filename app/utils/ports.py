@@ -80,95 +80,6 @@ def get_process_name(pid):
         pass
     return None
 
-def get_docker_container_ports():
-    """Get ports from running Docker containers"""
-    try:
-        print("Starting Docker container port scan...")  # Debug log
-        print("Checking Docker socket permissions...")
-        try:
-            with open('/var/run/docker.sock', 'r') as f:
-                print("Docker socket is readable")
-        except Exception as e:
-            print(f"Error accessing Docker socket: {e}")
-
-        # Get list of running containers
-        print("Running 'docker ps' command...")
-        result = subprocess.run(
-            ["docker", "ps", "--format", "{{.ID}}"],
-            capture_output=True,
-            text=True
-        )
-        if result.returncode != 0:
-            print(f"Error getting container IDs: {result.stderr}")  # Debug log
-            return []
-
-        container_ids = result.stdout.strip().split('\n')
-        print(f"Found containers: {container_ids}")  # Debug log
-        ports = []
-
-        for container_id in container_ids:
-            if not container_id:
-                continue
-
-            print(f"Inspecting container: {container_id}")  # Debug log
-            # Inspect container to get port mappings
-            inspect_result = subprocess.run(
-                ["docker", "inspect", container_id],
-                capture_output=True,
-                text=True
-            )
-            if inspect_result.returncode != 0:
-                print(f"Error inspecting container {container_id}: {inspect_result.stderr}")  # Debug log
-                continue
-
-            try:
-                container_info = json.loads(inspect_result.stdout)
-            except json.JSONDecodeError as e:
-                print(f"Error parsing container info: {e}")
-                print(f"Raw output: {inspect_result.stdout}")
-                continue
-
-            if not container_info:
-                print(f"No info found for container {container_id}")  # Debug log
-                continue
-
-            container = container_info[0]
-            container_name = container.get('Name', '').strip('/')
-            port_bindings = container.get('NetworkSettings', {}).get('Ports', {})
-            print(f"Container {container_name} port bindings: {port_bindings}")
-
-            for container_port, host_bindings in port_bindings.items():
-                if not host_bindings:
-                    continue
-
-                proto = container_port.split('/')[-1]
-                container_port_num = container_port.split('/')[0]
-
-                for binding in host_bindings:
-                    host_port = binding.get('HostPort', '')
-                    host_ip = binding.get('HostIp', '0.0.0.0')
-
-                    port_info = {
-                        "protocol": proto,
-                        "address": host_ip,
-                        "port": host_port,
-                        "container_port": container_port_num,
-                        "container_name": container_name,
-                        "label": PORT_LABELS.get(host_port, f"Docker: {container_name}"),
-                        "type": "docker",
-                        "status": "open"  # If we can see it in Docker, it's open
-                    }
-                    ports.append(port_info)
-                    print(f"Added port info: {port_info}")  # Debug log
-
-        print(f"Final ports list: {ports}")  # Debug log
-        return ports
-    except Exception as e:
-        print(f"Error getting Docker ports: {e}")  # Debug log
-        import traceback
-        print(traceback.format_exc())  # Print full traceback
-        return []
-
 def get_service_info(port, proto):
     """Try to get service information for a port"""
     try:
@@ -279,24 +190,9 @@ def parse_port_line(line, source='ss'):
         return None
 
 def get_host_address():
-    """Get the host machine's address from the container's perspective"""
-    # Check if we're running in Docker
-    if os.path.exists('/.dockerenv'):
-        # First try to get the default gateway (host) address
-        try:
-            result = subprocess.run(["ip", "route", "show", "default"], capture_output=True, text=True)
-            if result.returncode == 0:
-                match = re.search(r'default via (\d+\.\d+\.\d+\.\d+)', result.stdout)
-                if match:
-                    return match.group(1)
-        except:
-            pass
-        
-        # Fallback to default Docker host
-        return "host.docker.internal" if os.environ.get("DOCKER_HOST_INTERNAL") else "172.17.0.1"
-    else:
-        # If not in Docker, use localhost
-        return "127.0.0.1"
+    """Get the host machine's address"""
+    # Use localhost for standalone application
+    return "127.0.0.1"
 
 def scan_host_port(host, port, protocol='tcp'):
     """Scan a specific port on the host"""
@@ -357,27 +253,20 @@ def get_local_listening_ports():
     print("Starting port scan...")  # Debug log
     ports_dict = {}  # Use dict to avoid duplicates
 
-    # Get Docker container ports
-    docker_ports = get_docker_container_ports()
-    print(f"Docker ports found: {docker_ports}")  # Debug log
-    for port_info in docker_ports:
-        key = f"{port_info['port']}_{port_info['protocol']}"
-        ports_dict[key] = port_info
-
     # Get host ports
     host_ports = get_host_ports()
     print(f"Host ports found: {host_ports}")  # Debug log
     for port_info in host_ports:
-        key = f"{port_info['port']}_{port_info['protocol']}_host"  # Add _host to avoid conflicts
+        key = f"{port_info['port']}_{port_info['protocol']}_host"
         ports_dict[key] = port_info
 
-    # Try ss command first for container ports
+    # Try ss command first for system ports
     ss_lines = get_ports_from_ss()
     print(f"SS command lines: {ss_lines}")  # Debug log
     for port_info in ss_lines:
         if port_info:
             key = f"{port_info['port']}_{port_info['protocol']}"
-            if key not in ports_dict:  # Don't override Docker ports
+            if key not in ports_dict:
                 ports_dict[key] = port_info
 
     # Try netstat as backup
@@ -387,7 +276,7 @@ def get_local_listening_ports():
         for port_info in netstat_lines:
             if port_info:
                 key = f"{port_info['port']}_{port_info['protocol']}"
-                if key not in ports_dict:  # Don't override existing ports
+                if key not in ports_dict:
                     ports_dict[key] = port_info
 
     # Convert dict to list and sort by port number
@@ -400,10 +289,6 @@ def scan_ports():
     """Scan all ports and return combined results"""
     print("Starting port scan...")  # Debug log
     
-    # Get Docker container ports
-    docker_ports = get_docker_container_ports()
-    print(f"Docker ports: {docker_ports}")  # Debug log
-    
     # Get system service ports
     system_ports = get_ports_from_ss() or get_ports_from_netstat()
     print(f"System ports: {system_ports}")  # Debug log
@@ -414,9 +299,6 @@ def scan_ports():
     
     # Combine all results
     all_ports = []
-    
-    # Add Docker ports
-    all_ports.extend(docker_ports)
     
     # Add system ports
     for port in system_ports:
