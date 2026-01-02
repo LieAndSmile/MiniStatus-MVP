@@ -18,11 +18,11 @@ help:
 
 install:
 	@echo "Installing MiniStatus-MVP..."
-	@bash install.sh
+	@bash scripts/install.sh
 
 uninstall:
 	@echo "Uninstalling MiniStatus-MVP..."
-	@bash uninstall.sh
+	@bash scripts/uninstall.sh
 
 start:
 	@sudo systemctl start ministatus
