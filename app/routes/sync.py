@@ -41,8 +41,33 @@ def sync_systemd_services():
     if error:
         flash(error, 'error')
         return redirect(url_for('admin.dashboard'))
-    note = "Auto-tagging was skipped." if no_auto_tag else None
-    return render_template("sync.html", updated_services=updated_services, note=note)
+    
+    # Calculate summary statistics
+    total = len(updated_services)
+    new_services = len([s for s in updated_services if 'Added' in s])
+    updated_count = total - new_services
+    
+    # Create a user-friendly summary message
+    if total == 0:
+        flash('No systemd services found or updated.', 'info')
+    else:
+        summary_parts = []
+        if new_services > 0:
+            summary_parts.append(f"{new_services} new")
+        if updated_count > 0:
+            summary_parts.append(f"{updated_count} updated")
+        
+        summary = f"Synced {total} systemd service{'s' if total != 1 else ''}"
+        if summary_parts:
+            summary += f" ({', '.join(summary_parts)})"
+        
+        if no_auto_tag:
+            summary += " • Auto-tagging was skipped"
+        
+        flash(summary, 'success')
+    
+    # Redirect back to dashboard instead of showing full list
+    return redirect(url_for('admin.dashboard'))
 
 # -------------------------------
 # PORTS CHECK
@@ -55,10 +80,18 @@ def sync_ports():
     if error:
         flash(error, 'error')
         return redirect(url_for('ports.ports_dashboard'))
-    session['show_ports_message'] = True
-    flash('Successfully checked all ports!', 'success')
-    note = "Auto-tagging was skipped." if no_auto_tag else None
-    return render_template("sync.html", updated_services=updated_services, note=note)
+    
+    # Calculate summary
+    total = len(updated_services)
+    if total == 0:
+        flash('No ports found or updated.', 'info')
+    else:
+        summary = f"Synced {total} port{'s' if total != 1 else ''}"
+        if no_auto_tag:
+            summary += " • Auto-tagging was skipped"
+        flash(summary, 'success')
+    
+    return redirect(url_for('ports.ports_dashboard'))
 
 @sync_bp.route("/sync-all")
 @admin_required
@@ -67,15 +100,26 @@ def sync_all():
     
     all_updates = []
     has_errors = False
+    summaries = []
     
     for service_type, (updates, error) in results.items():
         if error:
             flash(f"{service_type}: {error}", 'error')
             has_errors = True
+        else:
+            count = len(updates)
+            if count > 0:
+                summaries.append(f"{service_type}: {count}")
         all_updates.extend(updates)
     
     if has_errors:
         return redirect(url_for('admin.dashboard'))
-        
-    return render_template("sync.html", updated_services=all_updates)
+    
+    # Show summary instead of full list
+    if summaries:
+        flash(f"Synced all services ({', '.join(summaries)})", 'success')
+    else:
+        flash('No services updated.', 'info')
+    
+    return redirect(url_for('admin.dashboard'))
 

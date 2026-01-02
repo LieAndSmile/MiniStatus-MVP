@@ -58,7 +58,13 @@ sudo journalctl -u ministatus -f   # View logs
 
 ## Configuration
 
-Configuration is in `.env` file (auto-created during installation):
+Configuration is in `.env` file (auto-created during installation). 
+
+**Note:** If you need to manually create the `.env` file, you can copy `.env.example` as a starting point:
+```bash
+cp .env.example .env
+# Then edit .env with your settings
+```
 
 ```env
 FLASK_HOST=0.0.0.0
