@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,61 +13,42 @@
         }
         
         :root {
-            --primary: #0369A1;
-            --primary-dark: #075985;
-            --secondary: #E0F2FE;
-            --text: #1E293B;
-            --text-light: #64748B;
-            --bg: #FFFFFF;
-            --bg-alt: #F8FAFC;
-            --border: #E2E8F0;
-            --success: #059669;
-            --error: #DC2626;
-            --warning: #D97706;
-        }
-        
-        [data-theme="dark"] {
-            --primary: #0EA5E9;
-            --primary-dark: #0284C7;
-            --secondary: #0C4A6E;
-            --text: #F1F5F9;
-            --text-light: #94A3B8;
-            --bg: #0F172A;
-            --bg-alt: #1E293B;
-            --border: #334155;
+            --bg-primary: #0A0A0A;
+            --bg-secondary: #141414;
+            --bg-card: #1A1A1A;
+            --text-primary: #FFFFFF;
+            --text-secondary: #A0A0A0;
+            --text-muted: #6B6B6B;
+            --accent: #3B82F6;
+            --accent-hover: #2563EB;
+            --border: #2A2A2A;
             --success: #10B981;
             --error: #EF4444;
-            --warning: #F59E0B;
         }
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             line-height: 1.6;
-            color: var(--text);
-            background: var(--bg);
-            transition: background 0.3s, color 0.3s;
+            color: var(--text-primary);
+            background: var(--bg-primary);
+            overflow-x: hidden;
         }
         
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 0 20px;
+            padding: 0 24px;
         }
         
         /* Header */
         header {
-            background: var(--bg-alt);
+            background: rgba(10, 10, 10, 0.8);
+            backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--border);
-            padding: 1.5rem 0;
+            padding: 1.25rem 0;
             position: sticky;
             top: 0;
-            z-index: 100;
-            backdrop-filter: blur(10px);
-            background: rgba(255, 255, 255, 0.8);
-        }
-        
-        [data-theme="dark"] header {
-            background: rgba(15, 23, 42, 0.8);
+            z-index: 1000;
         }
         
         nav {
@@ -77,60 +58,142 @@
         }
         
         .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
             font-size: 1.5rem;
-            font-weight: bold;
-            color: var(--primary);
+            font-weight: 700;
+            color: var(--text-primary);
             text-decoration: none;
+        }
+        
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent), #8B5CF6);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
         }
         
         .nav-links {
             display: flex;
-            gap: 2rem;
+            gap: 2.5rem;
             align-items: center;
         }
         
         .nav-links a {
-            color: var(--text);
+            color: var(--text-secondary);
             text-decoration: none;
             font-weight: 500;
+            font-size: 0.95rem;
             transition: color 0.2s;
+            position: relative;
         }
         
         .nav-links a:hover {
-            color: var(--primary);
+            color: var(--text-primary);
+        }
+        
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--accent);
+            transition: width 0.3s;
+        }
+        
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+        
+        .btn-nav {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            padding: 0.625rem 1.25rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        
+        .btn-nav:hover {
+            background: var(--bg-secondary);
+            border-color: var(--accent);
         }
         
         .theme-toggle {
             background: none;
             border: 1px solid var(--border);
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
+            padding: 0.5rem;
+            border-radius: 8px;
             cursor: pointer;
-            color: var(--text);
-            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        
+        .theme-toggle:hover {
+            background: var(--bg-card);
+            color: var(--text-primary);
         }
         
         /* Hero Section */
         .hero {
+            padding: 8rem 0 10rem;
             text-align: center;
-            padding: 4rem 0 6rem;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
+            background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        
+        .hero-content {
+            position: relative;
+            z-index: 1;
         }
         
         .hero h1 {
-            font-size: 3.5rem;
-            margin-bottom: 1rem;
+            font-size: clamp(2.5rem, 5vw, 4rem);
             font-weight: 800;
+            margin-bottom: 1.5rem;
+            line-height: 1.1;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
         
         .hero p {
-            font-size: 1.25rem;
-            margin-bottom: 2rem;
-            opacity: 0.95;
-            max-width: 600px;
+            font-size: clamp(1rem, 2vw, 1.25rem);
+            color: var(--text-secondary);
+            margin-bottom: 2.5rem;
+            max-width: 700px;
             margin-left: auto;
             margin-right: auto;
+            line-height: 1.7;
         }
         
         .hero-buttons {
@@ -141,196 +204,285 @@
         }
         
         .btn {
-            padding: 0.75rem 2rem;
-            border-radius: 8px;
+            padding: 0.875rem 2rem;
+            border-radius: 10px;
             font-weight: 600;
             text-decoration: none;
-            display: inline-block;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s;
+            font-size: 1rem;
+            border: none;
+            cursor: pointer;
         }
         
         .btn-primary {
-            background: white;
-            color: var(--primary);
+            background: var(--text-primary);
+            color: var(--bg-primary);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(255, 255, 255, 0.2);
         }
         
         .btn-secondary {
             background: transparent;
-            color: white;
-            border: 2px solid white;
+            color: var(--text-primary);
+            border: 2px solid var(--border);
+        }
+        
+        .btn-secondary:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            transform: translateY(-2px);
         }
         
         /* Features Section */
         .features {
-            padding: 4rem 0;
-            background: var(--bg-alt);
+            padding: 6rem 0;
+            background: var(--bg-primary);
         }
         
         .section-title {
             text-align: center;
-            font-size: 2.5rem;
-            margin-bottom: 3rem;
-            color: var(--text);
+            font-size: clamp(2rem, 4vw, 3rem);
+            margin-bottom: 1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        
+        .section-subtitle {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            margin-bottom: 4rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
         }
         
         .features-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 2rem;
         }
         
         .feature-card {
-            background: var(--bg);
-            padding: 2rem;
-            border-radius: 12px;
+            background: var(--bg-card);
+            padding: 2.5rem;
+            border-radius: 16px;
             border: 1px solid var(--border);
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent), #8B5CF6);
+            transform: scaleX(0);
+            transition: transform 0.3s;
         }
         
         .feature-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            transform: translateY(-8px);
+            border-color: var(--accent);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        .feature-card:hover::before {
+            transform: scaleX(1);
         }
         
         .feature-icon {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
+            width: 60px;
+            height: 60px;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border);
         }
         
         .feature-card h3 {
-            font-size: 1.25rem;
-            margin-bottom: 0.5rem;
-            color: var(--text);
+            font-size: 1.5rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
         }
         
         .feature-card p {
-            color: var(--text-light);
+            color: var(--text-secondary);
+            line-height: 1.6;
         }
         
         /* Installation Section */
         .installation {
-            padding: 4rem 0;
+            padding: 6rem 0;
+            background: var(--bg-secondary);
         }
         
         .code-block {
-            background: var(--bg-alt);
+            background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1.5rem;
+            border-radius: 12px;
+            padding: 2rem;
             overflow-x: auto;
-            margin: 1.5rem 0;
+            margin: 2rem 0;
+            position: relative;
         }
         
         .code-block code {
-            font-family: 'Courier New', monospace;
-            color: var(--text);
-            font-size: 0.9rem;
+            font-family: 'Courier New', 'Monaco', monospace;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            line-height: 1.8;
+        }
+        
+        .code-block::before {
+            content: 'Terminal';
+            position: absolute;
+            top: 1rem;
+            right: 1.5rem;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
         
         /* Footer */
         footer {
-            background: var(--bg-alt);
+            background: var(--bg-primary);
             border-top: 1px solid var(--border);
-            padding: 2rem 0;
-            text-align: center;
-            color: var(--text-light);
+            padding: 3rem 0 2rem;
         }
         
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 3rem;
+            margin-bottom: 2rem;
+        }
+        
+        .footer-section h4 {
+            color: var(--text-primary);
             margin-bottom: 1rem;
-            flex-wrap: wrap;
+            font-weight: 600;
         }
         
-        .footer-links a {
-            color: var(--text-light);
+        .footer-section a {
+            display: block;
+            color: var(--text-secondary);
             text-decoration: none;
+            margin-bottom: 0.75rem;
+            transition: color 0.2s;
         }
         
-        .footer-links a:hover {
-            color: var(--primary);
+        .footer-section a:hover {
+            color: var(--accent);
+        }
+        
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
         }
         
         /* Responsive */
         @media (max-width: 768px) {
-            .hero h1 {
-                font-size: 2.5rem;
-            }
-            
-            .hero p {
-                font-size: 1rem;
-            }
-            
             .nav-links {
-                gap: 1rem;
+                gap: 1.5rem;
+                font-size: 0.9rem;
             }
+            
+            .hero {
+                padding: 4rem 0 6rem;
+            }
+            
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .footer-content {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+        }
+        
+        /* Smooth scroll */
+        html {
+            scroll-behavior: smooth;
         }
     </style>
 </head>
 <body>
     <header>
         <nav class="container">
-            <a href="#" class="logo">🚀 MiniStatus</a>
+            <a href="#" class="logo">
+                <div class="logo-icon">🚀</div>
+                <span>MiniStatus</span>
+            </a>
             <div class="nav-links">
                 <a href="#features">Features</a>
                 <a href="#installation">Installation</a>
                 <a href="https://github.com/LieAndSmile/MiniStatus-MVP" target="_blank">GitHub</a>
-                <button class="theme-toggle" onclick="toggleTheme()">🌓 Toggle Theme</button>
+                <button class="btn-nav">Sign up</button>
+                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌓</button>
             </div>
         </nav>
     </header>
 
     <section class="hero">
         <div class="container">
-            <h1>MiniStatus</h1>
-            <p>Lightweight, self-hosted service status dashboard for developers, homelabs, and small teams.</p>
-            <div class="hero-buttons">
-                <a href="https://github.com/LieAndSmile/MiniStatus-MVP" class="btn btn-primary" target="_blank">View on GitHub</a>
-                <a href="#installation" class="btn btn-secondary">Get Started</a>
+            <div class="hero-content">
+                <h1>Blending Simplicity and Precision for Seamless Service Monitoring</h1>
+                <p>Uncover how precision and a fervent commitment to excellence converge to create impactful and seamless service status monitoring in your infrastructure.</p>
+                <div class="hero-buttons">
+                    <a href="https://github.com/LieAndSmile/MiniStatus-MVP" class="btn btn-primary" target="_blank">
+                        Explore Repository
+                        <span>→</span>
+                    </a>
+                    <a href="#installation" class="btn btn-secondary">Get Started</a>
+                </div>
             </div>
         </div>
     </section>
 
     <section class="features" id="features">
         <div class="container">
-            <h2 class="section-title">Features</h2>
+            <h2 class="section-title">Revolutionary Features</h2>
+            <p class="section-subtitle">Plan and structure your service monitoring how you want</p>
             <div class="features-grid">
                 <div class="feature-card">
                     <div class="feature-icon">📊</div>
-                    <h3>Public Status Dashboard</h3>
-                    <p>Clean, user-friendly status page showing only public-facing services with RSS feed support.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🔄</div>
-                    <h3>Automatic Service Sync</h3>
-                    <p>Sync with systemd services, monitor local ports, and track remote hosts automatically.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🔐</div>
-                    <h3>Secure Admin Panel</h3>
-                    <p>Full-featured admin interface with bcrypt password hashing, CSRF protection, and rate limiting.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🏷️</div>
-                    <h3>Tag System</h3>
-                    <p>Organize services with tags and control public/private visibility for better service management.</p>
+                    <h3>Revolutionary</h3>
+                    <p>Plan and structure work how you want. Organize services with tags, filter by status, and customize your monitoring workflow.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">🔌</div>
-                    <h3>REST API</h3>
-                    <p>Programmatic status reporting with API key authentication for automation and integration.</p>
+                    <h3>App Integrations</h3>
+                    <p>Bring all your tools and data together. Sync with systemd, monitor ports, track remote hosts, and integrate via REST API.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">🎨</div>
-                    <h3>Dark/Light Theme</h3>
-                    <p>Automatic theme support with smooth transitions for comfortable viewing in any environment.</p>
+                    <div class="feature-icon">📈</div>
+                    <h3>Data Reporting</h3>
+                    <p>Get real-time insight into progress and allows teams to track service health, uptime, and status changes instantly.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚙️</div>
+                    <h3>Workflow Builder</h3>
+                    <p>Automated processes to coordinate your teams. Auto-tagging rules, scheduled syncs, and intelligent service discovery.</p>
                 </div>
             </div>
         </div>
@@ -339,9 +491,7 @@
     <section class="installation" id="installation">
         <div class="container">
             <h2 class="section-title">Quick Start</h2>
-            <p style="text-align: center; color: var(--text-light); margin-bottom: 2rem;">
-                Get MiniStatus running in minutes with our simple installation script.
-            </p>
+            <p class="section-subtitle">Get MiniStatus running in minutes with our simple installation script</p>
             
             <div class="code-block">
                 <code>
@@ -353,8 +503,8 @@ sudo bash scripts/install.sh<br>
                 </code>
             </div>
             
-            <p style="text-align: center; color: var(--text-light); margin-top: 2rem;">
-                The installer will set up everything automatically. Access the dashboard at <code>http://YOUR_SERVER_IP:5000</code>
+            <p style="text-align: center; color: var(--text-secondary); margin-top: 2rem;">
+                The installer will set up everything automatically. Access the dashboard at <code style="background: var(--bg-card); padding: 0.25rem 0.5rem; border-radius: 4px;">http://YOUR_SERVER_IP:5000</code>
             </p>
             
             <div style="text-align: center; margin-top: 3rem;">
@@ -365,30 +515,46 @@ sudo bash scripts/install.sh<br>
 
     <footer>
         <div class="container">
-            <div class="footer-links">
-                <a href="https://github.com/LieAndSmile/MiniStatus-MVP" target="_blank">GitHub</a>
-                <a href="https://github.com/LieAndSmile/MiniStatus-MVP/blob/main/README.md" target="_blank">Documentation</a>
-                <a href="https://github.com/LieAndSmile/MiniStatus-MVP/blob/main/LICENSE" target="_blank">License</a>
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Product</h4>
+                    <a href="#features">Features</a>
+                    <a href="#installation">Installation</a>
+                    <a href="https://github.com/LieAndSmile/MiniStatus-MVP/releases" target="_blank">Releases</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <a href="https://github.com/LieAndSmile/MiniStatus-MVP" target="_blank">GitHub</a>
+                    <a href="https://github.com/LieAndSmile/MiniStatus-MVP/blob/main/README.md" target="_blank">Documentation</a>
+                    <a href="https://github.com/LieAndSmile/MiniStatus-MVP/issues" target="_blank">Issues</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Legal</h4>
+                    <a href="https://github.com/LieAndSmile/MiniStatus-MVP/blob/main/LICENSE" target="_blank">License</a>
+                    <a href="https://github.com/LieAndSmile/MiniStatus-MVP/blob/main/README.md#security" target="_blank">Security</a>
+                </div>
             </div>
-            <p>Built with ❤️ for developers and homelab enthusiasts</p>
-            <p style="margin-top: 0.5rem; font-size: 0.9rem;">MIT License © 2024</p>
+            <div class="footer-bottom">
+                <p>Built with ❤️ for developers and homelab enthusiasts</p>
+                <p style="margin-top: 0.5rem; font-size: 0.9rem;">MIT License © 2024</p>
+            </div>
         </div>
     </footer>
 
     <script>
-        // Theme toggle
+        // Theme toggle (currently only dark, but keeping for future light mode)
         function toggleTheme() {
             const html = document.documentElement;
             const currentTheme = html.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            html.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
+            // For now, keep it dark - can add light mode later
+            // const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            // html.setAttribute('data-theme', newTheme);
+            // localStorage.setItem('theme', newTheme);
         }
 
-        // Load saved theme
-        const savedTheme = localStorage.getItem('theme') || 'light';
+        // Load saved theme (default to dark)
+        const savedTheme = localStorage.getItem('theme') || 'dark';
         document.documentElement.setAttribute('data-theme', savedTheme);
     </script>
 </body>
 </html>
-
