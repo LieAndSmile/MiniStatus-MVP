@@ -11,6 +11,7 @@ class Tag(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(32), unique=True, nullable=False)
     color = db.Column(db.String(16), default='gray')
+    is_public = db.Column(db.Boolean, default=False)  # Whether this tag should be shown on public dashboard
 
 class Service(db.Model):
     id = db.Column(db.Integer, primary_key=True)

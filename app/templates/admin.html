@@ -16,6 +16,63 @@
     {% endif %}
 {% endwith %}
 
+<!-- System Information Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+    <!-- System Health Card -->
+    <div class="bg-light-card dark:bg-dark-card rounded-lg p-6 border border-light-border dark:border-dark-border shadow-sm">
+        <div class="flex items-center gap-3 mb-4">
+            <svg class="w-6 h-6 text-light-primary dark:text-dark-primary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            <h2 class="text-lg font-semibold text-light-text dark:text-dark-text">System Health</h2>
+        </div>
+        <div class="space-y-2 text-sm">
+            <div class="flex justify-between items-center">
+                <span class="text-light-muted dark:text-dark-muted">CPU:</span>
+                <span class="font-mono font-medium text-light-text dark:text-dark-text">{{ system_stats.cpu }}%</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-light-muted dark:text-dark-muted">RAM:</span>
+                <span class="font-mono font-medium text-light-text dark:text-dark-text">{{ system_stats.ram }}%</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-light-muted dark:text-dark-muted">Disk:</span>
+                <span class="font-mono font-medium text-light-text dark:text-dark-text">{{ system_stats.disk }}%</span>
+            </div>
+            <div class="flex justify-between items-center pt-2 border-t border-light-border dark:border-dark-border">
+                <span class="text-light-muted dark:text-dark-muted">Uptime:</span>
+                <span class="font-mono text-xs text-light-text dark:text-dark-text">{{ system_stats.uptime }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Identity Card -->
+    <div class="bg-light-card dark:bg-dark-card rounded-lg p-6 border border-light-border dark:border-dark-border shadow-sm">
+        <div class="flex items-center gap-3 mb-4">
+            <svg class="w-6 h-6 text-light-primary dark:text-dark-primary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <h2 class="text-lg font-semibold text-light-text dark:text-dark-text">System Identity</h2>
+        </div>
+        <div class="space-y-2 text-sm">
+            <div class="flex justify-between items-center">
+                <span class="text-light-muted dark:text-dark-muted">Hostname:</span>
+                <span class="font-mono font-medium text-light-text dark:text-dark-text">{{ system_identity.hostname }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-light-muted dark:text-dark-muted">OS:</span>
+                <span class="font-mono text-xs text-light-text dark:text-dark-text">{{ system_identity.os }}</span>
+            </div>
+            <div class="pt-2 border-t border-light-border dark:border-dark-border">
+                <div class="flex justify-between items-start">
+                    <span class="text-light-muted dark:text-dark-muted text-xs">Kernel:</span>
+                    <span class="font-mono text-xs text-light-text dark:text-dark-text text-right ml-2">{{ system_identity.kernel }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Metrics Overview -->
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
     {{ metric_card(

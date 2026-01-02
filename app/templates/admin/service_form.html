@@ -5,6 +5,7 @@
 {% block content %}
 <div class="max-w-2xl mx-auto">
     <form action="{% if edit_mode %}{{ url_for('admin.edit_service', service_id=service.id) }}{% else %}{{ url_for('admin.add_service') }}{% endif %}" method="POST" class="space-y-6">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <div class="bg-light-card dark:bg-dark-card rounded-lg p-6 border border-light-border dark:border-dark-border">
             <!-- Service Name -->
             <div class="mb-4">

@@ -25,6 +25,7 @@
     <div id="addHostForm" class="hidden">
         <form action="{{ url_for('remote.add_host') }}" method="POST" 
               class="bg-light-card dark:bg-dark-card p-6 rounded-lg shadow-lg border border-light-border dark:border-dark-border">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="text-light-text dark:text-dark-text text-sm font-medium mb-2" for="name">Service Name</label>
@@ -116,6 +117,7 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm">
                         <form action="{{ url_for('remote.delete_host', service_id=service.id) }}" method="POST" class="inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <button type="submit" class="text-status-down-light dark:text-status-down-dark hover:text-status-down-light/80 dark:hover:text-status-down-dark/80 transition-colors duration-200">Delete</button>
                         </form>
                     </td>

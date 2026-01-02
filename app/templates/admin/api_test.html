@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block header %}API Testing{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+  <div class="bg-light-card dark:bg-dark-card rounded-xl shadow-lg p-6 border border-light-border dark:border-dark-border mb-6">
+    <h2 class="text-xl font-semibold text-light-text dark:text-dark-text mb-4">Test API Endpoints</h2>
+    <p class="text-sm text-light-muted dark:text-dark-muted mb-6">
+      Test the API endpoints directly from your browser. Your API key is automatically loaded from the configuration.
+    </p>
+
+    <!-- API Key Display -->
+    <div class="bg-light-bg dark:bg-dark-bg rounded-lg p-4 mb-6 border border-light-border dark:border-dark-border">
+      <label class="block text-sm font-medium text-light-text dark:text-dark-text mb-2">Your API Key:</label>
+      <div class="flex items-center gap-2">
+        <input type="text" 
+               id="api-key" 
+               value="{{ api_key }}" 
+               readonly 
+               class="flex-1 px-3 py-2 bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-lg text-light-text dark:text-dark-text font-mono text-sm">
+        <button onclick="copyApiKey()" 
+                class="px-4 py-2 bg-light-primary dark:bg-dark-primary text-white rounded-lg hover:bg-light-accent dark:hover:bg-dark-accent transition-colors text-sm">
+          Copy
+        </button>
+      </div>
+    </div>
+
+    <!-- Report Service Status Form -->
+    <div class="bg-light-bg dark:bg-dark-bg rounded-lg p-6 border border-light-border dark:border-dark-border mb-6">
+      <h3 class="text-lg font-semibold text-light-text dark:text-dark-text mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5 text-light-primary dark:text-dark-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        Report Service Status
+      </h3>
+      
+      <form id="report-form" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-light-text dark:text-dark-text mb-2">Service Name *</label>
+            <input type="text" 
+                   id="service-name" 
+                   required
+                   placeholder="e.g., nginx, api-server"
+                   class="w-full px-3 py-2 bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-lg text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary">
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-light-text dark:text-dark-text mb-2">Status *</label>
+            <select id="service-status" 
+                    required
+                    class="w-full px-3 py-2 bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-lg text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary">
+              <option value="up">Up</option>
+              <option value="down">Down</option>
+              <option value="degraded">Degraded</option>
+            </select>
+          </div>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium text-light-text dark:text-dark-text mb-2">Description (optional)</label>
+          <input type="text" 
+                 id="service-description" 
+                 placeholder="e.g., Web server running on port 80"
+                 class="w-full px-3 py-2 bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-lg text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary">
+        </div>
+        
+        <button type="submit" 
+                class="w-full px-4 py-2 bg-light-primary dark:bg-dark-primary text-white rounded-lg hover:bg-light-accent dark:hover:bg-dark-accent transition-colors font-medium">
+          Send Request
+        </button>
+      </form>
+      
+      <!-- Response Display -->
+      <div id="report-response" class="mt-4 hidden">
+        <div class="bg-light-card dark:bg-dark-card rounded-lg p-4 border border-light-border dark:border-dark-border">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-light-text dark:text-dark-text">Response:</span>
+            <span id="report-status" class="px-2 py-1 rounded text-xs font-medium"></span>
+          </div>
+          <pre id="report-response-body" class="text-xs bg-light-bg dark:bg-dark-bg p-3 rounded border border-light-border dark:border-dark-border overflow-x-auto text-light-text dark:text-dark-text"></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Test Examples -->
+    <div class="bg-light-bg dark:bg-dark-bg rounded-lg p-6 border border-light-border dark:border-dark-border">
+      <h3 class="text-lg font-semibold text-light-text dark:text-dark-text mb-4">Quick Test Examples</h3>
+      <div class="space-y-2">
+        <button onclick="fillExample('test-service-1', 'up', 'Test service running normally')" 
+                class="w-full text-left px-4 py-2 bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border hover:bg-light-hover dark:hover:bg-dark-hover transition-colors text-sm text-light-text dark:text-dark-text">
+          📝 Example 1: Service Up
+        </button>
+        <button onclick="fillExample('test-service-2', 'down', 'Service experiencing issues')" 
+                class="w-full text-left px-4 py-2 bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border hover:bg-light-hover dark:hover:bg-dark-hover transition-colors text-sm text-light-text dark:text-dark-text">
+          📝 Example 2: Service Down
+        </button>
+        <button onclick="fillExample('test-service-3', 'degraded', 'Service running with reduced performance')" 
+                class="w-full text-left px-4 py-2 bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border hover:bg-light-hover dark:hover:bg-dark-hover transition-colors text-sm text-light-text dark:text-dark-text">
+          📝 Example 3: Service Degraded
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- API Documentation -->
+  <div class="bg-light-card dark:bg-dark-card rounded-xl shadow-lg p-6 border border-light-border dark:border-dark-border">
+    <h2 class="text-xl font-semibold text-light-text dark:text-dark-text mb-4">API Documentation</h2>
+    
+    <div class="space-y-4">
+      <div>
+        <h3 class="font-semibold text-light-text dark:text-dark-text mb-2">Endpoint: POST /api/report</h3>
+        <p class="text-sm text-light-muted dark:text-dark-muted mb-2">Report or update a service status.</p>
+        <div class="bg-light-bg dark:bg-dark-bg rounded p-3 border border-light-border dark:border-dark-border">
+          <code class="text-xs text-light-text dark:text-dark-text">
+            POST {{ request.url_root }}api/report<br>
+            Headers: X-API-Key: YOUR_API_KEY<br>
+            Body: {"name": "service-name", "status": "up|down|degraded", "description": "optional"}
+          </code>
+        </div>
+      </div>
+      
+      <div>
+        <h3 class="font-semibold text-light-text dark:text-dark-text mb-2">Rate Limits</h3>
+        <ul class="text-sm text-light-muted dark:text-dark-muted list-disc list-inside space-y-1">
+          <li>API /api/report: 60 requests per minute</li>
+          <li>Login attempts: 5 attempts per minute</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const apiKey = document.getElementById('api-key').value;
+const baseUrl = window.location.origin;
+
+function copyApiKey() {
+  const apiKeyInput = document.getElementById('api-key');
+  apiKeyInput.select();
+  document.execCommand('copy');
+  
+  const button = event.target;
+  const originalText = button.textContent;
+  button.textContent = 'Copied!';
+  button.classList.add('bg-green-500');
+  setTimeout(() => {
+    button.textContent = originalText;
+    button.classList.remove('bg-green-500');
+  }, 2000);
+}
+
+function fillExample(name, status, description) {
+  document.getElementById('service-name').value = name;
+  document.getElementById('service-status').value = status;
+  document.getElementById('service-description').value = description;
+}
+
+document.getElementById('report-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const name = document.getElementById('service-name').value;
+  const status = document.getElementById('service-status').value;
+  const description = document.getElementById('service-description').value;
+  
+  const responseDiv = document.getElementById('report-response');
+  const statusBadge = document.getElementById('report-status');
+  const responseBody = document.getElementById('report-response-body');
+  
+  // Show loading state
+  responseDiv.classList.remove('hidden');
+  statusBadge.textContent = 'Loading...';
+  statusBadge.className = 'px-2 py-1 rounded text-xs font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
+  responseBody.textContent = 'Sending request...';
+  
+  try {
+    const response = await fetch(`${baseUrl}/api/report`, {
+      method: 'POST',
+      headers: {
+        'X-API-Key': apiKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: name,
+        status: status,
+        description: description || undefined
+      })
+    });
+    
+    const data = await response.json();
+    const statusCode = response.status;
+    
+    // Update status badge
+    if (statusCode === 200) {
+      statusBadge.textContent = `Success (${statusCode})`;
+      statusBadge.className = 'px-2 py-1 rounded text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200';
+    } else {
+      statusBadge.textContent = `Error (${statusCode})`;
+      statusBadge.className = 'px-2 py-1 rounded text-xs font-medium bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200';
+    }
+    
+    // Show response
+    responseBody.textContent = JSON.stringify(data, null, 2);
+    
+    // If successful, suggest checking the dashboard
+    if (statusCode === 200) {
+      setTimeout(() => {
+        if (confirm('Service updated successfully! Would you like to view it in the dashboard?')) {
+          window.location.href = `${baseUrl}/admin/`;
+        }
+      }, 500);
+    }
+  } catch (error) {
+    statusBadge.textContent = 'Error';
+    statusBadge.className = 'px-2 py-1 rounded text-xs font-medium bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200';
+    responseBody.textContent = `Error: ${error.message}`;
+  }
+});
+</script>
+{% endblock %}
+

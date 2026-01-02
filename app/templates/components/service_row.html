@@ -23,6 +23,7 @@
             <span class="text-xs text-light-muted dark:text-dark-muted">{{ service.host }}:{{ service.port }}</span>
             {% endif %}
             <form action="{{ url_for('admin.update_service', service_id=service.id) }}" method="POST" class="inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <input type="hidden" name="status" value="{% if service.status == 'up' %}down{% else %}up{% endif %}">
                 <button type="submit" class="p-2 rounded-lg hover:bg-light-hover dark:hover:bg-dark-hover text-light-muted dark:text-dark-muted hover:text-light-text dark:hover:text-dark-text transition-colors duration-200">
                     {% if service.status == 'up' %}
@@ -37,6 +38,7 @@
                 </button>
             </form>
             <form action="{{ url_for('admin.delete_service', service_id=service.id) }}" method="POST" class="inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <button type="submit" class="p-2 rounded-lg hover:bg-light-hover dark:hover:bg-dark-hover text-light-muted dark:text-dark-muted hover:text-light-text dark:hover:text-dark-text transition-colors duration-200">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

@@ -27,6 +27,7 @@ select.custom-select:focus {
 <div class="max-w-2xl mx-auto">
     <h2 class="text-lg font-semibold mb-4">Add Auto-Tag Rule</h2>
     <form method="post" action="{{ url_for('admin.manage_auto_tag_rules') }}" class="flex flex-wrap gap-2 mb-6 items-end">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <input name="tag_name" placeholder="Tag name" maxlength="32" required class="px-2 py-1 border border-light-border dark:border-dark-border rounded bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text">
         <select name="rule_type" required class="custom-select px-2 py-1 border border-light-border dark:border-dark-border rounded bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text">
             <option value="">Rule Type</option>
@@ -62,6 +63,7 @@ select.custom-select:focus {
                 <td class="p-2">{{ rule.rule_value }}</td>
                 <td class="p-2">
                     <form method="post" action="{{ url_for('admin.toggle_auto_tag_rule', rule_id=rule.id) }}" style="display:inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <button type="submit" class="px-2 py-1 rounded text-white {{ 'bg-green-600 hover:bg-green-700' if rule.enabled else 'bg-gray-400 hover:bg-gray-500' }}">
                             {{ 'Yes' if rule.enabled else 'No' }}
                         </button>
@@ -70,6 +72,7 @@ select.custom-select:focus {
                 <td class="p-2 flex gap-2">
                     <a href="{{ url_for('admin.edit_auto_tag_rule', rule_id=rule.id) }}" class="px-2 py-1 bg-yellow-500 hover:bg-yellow-600 text-white rounded">Edit</a>
                     <form method="post" action="{{ url_for('admin.delete_auto_tag_rule', rule_id=rule.id) }}" style="display:inline;" onsubmit="return confirm('Delete this rule?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <button type="submit" class="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded">Delete</button>
                     </form>
                 </td>
