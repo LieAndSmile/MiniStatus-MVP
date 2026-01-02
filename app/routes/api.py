@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from app.models import Service
-from app.extensions import db
+from app.extensions import db, limiter
 from datetime import datetime
 import os
 from app.utils.ports import scan_ports
@@ -8,6 +8,7 @@ from app.utils.ports import scan_ports
 api_bp = Blueprint("api", __name__, url_prefix='/api')
 
 @api_bp.route("/report", methods=["POST"])
+@limiter.limit("60 per minute")
 def report_status():
     api_key = request.headers.get("X-API-Key")
     expected_key = os.getenv("API_KEY", "supersecret")

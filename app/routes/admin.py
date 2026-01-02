@@ -1,9 +1,10 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from datetime import datetime
 from app.models import Service, Tag, AutoTagRule
-from app.extensions import db
+from app.extensions import db, limiter
 from app.utils.system_check import has_systemctl
 from app.utils.password import verify_password, update_password_in_env
+from app.utils.helpers import get_system_stats, get_system_identity
 from functools import wraps
 import os
 from dotenv import load_dotenv
@@ -12,20 +13,29 @@ from app.utils.auto_tag import get_auto_tagged_for_service
 admin_bp = Blueprint("admin", __name__, url_prefix='/admin')
 
 DEFAULT_TAGS = [
-    {"name": "networking", "color": "#6366f1"},
-    {"name": "database", "color": "#10b981"},
-    {"name": "internal", "color": "#64748b"},
-    {"name": "external", "color": "#f59e42"},
-    {"name": "critical", "color": "#ef4444"},
-    {"name": "n8n", "color": "#ff7300"},
-    {"name": "optional", "color": "#a3e635"},
+    {"name": "networking", "color": "#6366f1", "is_public": False},
+    {"name": "database", "color": "#10b981", "is_public": False},
+    {"name": "internal", "color": "#64748b", "is_public": False},
+    {"name": "external", "color": "#f59e42", "is_public": True},  # Public-facing
+    {"name": "critical", "color": "#ef4444", "is_public": True},  # Public-facing
+    {"name": "n8n", "color": "#ff7300", "is_public": False},
+    {"name": "optional", "color": "#a3e635", "is_public": True},  # Public-facing
+    {"name": "core", "color": "#3b82f6", "is_public": True},  # Public-facing - for core services
 ]
 
 def ensure_default_tags():
     from app.models import Tag
     for tag in DEFAULT_TAGS:
-        if not Tag.query.filter_by(name=tag["name"]).first():
-            db.session.add(Tag(name=tag["name"], color=tag["color"]))
+        existing = Tag.query.filter_by(name=tag["name"]).first()
+        if not existing:
+            # Safely create tag with is_public if column exists
+            tag_obj = Tag(name=tag["name"], color=tag["color"])
+            if hasattr(Tag, 'is_public'):
+                tag_obj.is_public = tag.get("is_public", False)
+            db.session.add(tag_obj)
+        elif hasattr(existing, 'is_public') and existing.is_public != tag.get("is_public", False):
+            # Update is_public if it changed in defaults
+            existing.is_public = tag.get("is_public", False)
     db.session.commit()
 
 def admin_required(f):
@@ -68,15 +78,23 @@ def dashboard():
         }
         auto_tags = get_auto_tagged_for_service(svc_data)
         auto_tagged_map[svc.id] = auto_tags
+    
+    # Get system information for admin dashboard
+    system_stats = get_system_stats()
+    system_identity = get_system_identity()
+    
     return render_template("admin.html",
                          services=services,
                          tags=tags,
                          selected_tag_ids=tag_ids,
                          no_tags=no_tags,
                          has_systemctl=has_systemctl(),
-                         auto_tagged_map=auto_tagged_map)
+                         auto_tagged_map=auto_tagged_map,
+                         system_stats=system_stats,
+                         system_identity=system_identity)
 
 @admin_bp.route("/login", methods=["GET", "POST"])
+@limiter.limit("5 per minute", error_message="Too many login attempts. Please wait a minute before trying again.")
 def login():
     if request.method == "POST":
         username = request.form.get('username')
@@ -178,12 +196,13 @@ def manage_tags():
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
         color = request.form.get('color', 'gray').strip()
+        is_public = bool(request.form.get('is_public'))
         if not name or len(name) > 32 or not name.isalnum():
             flash('Invalid tag name.', 'danger')
         elif Tag.query.filter_by(name=name).first():
             flash('Tag already exists.', 'danger')
         else:
-            tag = Tag(name=name, color=color)
+            tag = Tag(name=name, color=color, is_public=is_public)
             db.session.add(tag)
             db.session.commit()
             flash('Tag added.', 'success')
@@ -256,6 +275,13 @@ def toggle_auto_tag_rule(rule_id):
 @admin_required
 def help_page():
     return render_template('admin/help.html')
+
+@admin_bp.route('/api-test')
+@admin_required
+def api_test():
+    """API testing interface"""
+    api_key = os.getenv('API_KEY', 'not-configured')
+    return render_template('admin/api_test.html', api_key=api_key)
 
 @admin_bp.route('/change-password', methods=['GET', 'POST'])
 @admin_required

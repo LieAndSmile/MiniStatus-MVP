@@ -6,15 +6,20 @@ Built with Flask and SQLite. No Prometheus. No Grafana. Just clean uptime visibi
 
 ## Features
 
-- Service status tracking (manual and API)
-- Systemd service sync
-- Local port monitoring
-- Remote host monitoring
-- Admin panel with secure authentication (bcrypt password hashing)
-- Password management via web UI
-- Auto-tagging system
-- Dark/Light theme support
-- REST API for status reporting
+- **Public Status Dashboard** - Clean, user-friendly status page showing only public-facing services
+- **Service Status Tracking** - Manual and API-based status reporting
+- **Systemd Service Sync** - Automatic synchronization with systemd services
+- **Local Port Monitoring** - Real-time port status tracking
+- **Remote Host Monitoring** - Monitor services on remote servers
+- **Admin Panel** - Full-featured admin interface with secure authentication
+- **Password Security** - bcrypt password hashing with in-app password management
+- **Tag System** - Organize services with tags (public/private visibility control)
+- **Auto-Tagging** - Automatic service tagging based on rules
+- **RSS Feed** - Subscribe to status updates via RSS (`/feed.xml`)
+- **CSRF Protection** - Built-in CSRF protection for all forms
+- **Rate Limiting** - Protection against brute force attacks
+- **Dark/Light Theme** - Automatic theme support
+- **REST API** - Programmatic status reporting
 
 ## Quick Start
 
@@ -34,10 +39,11 @@ The app runs as a systemd service and auto-starts on boot.
 
 ### Access
 
-- Public dashboard: `http://YOUR_SERVER_IP:5000`
-- Admin panel: `http://YOUR_SERVER_IP:5000/admin/login`
+- **Public Dashboard:** `http://YOUR_SERVER_IP:5000` - Clean status page for external users
+- **RSS Feed:** `http://YOUR_SERVER_IP:5000/feed.xml` - Subscribe to status updates
+- **Admin Panel:** `http://YOUR_SERVER_IP:5000/admin/login` - Full admin interface
 
-Default credentials: `admin` / `admin123` (change via Settings → Change Password in admin panel)
+**Default credentials:** `admin` / `admin123` (change via Settings → Change Password in admin panel)
 
 **Important:** Passwords are automatically hashed using bcrypt for security. You can change your password through the admin panel's Settings menu.
 
@@ -61,14 +67,21 @@ SECRET_KEY=your-secret-key
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=your-password-hash  # Automatically hashed with bcrypt
 API_KEY=your-api-key
+
+# Public Dashboard Configuration (optional)
+PUBLIC_REGION=US-East  # Region badge on public dashboard
+PUBLIC_ENVIRONMENT=Production  # Environment badge (Production/Staging/Development)
 ```
 
-### Security Notes
+### Security Features
 
 - **Password Hashing:** Passwords in `.env` are automatically hashed using bcrypt when the app starts
 - **Password Changes:** Change your password via the admin panel (Settings → Change Password) - no need to edit `.env` manually
 - **Migration:** Existing plain text passwords are automatically converted to hashed passwords on first app startup
-- **Manual Edit:** If you manually edit `ADMIN_PASSWORD` in `.env`, it will be automatically hashed on the next app restart
+- **CSRF Protection:** All forms are protected against Cross-Site Request Forgery attacks
+- **Rate Limiting:** Login attempts and API endpoints are rate-limited to prevent abuse
+  - Login: 5 attempts per minute
+  - API `/api/report`: 60 requests per minute
 
 ### YAML Configuration Files
 
@@ -77,6 +90,20 @@ Place configuration files in the `config/` directory:
 - `config/auto_tag_rules.yaml` - Auto-tagging rules
 - `config/quick_links.yaml` - Quick links panel
 - `config/services.yaml` - Service definitions (optional)
+
+## RSS Feed
+
+Subscribe to status updates via RSS:
+
+- **Feed URL:** `http://YOUR_SERVER_IP:5000/feed.xml`
+- **Alternative URL:** `http://YOUR_SERVER_IP:5000/rss` (redirects to `/feed.xml`)
+
+The RSS feed includes:
+- Incident announcements (active and resolved)
+- Service status changes
+- Real-time updates
+
+**Note:** Only public-facing incidents are included in the RSS feed.
 
 ## API
 
@@ -89,11 +116,78 @@ curl -X POST http://YOUR_SERVER_IP:5000/api/report \
   -d '{"name":"nginx","status":"up","description":"Web server"}'
 ```
 
+**Rate Limit:** 60 requests per minute
+
+**Response:**
+```json
+{
+  "message": "Service 'nginx' updated to 'up'"
+}
+```
+
+### Testing the API
+
+**Option 1: Use the Web UI (easiest - recommended)**
+
+1. Log in to the admin panel
+2. Go to **Settings → API Testing**
+3. Fill in the form (service name, status, description)
+4. Click **Send Request**
+5. See the response instantly!
+
+The API key is automatically loaded from your configuration, so you don't need to copy/paste it.
+
+**Option 2: Use the test script**
+
+```bash
+# From the MiniStatus directory
+./test_api.sh
+
+# Or specify a different server
+./test_api.sh 192.168.1.100 5000
+```
+
+**Option 3: Manual testing with curl**
+
+1. **Find your API key:**
+   ```bash
+   grep API_KEY .env
+   ```
+
+2. **Test the API:**
+   ```bash
+   curl -X POST http://127.0.0.1:5000/api/report \
+     -H "X-API-Key: YOUR_API_KEY_HERE" \
+     -H "Content-Type: application/json" \
+     -d '{"name":"my-service","status":"up","description":"My test service"}'
+   ```
+
+3. **What to expect:**
+   - ✅ **Success (200):** `{"message": "Service 'my-service' updated to 'up'"}`
+   - ❌ **Wrong API key (401):** `{"error": "Invalid API key"}`
+   - ❌ **Missing data (400):** Error message about missing fields
+
+4. **Check the result:**
+   - Go to `http://127.0.0.1:5000/admin/dashboard`
+   - You should see "my-service" in the service list!
+
+**Option 3: Test from another computer**
+
+Replace `127.0.0.1` with your server's IP address:
+```bash
+curl -X POST http://YOUR_SERVER_IP:5000/api/report \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"remote-service","status":"up"}'
+```
+
 ### Scan Ports
 
 ```bash
 curl http://YOUR_SERVER_IP:5000/api/ports/scan
 ```
+
+**Note:** API endpoints are exempt from CSRF protection (they use API keys for authentication).
 
 ## Development
 
@@ -122,6 +216,8 @@ python run.py
 - SQLAlchemy 2.0.40
 - psutil, PyYAML, requests
 - bcrypt (for password hashing)
+- Flask-WTF (for CSRF protection)
+- Flask-Limiter (for rate limiting)
 
 ## Deployment
 
@@ -139,6 +235,35 @@ To uninstall the service:
 sudo bash uninstall.sh
 ```
 
+## Public Dashboard
+
+The public dashboard (`/`) is designed for external users and shows only **public-facing services**.
+
+### Features
+
+- **Clean Status Overview** - Global status banner with uptime percentage
+- **Grouped by Tags** - Services organized by public-facing tags
+- **Active Incidents** - Prominent display of unresolved incidents
+- **RSS Subscription** - Subscribe to status updates via RSS feed
+- **Region/Environment Badges** - Configurable via environment variables
+
+### Making Services Public
+
+To show services on the public dashboard:
+
+1. Go to **Admin → Tags**
+2. Create or edit a tag
+3. Check **"Show on public dashboard"** (this makes the tag public-facing)
+4. Tag your services with public tags
+
+**Default Public Tags:**
+- `core` - Core services
+- `critical` - Critical services
+- `external` - External dependencies
+- `optional` - Optional services
+
+**Note:** Services without public tags are **not shown** on the public dashboard (they remain visible only in the admin panel).
+
 ## Admin Panel
 
 ### Navigation Structure
@@ -148,13 +273,38 @@ sudo bash uninstall.sh
 - Ports - Port monitoring dashboard
 
 **Admin Section (requires login):**
-- Admin Dashboard - Full admin control panel
+- Admin Dashboard - Full admin control panel with system health info
 - Remote Hosts - Remote service monitoring
-- Tags - Service tag management
+- Tags - Service tag management (with public/private visibility)
 - Auto-Tag Rules - Automatic tagging configuration
 - Settings (collapsible menu)
   - Change Password - Update admin password via web UI
+  - API Testing - Test API endpoints directly from the browser
 - Logout - Sign out of admin session
+
+### Managing Tags
+
+Tags help organize services and control what appears on the public dashboard.
+
+**Creating Public Tags:**
+1. Go to **Admin → Tags**
+2. Enter tag name and color
+3. Check **"Show on public dashboard"** to make it public-facing
+4. Click **Add**
+
+**Tag Visibility:**
+- **Public tags** - Services with these tags appear on the public dashboard
+- **Private tags** - Services with only private tags are admin-only
+
+**Default Tags:**
+- `core` (public) - Core services
+- `critical` (public) - Critical services  
+- `external` (public) - External dependencies
+- `optional` (public) - Optional services
+- `networking` (private) - Network services
+- `database` (private) - Database services
+- `internal` (private) - Internal services
+- `n8n` (private) - n8n automation services
 
 ### Changing Your Password
 
@@ -170,17 +320,39 @@ The new password will be automatically hashed and saved. No need to restart the 
 
 ```
 MiniStatus-MVP/
-├── app/              # Application code
-│   ├── routes/       # Flask blueprints
-│   ├── models.py     # Database models
-│   ├── services/     # Business logic
-│   └── utils/        # Utilities
-│       └── password.py  # Password hashing utilities
-├── config/           # YAML configuration files
-├── run.py            # Application entry point
-├── install.sh        # Installation script
-└── requirements.txt  # Python dependencies
+├── app/                    # Application code
+│   ├── routes/             # Flask blueprints
+│   │   ├── admin.py        # Admin routes
+│   │   ├── public.py       # Public dashboard & RSS feed
+│   │   ├── api.py          # API endpoints
+│   │   ├── sync.py         # Service synchronization
+│   │   ├── remote.py       # Remote host monitoring
+│   │   └── ports.py        # Port monitoring
+│   ├── templates/          # Jinja2 templates
+│   │   ├── public/         # Public dashboard templates
+│   │   └── admin/           # Admin panel templates
+│   ├── models.py           # Database models (Service, Tag, Incident)
+│   ├── services/           # Business logic
+│   ├── utils/              # Utilities
+│   │   ├── password.py      # Password hashing utilities
+│   │   └── helpers.py      # Helper functions
+│   └── extensions.py       # Flask extensions (db, csrf, limiter)
+├── config/                  # YAML configuration files
+├── run.py                   # Application entry point
+├── install.sh               # Installation script
+└── requirements.txt         # Python dependencies
 ```
+
+## Database Schema
+
+The application uses SQLite by default. Key tables:
+
+- **Service** - Service status information
+- **Tag** - Service tags (with `is_public` field for public dashboard visibility)
+- **Incident** - Incident tracking
+- **AutoTagRule** - Auto-tagging rules
+
+**Migration:** The app automatically migrates the database schema on startup (e.g., adds `is_public` column to Tag table if missing).
 
 ## License
 

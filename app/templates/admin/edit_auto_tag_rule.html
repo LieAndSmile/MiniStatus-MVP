@@ -5,6 +5,7 @@
 {% block content %}
 <div class="max-w-xl mx-auto">
     <form method="post" action="" class="space-y-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <div>
             <label class="block text-sm font-medium mb-1">Tag Name</label>
             <input name="tag_name" value="{{ rule.tag_name }}" maxlength="32" required class="w-full px-2 py-1 border rounded">
