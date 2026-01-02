@@ -21,12 +21,33 @@ def remote_dashboard():
 @admin_required
 def sync_remote():
     """Trigger remote host sync"""
-    updated_services, error = ServiceSync.sync_remote_hosts()
-    if error:
-        flash(error, 'error')
-        return redirect(url_for('remote.remote_dashboard'))
+    try:
+        updated_services, error = ServiceSync.sync_remote_hosts()
+        if error:
+            flash(error, 'error')
+            return redirect(url_for('remote.remote_dashboard'))
+        
+        # Calculate summary statistics
+        total = len(updated_services)
+        up_count = len([s for s in updated_services if '→ up' in s or 'up' in s.lower()])
+        down_count = len([s for s in updated_services if '→ down' in s or 'down' in s.lower()])
+        
+        if total == 0:
+            flash('No remote services to sync.', 'info')
+        else:
+            summary = f"Synced {total} remote service{'s' if total != 1 else ''}"
+            if up_count > 0 or down_count > 0:
+                status_parts = []
+                if up_count > 0:
+                    status_parts.append(f"{up_count} up")
+                if down_count > 0:
+                    status_parts.append(f"{down_count} down")
+                if status_parts:
+                    summary += f" ({', '.join(status_parts)})"
+            flash(summary, 'success')
+    except Exception as e:
+        flash(f'Error syncing remote hosts: {str(e)}', 'error')
     
-    flash(f'Successfully updated {len(updated_services)} remote services', 'success')
     return redirect(url_for('remote.remote_dashboard'))
 
 @remote_bp.route('/remote/add', methods=['POST'])

@@ -5,13 +5,11 @@
 {% block header %}Admin Dashboard{% endblock %}
 
 {% block content %}
-<!-- Flash Messages -->
+<!-- Flash Messages (converted to toasts) -->
 {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
         {% for category, message in messages %}
-            <div class="rounded-lg p-4 mb-4 {% if category == 'error' %}bg-status-down-light dark:bg-status-down-dark bg-opacity-10 dark:bg-opacity-10 border border-status-down-light dark:border-status-down-dark text-status-down-light dark:text-status-down-dark{% else %}bg-status-up-light dark:bg-status-up-dark bg-opacity-10 dark:bg-opacity-10 border border-status-up-light dark:border-status-up-dark text-status-up-light dark:text-status-up-dark{% endif %}">
-                {{ message }}
-            </div>
+            <div data-flash-message data-flash-category="{{ category }}" style="display: none;">{{ message }}</div>
         {% endfor %}
     {% endif %}
 {% endwith %}

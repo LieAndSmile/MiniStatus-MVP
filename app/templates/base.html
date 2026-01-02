@@ -309,5 +309,83 @@
       {% block content %}{% endblock %}
     </main>
   </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+  <script>
+    // Toast notification system
+    function showToast(message, type = 'success', duration = 5000) {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      // Color scheme based on type
+      const colors = {
+        success: {
+          bg: 'bg-status-up-light dark:bg-status-up-dark',
+          border: 'border-status-up-light dark:border-status-up-dark',
+          text: 'text-white',
+          icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>'
+        },
+        error: {
+          bg: 'bg-status-down-light dark:bg-status-down-dark',
+          border: 'border-status-down-light dark:border-status-down-dark',
+          text: 'text-white',
+          icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>'
+        },
+        info: {
+          bg: 'bg-blue-500 dark:bg-blue-600',
+          border: 'border-blue-500 dark:border-blue-600',
+          text: 'text-white',
+          icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>'
+        }
+      };
+      
+      const style = colors[type] || colors.success;
+      
+      toast.className = `${style.bg} ${style.text} ${style.border} border-2 rounded-lg shadow-lg p-4 min-w-[300px] max-w-md flex items-start gap-3 transform transition-all duration-300 translate-x-full opacity-0`;
+      toast.innerHTML = `
+        <div class="flex-shrink-0">${style.icon}</div>
+        <div class="flex-1">
+          <p class="font-medium">${message}</p>
+        </div>
+        <button onclick="this.parentElement.remove()" class="flex-shrink-0 text-white/80 hover:text-white">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      `;
+      
+      container.appendChild(toast);
+      
+      // Animate in
+      setTimeout(() => {
+        toast.classList.remove('translate-x-full', 'opacity-0');
+        toast.classList.add('translate-x-0', 'opacity-100');
+      }, 10);
+      
+      // Auto-dismiss
+      setTimeout(() => {
+        toast.classList.add('translate-x-full', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, duration);
+    }
+
+    // Convert flash messages to toasts on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      const flashMessages = document.querySelectorAll('[data-flash-message]');
+      flashMessages.forEach(element => {
+        const message = element.textContent.trim();
+        const category = element.getAttribute('data-flash-category') || 'success';
+        const type = category === 'error' ? 'error' : category === 'info' ? 'info' : 'success';
+        
+        // Show toast
+        showToast(message, type, 6000);
+        
+        // Hide the original flash message
+        element.style.display = 'none';
+      });
+    });
+  </script>
 </body>
 </html>
