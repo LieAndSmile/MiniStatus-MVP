@@ -7,6 +7,7 @@ from app.extensions import db
 remote_bp = Blueprint('remote', __name__)
 
 @remote_bp.route('/remote')
+@admin_required
 def remote_dashboard():
     """Display remote hosts monitoring dashboard"""
     services = Service.query.filter(

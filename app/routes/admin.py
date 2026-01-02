@@ -3,8 +3,10 @@ from datetime import datetime
 from app.models import Service, Tag, AutoTagRule
 from app.extensions import db
 from app.utils.system_check import has_systemctl
+from app.utils.password import verify_password, update_password_in_env
 from functools import wraps
 import os
+from dotenv import load_dotenv
 from app.utils.auto_tag import get_auto_tagged_for_service
 
 admin_bp = Blueprint("admin", __name__, url_prefix='/admin')
@@ -80,7 +82,11 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         
-        if username == os.getenv('ADMIN_USERNAME') and password == os.getenv('ADMIN_PASSWORD'):
+        stored_username = os.getenv('ADMIN_USERNAME')
+        stored_password = os.getenv('ADMIN_PASSWORD')
+        
+        # Verify username and password (password is hashed)
+        if username == stored_username and stored_password and verify_password(password, stored_password):
             session['authenticated'] = True
             flash('Successfully logged in!', 'success')
             return redirect(url_for('admin.dashboard'))
@@ -250,3 +256,43 @@ def toggle_auto_tag_rule(rule_id):
 @admin_required
 def help_page():
     return render_template('admin/help.html')
+
+@admin_bp.route('/change-password', methods=['GET', 'POST'])
+@admin_required
+def change_password():
+    """Change admin password"""
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        # Validate inputs
+        if not current_password or not new_password or not confirm_password:
+            flash('All fields are required.', 'error')
+            return render_template('admin/change_password.html')
+        
+        if new_password != confirm_password:
+            flash('New passwords do not match.', 'error')
+            return render_template('admin/change_password.html')
+        
+        if len(new_password) < 6:
+            flash('New password must be at least 6 characters long.', 'error')
+            return render_template('admin/change_password.html')
+        
+        # Verify current password
+        stored_password = os.getenv('ADMIN_PASSWORD')
+        if not stored_password or not verify_password(current_password, stored_password):
+            flash('Current password is incorrect.', 'error')
+            return render_template('admin/change_password.html')
+        
+        # Update password in .env file
+        env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env')
+        if update_password_in_env(env_path, new_password):
+            # Reload environment variables to make the change take effect immediately
+            load_dotenv(override=True)
+            flash('Password changed successfully!', 'success')
+            return redirect(url_for('admin.dashboard'))
+        else:
+            flash('Failed to update password. Please check file permissions.', 'error')
+    
+    return render_template('admin/change_password.html')
