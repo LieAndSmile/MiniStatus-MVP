@@ -26,7 +26,7 @@ Built with Flask and SQLite. No Prometheus. No Grafana. Just clean uptime visibi
 ### Installation
 
 ```bash
-sudo bash install.sh
+sudo bash scripts/install.sh
 ```
 
 The installer will:
@@ -141,10 +141,10 @@ The API key is automatically loaded from your configuration, so you don't need t
 
 ```bash
 # From the MiniStatus directory
-./test_api.sh
+./scripts/test_api.sh
 
 # Or specify a different server
-./test_api.sh 192.168.1.100 5000
+./scripts/test_api.sh 192.168.1.100 5000
 ```
 
 **Option 3: Manual testing with curl**
@@ -221,7 +221,7 @@ python run.py
 
 ## Deployment
 
-The application runs as a systemd service by default. The installer (`install.sh`) creates the service file at `/etc/systemd/system/ministatus.service`.
+The application runs as a systemd service by default. The installer (`scripts/install.sh`) creates the service file at `/etc/systemd/system/ministatus.service`.
 
 The service:
 - Runs in background
@@ -232,7 +232,7 @@ The service:
 To uninstall the service:
 
 ```bash
-sudo bash uninstall.sh
+sudo bash scripts/uninstall.sh
 ```
 
 ## Public Dashboard
@@ -338,8 +338,14 @@ MiniStatus-MVP/
 │   │   └── helpers.py      # Helper functions
 │   └── extensions.py       # Flask extensions (db, csrf, limiter)
 ├── config/                  # YAML configuration files
+├── scripts/                 # Installation and utility scripts
+│   ├── install.sh          # Installation script
+│   ├── uninstall.sh        # Uninstallation script
+│   ├── start.sh            # Start script
+│   └── test_api.sh         # API testing script
+├── tests/                   # Test files
 ├── run.py                   # Application entry point
-├── install.sh               # Installation script
+├── .env.example             # Environment variables template
 └── requirements.txt         # Python dependencies
 ```
 
