@@ -115,6 +115,7 @@ API_KEY=supersecret
         from app.routes.sync import sync_bp
         from app.routes.remote import remote_bp
         from app.routes.ports import ports_bp
+        from app.routes.polymarket import polymarket_bp
         from app.routes.public import public_bp
         from app.routes.api import api_bp
 
@@ -124,6 +125,7 @@ API_KEY=supersecret
         app.register_blueprint(sync_bp)
         app.register_blueprint(remote_bp)
         app.register_blueprint(ports_bp)
+        app.register_blueprint(polymarket_bp)
         app.register_blueprint(api_bp)  # API routes
         
         # Exempt API routes from CSRF (they use API keys instead)
