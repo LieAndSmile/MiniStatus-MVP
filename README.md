@@ -20,6 +20,7 @@ Built with Flask and SQLite. No Prometheus. No Grafana. Just clean uptime visibi
 - **Rate Limiting** - Protection against brute force attacks
 - **Dark/Light Theme** - Automatic theme support
 - **REST API** - Programmatic status reporting
+- **Polymarket Integration** - Admin-only dashboard for polymarket-alerts (resolved stats, filters, export, health check)
 
 ## Quick Start
 
@@ -77,6 +78,9 @@ API_KEY=your-api-key
 # Public Dashboard Configuration (optional)
 PUBLIC_REGION=US-East  # Region badge on public dashboard
 PUBLIC_ENVIRONMENT=Production  # Environment badge (Production/Staging/Development)
+
+# Polymarket Alerts integration (optional)
+POLYMARKET_DATA_PATH=/path/to/polymarket-alerts  # Path to polymarket-alerts dir (alerts_log.csv, polymarket_alerts.log)
 ```
 
 ### Security Features
@@ -281,6 +285,7 @@ To show services on the public dashboard:
 **Admin Section (requires login):**
 - Admin Dashboard - Full admin control panel with system health info
 - Remote Hosts - Remote service monitoring
+- Polymarket - Resolved alerts stats (wins/losses, filters, search, export CSV)
 - Tags - Service tag management (with public/private visibility)
 - Auto-Tag Rules - Automatic tagging configuration
 - Settings (collapsible menu)
@@ -322,6 +327,36 @@ Tags help organize services and control what appears on the public dashboard.
 
 The new password will be automatically hashed and saved. No need to restart the application.
 
+## Polymarket Integration
+
+When `POLYMARKET_DATA_PATH` points to a polymarket-alerts directory, an admin-only **Polymarket** page is available at `/polymarket`.
+
+### Features
+
+- **Summary stats** - Total alerts, resolved count, wins, losses, net P/L
+- **Filter** - All / Wins / Losses
+- **Display** - All time / Last 30 / 90 / 180 days (uses `resolved_ts` or `ts` from CSV)
+- **Search** - Client-side search by question text
+- **Export CSV** - Download filtered list (question, result, pnl_usd, link)
+- **Health check** - Shows "polymarket-alerts last run: X hours ago" from `polymarket_alerts.log`
+
+### Requirements
+
+- polymarket-alerts directory with `alerts_log.csv` (and optionally `polymarket_alerts.log` for health)
+- CSV columns: `question`, `link`, `resolved`, `actual_result`, `pnl_usd`, `resolved_ts` or `ts`
+
+### Retention script
+
+A retention script is provided to trim old rows from `alerts_log.csv`:
+
+```bash
+# From polymarket-alerts directory
+python3 retention_alerts_log.py --days 90 --dry-run   # Preview
+python3 retention_alerts_log.py --days 90             # Trim (creates .bak backup)
+```
+
+Copy `scripts/retention_alerts_log.py` to your polymarket-alerts directory. Optional cron: `0 3 * * 0 cd /path/to/polymarket-alerts && python3 retention_alerts_log.py --days 90`
+
 ## Project Structure
 
 ```
@@ -333,7 +368,8 @@ MiniStatus-MVP/
 │   │   ├── api.py          # API endpoints
 │   │   ├── sync.py         # Service synchronization
 │   │   ├── remote.py       # Remote host monitoring
-│   │   └── ports.py        # Port monitoring
+│   │   ├── ports.py        # Port monitoring
+│   │   └── polymarket.py   # Polymarket alerts integration
 │   ├── templates/          # Jinja2 templates
 │   │   ├── public/         # Public dashboard templates
 │   │   └── admin/           # Admin panel templates
@@ -341,14 +377,16 @@ MiniStatus-MVP/
 │   ├── services/           # Business logic
 │   ├── utils/              # Utilities
 │   │   ├── password.py      # Password hashing utilities
-│   │   └── helpers.py      # Helper functions
+│   │   ├── helpers.py      # Helper functions
+│   │   └── polymarket.py   # Polymarket CSV/log parsing
 │   └── extensions.py       # Flask extensions (db, csrf, limiter)
 ├── config/                  # YAML configuration files
 ├── scripts/                 # Installation and utility scripts
 │   ├── install.sh          # Installation script
 │   ├── uninstall.sh        # Uninstallation script
 │   ├── start.sh            # Start script
-│   └── test_api.sh         # API testing script
+│   ├── test_api.sh         # API testing script
+│   └── retention_alerts_log.py  # Trim old rows from polymarket alerts_log.csv
 ├── tests/                   # Test files
 ├── run.py                   # Application entry point
 ├── .env.example             # Environment variables template

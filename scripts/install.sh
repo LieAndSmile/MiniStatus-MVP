@@ -9,9 +9,10 @@ echo "MiniStatus-MVP Installation"
 echo "=========================================="
 echo ""
 
-# Get the directory where the script is located
+# Get project root (parent of scripts/)
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$SCRIPT_DIR"
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
+cd "$PROJECT_ROOT"
 
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then 
@@ -37,7 +38,7 @@ echo ""
 echo "Step 3: Installing Python dependencies..."
 source venv/bin/activate
 pip install --upgrade pip -q >/dev/null 2>&1
-pip install flask flask_sqlalchemy python-dotenv psutil PyYAML requests -q
+pip install -r requirements.txt -q
 echo "✓ Python dependencies installed"
 deactivate
 
@@ -81,9 +82,9 @@ After=network.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=$SCRIPT_DIR
-Environment="PATH=$SCRIPT_DIR/venv/bin"
-ExecStart=$SCRIPT_DIR/venv/bin/python $SCRIPT_DIR/run.py
+WorkingDirectory=$PROJECT_ROOT
+Environment="PATH=$PROJECT_ROOT/venv/bin"
+ExecStart=$PROJECT_ROOT/venv/bin/gunicorn -c gunicorn.conf.py "run:app"
 Restart=always
 RestartSec=10
 StandardOutput=journal

@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% block title %}Polymarket Alerts{% endblock %}
+
+{% block header %}Polymarket Alerts{% endblock %}
+
+{% block content %}
+{% if not configured %}
+<div class="rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-6">
+  <div class="flex items-start gap-4">
+    <div class="flex-shrink-0 w-12 h-12 rounded-full bg-light-hover dark:bg-dark-hover flex items-center justify-center">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-light-muted dark:text-dark-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </div>
+    <div>
+      <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-2">Polymarket integration not configured</h2>
+      <p class="text-light-muted dark:text-dark-muted mb-4">
+        Set <code class="px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover">POLYMARKET_DATA_PATH</code> in your <code class="px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover">.env</code> file to the path of your polymarket-alerts directory (e.g. <code class="px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover">/home/ubuntu/polymarket-alerts</code>).
+      </p>
+      <p class="text-sm text-light-muted dark:text-dark-muted">
+        The directory must contain <code class="px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover">alerts_log.csv</code>.
+      </p>
+    </div>
+  </div>
+</div>
+{% elif stats and stats.get('error') %}
+<div class="rounded-lg border border-status-down-light dark:border-status-down-dark bg-status-down-light/10 dark:bg-status-down-dark/10 p-6">
+  <h2 class="text-lg font-semibold text-status-down-light dark:text-status-down-dark mb-2">Error reading data</h2>
+  <p class="text-light-text dark:text-dark-text">{{ stats.error }}</p>
+</div>
+{% elif stats %}
+<!-- Health & actions -->
+<div class="mb-4 flex flex-wrap items-center justify-between gap-4">
+  {% if last_loop %}
+  <span class="text-sm text-light-muted dark:text-dark-muted">
+    polymarket-alerts last run: <strong class="text-light-text dark:text-dark-text">{{ last_loop }}</strong>
+  </span>
+  {% else %}
+  <span class="text-sm text-light-muted dark:text-dark-muted">polymarket-alerts: log not found</span>
+  {% endif %}
+  <a href="{{ url_for('polymarket.polymarket_export', filter=current_filter, days=current_days) }}"
+     class="inline-flex items-center px-3 py-1.5 rounded-md text-sm bg-light-primary dark:bg-dark-primary text-white hover:opacity-90 transition-opacity"
+     title="Download filtered list as CSV">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+    </svg>
+    Export CSV
+  </a>
+</div>
+
+<!-- Filter bar -->
+<div class="mb-6 flex flex-wrap items-center gap-4">
+  <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days) }}"
+     class="inline-flex items-center px-3 py-1.5 rounded-md text-sm bg-light-primary dark:bg-dark-primary text-white hover:opacity-90 transition-opacity"
+     title="Reload data">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+    </svg>
+    Refresh
+  </a>
+  <div class="flex items-center gap-2">
+    <span class="text-sm font-medium text-light-muted dark:text-dark-muted">Filter:</span>
+    <a href="{{ url_for('polymarket.polymarket_page', filter='all', days=current_days) }}"
+       class="px-3 py-1.5 rounded-md text-sm {% if current_filter == 'all' %}bg-light-primary dark:bg-dark-primary text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">
+      All
+    </a>
+    <a href="{{ url_for('polymarket.polymarket_page', filter='wins', days=current_days) }}"
+       class="px-3 py-1.5 rounded-md text-sm {% if current_filter == 'wins' %}bg-status-up-light dark:bg-status-up-dark text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">
+      Wins
+    </a>
+    <a href="{{ url_for('polymarket.polymarket_page', filter='losses', days=current_days) }}"
+       class="px-3 py-1.5 rounded-md text-sm {% if current_filter == 'losses' %}bg-status-down-light dark:bg-status-down-dark text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">
+      Losses
+    </a>
+  </div>
+  <div class="flex items-center gap-2">
+    <span class="text-sm font-medium text-light-muted dark:text-dark-muted">Display:</span>
+    <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days='all') }}"
+       class="px-3 py-1.5 rounded-md text-sm {% if current_days == 'all' %}bg-light-primary dark:bg-dark-primary text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">
+      All time
+    </a>
+    <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days='30') }}"
+       class="px-3 py-1.5 rounded-md text-sm {% if current_days == '30' %}bg-light-primary dark:bg-dark-primary text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">
+      Last 30 days
+    </a>
+    <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days='90') }}"
+       class="px-3 py-1.5 rounded-md text-sm {% if current_days == '90' %}bg-light-primary dark:bg-dark-primary text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">
+      Last 90 days
+    </a>
+    <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days='180') }}"
+       class="px-3 py-1.5 rounded-md text-sm {% if current_days == '180' %}bg-light-primary dark:bg-dark-primary text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">
+      Last 180 days
+    </a>
+  </div>
+  <span class="text-xs text-light-muted dark:text-dark-muted">Display filter only affects this view; it does not delete data from the CSV. For actual deletion, use a retention script in polymarket-alerts.</span>
+</div>
+
+<!-- Summary cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
+    <div class="text-sm font-medium text-light-muted dark:text-dark-muted">Total Alerts</div>
+    <div class="text-2xl font-bold text-light-text dark:text-dark-text mt-1">{{ stats.alerts_total }}</div>
+  </div>
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
+    <div class="text-sm font-medium text-light-muted dark:text-dark-muted">Resolved</div>
+    <div class="text-2xl font-bold text-light-text dark:text-dark-text mt-1">{{ stats.resolved }}</div>
+  </div>
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-status-up-light dark:border-status-up-dark bg-status-up-light/10 dark:bg-status-up-dark/10 p-4">
+    <div class="text-sm font-medium text-status-up-light dark:text-status-up-dark">Wins</div>
+    <div class="text-2xl font-bold text-status-up-light dark:text-status-up-dark mt-1">{{ stats.wins }}</div>
+  </div>
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-status-down-light dark:border-status-down-dark bg-status-down-light/10 dark:bg-status-down-dark/10 p-4">
+    <div class="text-sm font-medium text-status-down-light dark:text-status-down-dark">Losses</div>
+    <div class="text-2xl font-bold text-status-down-light dark:text-status-down-dark mt-1">{{ stats.losses }}</div>
+  </div>
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
+    <div class="text-sm font-medium text-light-muted dark:text-dark-muted">Net P/L</div>
+    <div class="text-2xl font-bold mt-1 {% if stats.total_pnl >= 0 %}text-status-up-light dark:text-status-up-dark{% else %}text-status-down-light dark:text-status-down-dark{% endif %}">
+      {{ stats.total_pnl_display }}
+    </div>
+  </div>
+</div>
+
+<!-- P/L Chart -->
+{% if stats.chart_data and stats.chart_data|length > 0 %}
+<div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4 mb-6">
+  <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-4">Cumulative P/L Over Time</h2>
+  <div class="h-64">
+    <canvas id="pnl-chart"></canvas>
+  </div>
+  <p class="text-xs text-light-muted dark:text-dark-muted mt-2">Resolved alerts with dates only. Respects Display filter.</p>
+</div>
+{% endif %}
+
+<!-- Resolved list -->
+<div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border overflow-hidden">
+  <div class="px-4 py-3 border-b border-light-border dark:border-dark-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div>
+      <h2 class="text-lg font-semibold text-light-text dark:text-dark-text">Resolved Alerts</h2>
+    <p class="text-sm text-light-muted dark:text-dark-muted">
+      {{ stats.resolved_list|length }} resolved
+      {% if current_filter != 'all' %}({{ current_filter }}){% endif %}
+      {% if current_days != 'all' %}(last {{ current_days }} days){% endif %}
+      — sorted losses first
+    </p>
+    </div>
+    <div class="relative flex-shrink-0">
+      <input type="text"
+             id="polymarket-search"
+             placeholder="Search questions..."
+             class="w-full sm:w-64 px-3 py-2 pl-9 border border-light-border dark:border-dark-border rounded-md bg-light-card dark:bg-dark-card text-light-text dark:text-dark-text text-sm focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 absolute left-2.5 top-2.5 text-light-muted dark:text-dark-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+    </div>
+  </div>
+  {% if stats.resolved_list %}
+  <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-light-border dark:divide-dark-border">
+      <thead class="bg-light-hover dark:bg-dark-hover">
+        <tr>
+          <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Question</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Result</th>
+          <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">P/L</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Link</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-light-border dark:divide-dark-border">
+        {% for item in stats.resolved_list %}
+        <tr class="polymarket-row hover:bg-light-hover dark:hover:bg-dark-hover transition-colors" data-search="{{ item.question|lower|e }}">
+          <td class="px-4 py-3 text-sm text-light-text dark:text-dark-text max-w-md truncate" title="{{ item.question }}">{{ item.question }}</td>
+          <td class="px-4 py-3">
+            <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium {% if item.actual_result == 'YES' %}bg-status-up-light/20 dark:bg-status-up-dark/20 text-status-up-light dark:text-status-up-dark{% elif item.actual_result == 'NO' %}bg-status-down-light/20 dark:bg-status-down-dark/20 text-status-down-light dark:text-status-down-dark{% else %}bg-light-hover dark:bg-dark-hover text-light-muted dark:text-dark-muted{% endif %}">
+              {{ item.actual_result }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-right text-sm font-medium {% if item.pnl_usd >= 0 %}text-status-up-light dark:text-status-up-dark{% else %}text-status-down-light dark:text-status-down-dark{% endif %}">
+            {{ item.pnl_display }}
+          </td>
+          <td class="px-4 py-3">
+            {% if item.link %}
+            <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer" class="text-light-primary dark:text-dark-primary hover:underline text-sm">Open</a>
+            {% else %}
+            <span class="text-light-muted dark:text-dark-muted text-sm">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="px-4 py-8 text-center text-light-muted dark:text-dark-muted">
+    No resolved alerts yet. Data is read from <code class="px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover">alerts_log.csv</code>.
+  </div>
+  {% endif %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+  const searchInput = document.getElementById('polymarket-search');
+  if (searchInput) {
+    const rows = document.querySelectorAll('.polymarket-row');
+    searchInput.addEventListener('input', function() {
+      const q = this.value.toLowerCase().trim();
+      rows.forEach(function(row) {
+        const text = (row.getAttribute('data-search') || '').toLowerCase();
+        row.style.display = (!q || text.includes(q)) ? '' : 'none';
+      });
+    });
+  }
+
+  const chartData = {{ stats.chart_data | tojson if stats and stats.chart_data else '[]' }};
+  const chartEl = document.getElementById('pnl-chart');
+  if (chartData.length > 0 && chartEl) {
+    const isDark = document.documentElement.classList.contains('dark');
+    const gridColor = isDark ? 'rgba(156, 163, 175, 0.2)' : 'rgba(71, 85, 105, 0.2)';
+    const textColor = isDark ? '#9CA3AF' : '#475569';
+
+    new Chart(document.getElementById('pnl-chart'), {
+      type: 'line',
+      data: {
+        labels: chartData.map(d => d.date),
+        datasets: [{
+          label: 'Cumulative P/L ($)',
+          data: chartData.map(d => d.pnl),
+          borderColor: chartData[chartData.length - 1].pnl >= 0 ? '#059669' : '#DC2626',
+          backgroundColor: chartData[chartData.length - 1].pnl >= 0 ? 'rgba(5, 150, 105, 0.1)' : 'rgba(220, 38, 38, 0.1)',
+          fill: true,
+          tension: 0.2,
+          pointRadius: 2,
+          pointHoverRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          x: {
+            grid: { color: gridColor },
+            ticks: { color: textColor, maxRotation: 45 }
+          },
+          y: {
+            grid: { color: gridColor },
+            ticks: {
+              color: textColor,
+              callback: v => '$' + v
+            }
+          }
+        }
+      }
+    });
+  }
+})();
+</script>
+{% else %}
+<div class="rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-6 text-center text-light-muted dark:text-dark-muted">
+  No data available. Ensure <code class="px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover">alerts_log.csv</code> exists in the configured path.
+</div>
+{% endif %}
+{% endblock %}
