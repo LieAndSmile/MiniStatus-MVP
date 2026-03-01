@@ -20,7 +20,7 @@ Built with Flask and SQLite. No Prometheus. No Grafana. Just clean uptime visibi
 - **Rate Limiting** - Protection against brute force attacks
 - **Dark/Light Theme** - Automatic theme support
 - **REST API** - Programmatic status reporting
-- **Polymarket Integration** - Admin-only dashboard for polymarket-alerts (resolved stats, filters, export, health check)
+- **Polymarket Integration** - Admin-only dashboard for polymarket-alerts (resolved stats, losses, unresolved/open positions, loop summary, filters, pagination, export, live prices, health check)
 
 ## Quick Start
 
@@ -231,13 +231,15 @@ python run.py
 
 ## Deployment
 
-The application runs as a systemd service by default. The installer (`scripts/install.sh`) creates the service file at `/etc/systemd/system/ministatus.service`.
+The application runs as a systemd service by default, using **Gunicorn** as the WSGI server (production-ready, not the Flask development server). The installer (`scripts/install.sh`) creates the service file at `/etc/systemd/system/ministatus.service`.
 
 The service:
-- Runs in background
+- Runs in background via Gunicorn (2 workers by default)
 - Auto-starts on boot
 - Auto-restarts on failure
 - Logs to systemd journal
+
+Optional env vars for Gunicorn: `GUNICORN_WORKERS` (default 2), `GUNICORN_LOG_LEVEL` (default info).
 
 To uninstall the service:
 
@@ -285,7 +287,7 @@ To show services on the public dashboard:
 **Admin Section (requires login):**
 - Admin Dashboard - Full admin control panel with system health info
 - Remote Hosts - Remote service monitoring
-- Polymarket - Resolved alerts stats (wins/losses, filters, search, export CSV)
+- Polymarket - Resolved alerts, Losses, Unresolved (open positions with optional live prices), Loop Summary (filters, pagination, search, export CSV)
 - Tags - Service tag management (with public/private visibility)
 - Auto-Tag Rules - Automatic tagging configuration
 - Settings (collapsible menu)
@@ -331,19 +333,44 @@ The new password will be automatically hashed and saved. No need to restart the 
 
 When `POLYMARKET_DATA_PATH` points to a polymarket-alerts directory, an admin-only **Polymarket** page is available at `/polymarket`.
 
+### Tabs
+
+- **Resolved Alerts** – Resolved bets with wins/losses, filters, sort, search, pagination, export
+- **Losses** – Full loss list with category filter (Politics, Sports, Crypto, etc.), sort, search, pagination, Export Losses CSV
+- **Unresolved** – Open positions (alerts not yet resolved). At-stake total, sort by alert date or days to resolution. Optional **live prices** – click "Load live prices" to fetch current YES price and show Entry, Live, Unrealized P/L columns
+- **Loop Summary** – Data from `debug_candidates_v60.csv`. Status filter (All / ALERT only), sort, search, pagination, export
+
 ### Features
 
 - **Summary stats** - Total alerts, resolved count, wins, losses, net P/L
-- **Filter** - All / Wins / Losses
+- **Filter** - All / Wins / Losses (Resolved tab)
 - **Display** - All time / Last 30 / 90 / 180 days (uses `resolved_ts` or `ts` from CSV)
+- **Pagination** - 50 items per page with Previous/Next and page numbers
+- **Sort options** - P/L, date, question, result (Resolved); category, date, P/L (Losses); alert date, days (Unresolved); date, edge, question, status (Loop Summary)
 - **Search** - Client-side search by question text
-- **Export CSV** - Download filtered list (question, result, pnl_usd, link)
+- **Export CSV** - Resolved list, Losses (with category/rationale), Loop Summary
 - **Health check** - Shows "polymarket-alerts last run: X hours ago" from `polymarket_alerts.log`
+- **Losses by Category** - Breakdown by politics, sports, crypto, etc.
+- **Edge/Gamma bands** - Win rate and P/L by edge band (0–0.5%, 0.5–1%, etc.) and gamma band (0.90–0.95, etc.)
+- **P/L chart** - Cumulative P/L over time (line chart, respects Display filter)
+- **Per-run stats trend** - Resolved count and P/L over time per run (from `run_stats.csv`)
 
 ### Requirements
 
-- polymarket-alerts directory with `alerts_log.csv` (and optionally `polymarket_alerts.log` for health)
+- polymarket-alerts directory with `alerts_log.csv` (and optionally `polymarket_alerts.log` for health, `run_stats.csv` for per-run trend)
 - CSV columns: `question`, `link`, `resolved`, `actual_result`, `pnl_usd`, `resolved_ts` or `ts`
+
+### Backfill resolved_ts
+
+For older rows that are resolved but lack `resolved_ts`, backfill from `ts`:
+
+```bash
+cd polymarket-alerts
+python3 backfill_resolved_ts.py --dry-run   # Preview
+python3 backfill_resolved_ts.py              # Backfill (creates .bak backup)
+```
+
+Copy `scripts/backfill_resolved_ts.py` from MiniStatus.
 
 ### Retention script
 
@@ -356,6 +383,21 @@ python3 retention_alerts_log.py --days 90             # Trim (creates .bak backu
 ```
 
 Copy `scripts/retention_alerts_log.py` to your polymarket-alerts directory. Optional cron: `0 3 * * 0 cd /path/to/polymarket-alerts && python3 retention_alerts_log.py --days 90`
+
+### Per-run stats log (trend analysis)
+
+Append a stats snapshot after each polymarket-alerts run to enable trend charts:
+
+```bash
+# Copy script to polymarket-alerts
+cp /path/to/MiniStatus-MVP/scripts/log_run_stats.py /path/to/polymarket-alerts/
+
+# Run after resolution_tracker (e.g. in same timer or cron)
+cd /path/to/polymarket-alerts
+./venv/bin/python resolution_tracker.py --once && python3 log_run_stats.py
+```
+
+Creates `run_stats.csv` with columns: `ts`, `resolved`, `wins`, `losses`, `total_pnl`, `alerts_total`. MiniStatus reads this and shows "Per-Run Stats Trend" charts (resolved count, P/L over time).
 
 ## Project Structure
 
@@ -386,7 +428,10 @@ MiniStatus-MVP/
 │   ├── uninstall.sh        # Uninstallation script
 │   ├── start.sh            # Start script
 │   ├── test_api.sh         # API testing script
-│   └── retention_alerts_log.py  # Trim old rows from polymarket alerts_log.csv
+│   ├── retention_alerts_log.py  # Trim old rows from polymarket alerts_log.csv
+│   ├── backfill_resolved_ts.py   # Backfill resolved_ts from ts for date filters
+│   ├── log_run_stats.py          # Append per-run stats to run_stats.csv for trend analysis
+│   └── deploy_to_vm.sh           # Deploy to VM (rsync + restart); set VM_HOST, VM_USER, VM_PATH in .env
 ├── tests/                   # Test files
 ├── run.py                   # Application entry point
 ├── .env.example             # Environment variables template
