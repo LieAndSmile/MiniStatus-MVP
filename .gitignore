@@ -26,6 +26,7 @@ env/
 ENV/
 .env
 .venv
+scripts/venv/
 
 # Flask
 instance/
