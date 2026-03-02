@@ -118,10 +118,12 @@ API_KEY=supersecret
         from app.routes.polymarket import polymarket_bp
         from app.routes.public import public_bp
         from app.routes.api import api_bp
+        from app.routes.error_handlers import errors_bp
 
         # Register blueprints - public routes first
         app.register_blueprint(public_bp)  # For public routes
         app.register_blueprint(admin_bp)  # Admin routes (no prefix, handled in blueprint)
+        app.register_blueprint(errors_bp)  # 403 and other error handlers
         app.register_blueprint(sync_bp)
         app.register_blueprint(remote_bp)
         app.register_blueprint(ports_bp)

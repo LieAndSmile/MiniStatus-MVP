@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, session, request, jsonify
 from app.models import Service, db
-from app.utils.ports import get_local_listening_ports, get_host_ports, get_ports_from_ss
+from app.utils.ports import get_host_ports, get_ports_from_ss
 import json
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
@@ -16,16 +16,6 @@ def get_executor():
         thread_local.executor = ThreadPoolExecutor(max_workers=3)
     return thread_local.executor
 
-PORT_LABELS = {
-    22: "SSH",
-    80: "HTTP",
-    443: "HTTPS",
-    3306: "MySQL",
-    5432: "PostgreSQL",
-    6379: "Redis",
-    1883: "MQTT",
-    9100: "node_exporter",
-}
 
 def get_cached_ports(section=None):
     """Get cached port scan results"""
@@ -79,7 +69,6 @@ def ports_dashboard():
     return render_template(
         "ports.html",
         local_ports=local_ports,
-        port_labels=PORT_LABELS,
         current_filter=status_filter,
         is_cached=bool(local_ports)
     )

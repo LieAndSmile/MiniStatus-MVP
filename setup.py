@@ -13,7 +13,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="ministatus-mvp",
-    version="1.1.0",
+    version="1.3.0",
     author="LieAndSmile",
     description="A lightweight, self-hosted service status dashboard",
     long_description=long_description,

@@ -51,24 +51,6 @@
     <li>How it works: Each service entry defines its name, description, tags, URL, and status. You can import or sync services from this file via the Admin UI or CLI.</li>
   </ul>
 
-  <h3 class="text-xl font-semibold mt-6 mb-1">c. Quick Links (<code>quick_links.yaml</code>)</h3>
-  <ul class="list-disc ml-6 mb-4">
-    <li>Purpose: Add custom quick links to the dashboard for easy access to tools and resources.</li>
-    <li>Example format:
-      <pre class="bg-gray-100 dark:bg-gray-800 rounded p-2 text-xs mt-1">links:
-  - name: Grafana
-    url: "http://grafana.local"
-    category: "Monitoring"
-    icon_url: "/static/icons/grafana.svg"
-  - name: GitLab
-    url: "http://gitlab.local"
-    category: "DevOps"
-    icon_url: "/static/icons/gitlab.svg"
-</pre>
-    </li>
-    <li>How it works: Each link appears in the Quick Links panel, grouped by category.</li>
-  </ul>
-
   <h2 class="text-2xl font-semibold mt-8 mb-2">3. How to Use These YAML Files</h2>
   <ul class="list-disc ml-6 mb-4">
     <li>Place the YAML files in the <code>config/</code> directory of your project.</li>

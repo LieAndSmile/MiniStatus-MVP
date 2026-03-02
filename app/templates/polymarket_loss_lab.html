@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Loss Lab – Polymarket{% endblock %}
+{% block header %}Polymarket Alerts{% endblock %}
+
+{% block content %}
+{% include "polymarket_nav.html" %}
+
+{% if csv_schema_error %}
+<div class="mb-6 rounded-lg border border-status-down-light dark:border-status-down-dark bg-status-down-light/10 dark:bg-status-down-dark/10 p-4">
+  <h3 class="text-sm font-semibold text-status-down-light dark:text-status-down-dark mb-1">CSV schema mismatch</h3>
+  <p class="text-sm text-light-text dark:text-dark-text">{{ csv_schema_error }}</p>
+  <p class="text-xs text-light-muted dark:text-dark-muted mt-2">Fix <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">alerts_log.csv</code> in the polymarket-alerts directory. Required columns: question, pnl_usd, resolved, actual_result, and ts or resolved_ts.</p>
+</div>
+{% endif %}
+
+<div class="mb-6 flex flex-wrap items-center gap-4" data-polymarket-filters>
+  {% from "polymarket_time_filter.html" import render as polymarket_time_filter %}
+  {{ polymarket_time_filter('polymarket.polymarket_loss_lab', current_days) }}
+</div>
+
+<div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-6">
+  <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-2">Losses by Category</h2>
+  <p class="text-sm text-light-muted dark:text-dark-muted mb-4">
+    Breakdown of lost bets by market type (politics, sports, crypto, etc.).
+    {% if current_days != 'all' %}Showing last {{ current_days }} days.{% else %}Showing all time.{% endif %}
+  </p>
+  {% if loss_breakdown and loss_breakdown|length > 0 %}
+  <div class="mb-6 p-4 rounded-lg border border-status-down-light/30 dark:border-status-down-dark/30 bg-status-down-light/5 dark:bg-status-down-dark/5">
+    <div class="text-sm font-medium text-light-muted dark:text-dark-muted">Total Losses</div>
+    <div class="text-2xl font-bold text-status-down-light dark:text-status-down-dark mt-1">{{ total_losses_display }}</div>
+  </div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    {% for item in loss_breakdown %}
+    <div class="rounded-lg border border-status-down-light/30 dark:border-status-down-dark/30 bg-status-down-light/5 dark:bg-status-down-dark/5 p-4">
+      <div class="flex items-center justify-between gap-2">
+        <div class="text-sm font-medium text-light-muted dark:text-dark-muted uppercase">{{ item.category }}</div>
+        <a href="{{ url_for('polymarket.polymarket_portfolio', filter='losses', days=current_days, category=item.category) }}"
+           class="text-xs text-light-primary dark:text-dark-primary hover:underline">View in Portfolio</a>
+      </div>
+      <div class="text-xl font-bold text-status-down-light dark:text-status-down-dark mt-1">{{ item.count }} losses · {{ item.pnl_display }}</div>
+      {% if item.examples %}
+      <details class="mt-2">
+        <summary class="cursor-pointer text-xs text-light-muted dark:text-dark-muted hover:text-light-text dark:hover:text-dark-text">Show examples</summary>
+        <div class="mt-2 space-y-1">
+          {% for ex in item.examples %}
+          <p class="text-xs text-light-muted dark:text-dark-muted truncate" title="{{ ex.question }}">{{ ex.question }}... ({{ ex.pnl_display }})</p>
+          {% endfor %}
+        </div>
+      </details>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="py-12 text-center text-light-muted dark:text-dark-muted">
+    No loss data in this time window. Losses are categorized from resolved alerts in <code class="px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover">alerts_log.csv</code>.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
