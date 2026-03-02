@@ -1,34 +1,14 @@
 # Importing necessary Flask tools and modules
 from flask import Blueprint, render_template, redirect, url_for, session, flash, request
-from functools import wraps
-
-# Importing your SQLAlchemy model and database instance
 from app.models import Service
 from app.extensions import db
-
-# Importing datetime to track when services were updated
 from datetime import datetime
-
-# Allows running shell commands like "systemctl"
 import subprocess
-
-# Importing a helper function to check open ports
 from app.utils.ports import get_local_listening_ports
-
-# Importing the ServiceSync class
 from app.services.sync_service import ServiceSync
+from app.utils.decorators import admin_required
 
-
-# Creating a new Flask "blueprint" for grouping sync-related routes
 sync_bp = Blueprint("sync", __name__)
-
-def admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not session.get("authenticated"):
-            return redirect(url_for("admin.login"))
-        return f(*args, **kwargs)
-    return decorated_function
 
 # -------------------------------
 # SYNC SYSTEMD SERVICES

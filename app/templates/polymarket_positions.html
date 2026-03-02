@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Open Positions – Polymarket{% endblock %}
+{% block header %}Polymarket Alerts{% endblock %}
+
+{% block content %}
+{% include "polymarket_nav.html" %}
+
+<div class="mb-6">
+  <p class="text-sm text-light-muted dark:text-dark-muted">
+    Open positions from <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">open_positions.csv</code>.
+    Run <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">update_open_positions.py</code> in polymarket-alerts to refresh.
+  </p>
+</div>
+
+{% if positions and positions|length > 0 %}
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
+    <div class="text-sm font-medium text-light-muted dark:text-dark-muted">Total Cost</div>
+    <div class="text-2xl font-bold text-light-text dark:text-dark-text mt-1">{{ total_cost_display }}</div>
+  </div>
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
+    <div class="text-sm font-medium text-light-muted dark:text-dark-muted">Unrealized P/L</div>
+    <div class="text-2xl font-bold mt-1 {% if total_unrealized_display %}{% if total_unrealized >= 0 %}text-status-up-light dark:text-status-up-dark{% else %}text-status-down-light dark:text-status-down-dark{% endif %}{% else %}text-light-muted dark:text-dark-muted{% endif %}">
+      {% if total_unrealized_display %}{{ total_unrealized_display }}{% else %}—{% endif %}
+    </div>
+    {% if not total_unrealized_display and positions %}
+    <p class="text-xs text-light-muted dark:text-dark-muted mt-1">Run <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">update_open_positions.py</code> without <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">--no-live</code> to fetch current prices.</p>
+    {% endif %}
+  </div>
+</div>
+
+{% if exposure and exposure|length > 0 %}
+<div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4 mb-6">
+  <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-4">Cluster Exposure Summary</h2>
+  <p class="text-sm text-light-muted dark:text-dark-muted mb-4">Concentration risk by category. Top 5 biggest exposures.</p>
+  <div class="h-40 mb-4">
+    <canvas id="exposure-chart"></canvas>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-light-border dark:divide-dark-border">
+      <thead class="bg-light-hover dark:bg-dark-hover sticky top-0 z-10">
+        <tr>
+          <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Category</th>
+          <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Total Cost</th>
+          <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Unrealized P/L</th>
+          <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase"># Positions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-light-border dark:divide-dark-border">
+        {% for e in exposure[:5] %}
+        <tr class="hover:bg-light-hover dark:hover:bg-dark-hover">
+          <td class="px-4 py-3 text-sm font-medium text-light-text dark:text-dark-text">{{ e.category }}</td>
+          <td class="px-4 py-3 text-right text-sm">{{ e.cost_display }}</td>
+          <td class="px-4 py-3 text-right text-sm {% if e.unrealized_pnl > 0 %}text-status-up-light dark:text-status-up-dark{% elif e.unrealized_pnl < 0 %}text-status-down-light dark:text-status-down-dark{% else %}text-light-muted dark:text-dark-muted{% endif %}">{{ e.unrealized_display }}</td>
+          <td class="px-4 py-3 text-right text-sm">{{ e.count }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border overflow-hidden">
+  <div class="px-4 py-3 border-b border-light-border dark:border-dark-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <h2 class="text-lg font-semibold text-light-text dark:text-dark-text">{{ positions|length }} open position(s)</h2>
+    <div class="relative flex-shrink-0">
+      <input type="text"
+             id="positions-search"
+             placeholder="Search questions..."
+             class="w-full sm:w-64 px-3 py-2 pl-9 border border-light-border dark:border-dark-border rounded-md bg-light-card dark:bg-dark-card text-light-text dark:text-dark-text text-sm focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 absolute left-2.5 top-2.5 text-light-muted dark:text-dark-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+    </div>
+  </div>
+  <div class="overflow-x-auto max-h-[60vh] overflow-y-auto">
+    <table class="min-w-full divide-y divide-light-border dark:divide-dark-border">
+      <thead class="bg-light-hover dark:bg-dark-hover sticky top-0 z-10">
+        <tr>
+          <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Question</th>
+          <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Cost</th>
+          <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Unrealized P/L</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Link</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-light-border dark:divide-dark-border">
+        {% for p in positions %}
+        <tr class="positions-row hover:bg-light-hover dark:hover:bg-dark-hover transition-colors" data-search="{{ p.question|lower|e }}">
+          <td class="px-4 py-3 text-sm text-light-text dark:text-dark-text max-w-md truncate" title="{{ p.question }}">{{ p.question }}</td>
+          <td class="px-4 py-3 text-right text-sm text-light-text dark:text-dark-text">{{ p.cost_display }}</td>
+          <td class="px-4 py-3 text-right text-sm font-medium {% if p.unrealized_pnl > 0 %}text-status-up-light dark:text-status-up-dark{% elif p.unrealized_pnl < 0 %}text-status-down-light dark:text-status-down-dark{% else %}text-light-muted dark:text-dark-muted{% endif %}">
+            {{ p.unrealized_display }}
+          </td>
+          <td class="px-4 py-3">
+            {% if p.link %}
+            <a href="{{ p.link }}" target="_blank" rel="noopener noreferrer" class="text-light-primary dark:text-dark-primary hover:underline text-sm">Open</a>
+            {% else %}
+            <span class="text-light-muted dark:text-dark-muted text-sm">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-12 text-center">
+  <h2 class="text-xl font-semibold text-light-text dark:text-dark-text mb-2">No open positions</h2>
+  <p class="text-light-muted dark:text-dark-muted mb-4">
+    Run <code class="px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover">update_open_positions.py</code> in the polymarket-alerts directory to generate <code class="px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover">open_positions.csv</code>.
+  </p>
+  <p class="text-sm text-light-muted dark:text-dark-muted">
+    The script reads unresolved alerts from <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">alerts_log.csv</code> and optionally fetches current prices from the CLOB API.
+  </p>
+</div>
+{% endif %}
+{% if positions and positions|length > 0 %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+  const searchInput = document.getElementById('positions-search');
+  if (searchInput) {
+    const rows = document.querySelectorAll('.positions-row');
+    searchInput.addEventListener('input', function() {
+      const q = this.value.toLowerCase().trim();
+      rows.forEach(function(row) {
+        const text = (row.getAttribute('data-search') || '').toLowerCase();
+        row.style.display = (!q || text.includes(q)) ? '' : 'none';
+      });
+    });
+  }
+  const exposureData = {{ exposure[:5] | tojson if exposure else '[]' }};
+  if (exposureData.length > 0 && document.getElementById('exposure-chart')) {
+    const isDark = document.documentElement.classList.contains('dark');
+    const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+    new Chart(document.getElementById('exposure-chart'), {
+      type: 'bar',
+      data: {
+        labels: exposureData.map(function(d) { return d.category; }),
+        datasets: [{
+          label: 'Cost ($)',
+          data: exposureData.map(function(d) { return d.cost_usd; }),
+          backgroundColor: colors.slice(0, exposureData.length),
+          borderWidth: 0
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: {
+            grid: { color: isDark ? 'rgba(156,163,175,0.2)' : 'rgba(71,85,105,0.2)' },
+            ticks: { color: isDark ? '#9CA3AF' : '#475569', callback: function(v) { return '$' + (v >= 1000 ? (v/1000).toFixed(1) + 'K' : v); } }
+          },
+          y: {
+            grid: { display: false },
+            ticks: { color: isDark ? '#9CA3AF' : '#475569' }
+          }
+        }
+      }
+    });
+  }
+})();
+</script>
+{% endif %}
+{% endblock %}

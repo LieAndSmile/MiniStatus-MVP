@@ -4,6 +4,7 @@
 {% block header %}Polymarket Alerts{% endblock %}
 
 {% block content %}
+{% include "polymarket_nav.html" %}
 {% if not configured %}
 <div class="rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-6">
   <div class="flex items-start gap-4">
@@ -25,8 +26,11 @@
 </div>
 {% elif stats and stats.get('error') %}
 <div class="rounded-lg border border-status-down-light dark:border-status-down-dark bg-status-down-light/10 dark:bg-status-down-dark/10 p-6">
-  <h2 class="text-lg font-semibold text-status-down-light dark:text-status-down-dark mb-2">Error reading data</h2>
+  <h2 class="text-lg font-semibold text-status-down-light dark:text-status-down-dark mb-2">{% if stats.error is string and stats.error.startswith('CSV schema mismatch') %}CSV schema mismatch{% else %}Error reading data{% endif %}</h2>
   <p class="text-light-text dark:text-dark-text">{{ stats.error }}</p>
+  {% if stats.error is string and stats.error.startswith('CSV schema mismatch') %}
+  <p class="text-sm text-light-muted dark:text-dark-muted mt-2">Fix <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">alerts_log.csv</code> in the polymarket-alerts directory. Required columns: question, pnl_usd, resolved, actual_result, and ts or resolved_ts.</p>
+  {% endif %}
 </div>
 {% elif stats %}
 <!-- Health & actions -->
@@ -39,7 +43,7 @@
   <span class="text-sm text-light-muted dark:text-dark-muted">polymarket-alerts: log not found</span>
   {% endif %}
   <div class="flex items-center gap-2">
-    <a href="{{ url_for('polymarket.polymarket_export', filter=current_filter, days=current_days, sort=current_sort) }}"
+    <a href="{{ url_for('polymarket.polymarket_export', filter=current_filter, days=current_days, sort=current_sort, category=current_category if current_category else none) }}"
        class="inline-flex items-center px-3 py-1.5 rounded-md text-sm bg-light-primary dark:bg-dark-primary text-white hover:opacity-90 transition-opacity"
        title="Download resolved list as CSV">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -47,19 +51,12 @@
       </svg>
       Export Resolved
     </a>
-    {% if debug_total > 0 %}
-    <a href="{{ url_for('polymarket.polymarket_export_debug') }}"
-       class="inline-flex items-center px-3 py-1.5 rounded-md text-sm border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card text-light-text dark:text-dark-text hover:bg-light-hover dark:hover:bg-dark-hover transition-colors"
-       title="Download Loop Summary full data (debug_candidates_v60.csv)">
-      Export Loop Data
-    </a>
-    {% endif %}
   </div>
 </div>
 
 <!-- Filter bar -->
-<div class="mb-6 flex flex-wrap items-center gap-4">
-  <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort=current_sort) }}"
+<div class="mb-6 flex flex-wrap items-center gap-4" data-polymarket-filters>
+  <a href="{{ url_for('polymarket.polymarket_portfolio', filter=current_filter, days=current_days, sort=current_sort, category=current_category if current_category else none) }}"
      class="inline-flex items-center px-3 py-1.5 rounded-md text-sm bg-light-primary dark:bg-dark-primary text-white hover:opacity-90 transition-opacity"
      title="Reload data">
     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -69,57 +66,66 @@
   </a>
   <div class="flex items-center gap-2">
     <span class="text-sm font-medium text-light-muted dark:text-dark-muted">Filter:</span>
-    <a href="{{ url_for('polymarket.polymarket_page', filter='all', days=current_days, sort=current_sort) }}#resolved-alerts"
+    <a href="{{ url_for('polymarket.polymarket_portfolio', filter='all', days=current_days, sort=current_sort, category=current_category if current_category else none) }}#resolved-alerts"
        class="polymarket-preserve-scroll px-3 py-1.5 rounded-md text-sm {% if current_filter == 'all' %}bg-light-primary dark:bg-dark-primary text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">
       All
     </a>
-    <a href="{{ url_for('polymarket.polymarket_page', filter='wins', days=current_days, sort=current_sort) }}#resolved-alerts"
+    <a href="{{ url_for('polymarket.polymarket_portfolio', filter='wins', days=current_days, sort=current_sort, category=current_category if current_category else none) }}#resolved-alerts"
        class="polymarket-preserve-scroll px-3 py-1.5 rounded-md text-sm {% if current_filter == 'wins' %}bg-status-up-light dark:bg-status-up-dark text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">
       Wins
     </a>
-    <a href="{{ url_for('polymarket.polymarket_page', filter='losses', days=current_days, sort=current_sort) }}#resolved-alerts"
+    <a href="{{ url_for('polymarket.polymarket_portfolio', filter='losses', days=current_days, sort=current_sort, category=current_category if current_category else none) }}#resolved-alerts"
        class="polymarket-preserve-scroll px-3 py-1.5 rounded-md text-sm {% if current_filter == 'losses' %}bg-status-down-light dark:bg-status-down-dark text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">
       Losses
     </a>
   </div>
-  <div class="flex items-center gap-2">
-    <span class="text-sm font-medium text-light-muted dark:text-dark-muted">Display:</span>
-    <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days='all', sort=current_sort) }}#resolved-alerts"
-       class="polymarket-preserve-scroll px-3 py-1.5 rounded-md text-sm {% if current_days == 'all' %}bg-light-primary dark:bg-dark-primary text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">
-      All time
-    </a>
-    <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days='30', sort=current_sort) }}#resolved-alerts"
-       class="polymarket-preserve-scroll px-3 py-1.5 rounded-md text-sm {% if current_days == '30' %}bg-light-primary dark:bg-dark-primary text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">
-      Last 30 days
-    </a>
-    <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days='90', sort=current_sort) }}#resolved-alerts"
-       class="polymarket-preserve-scroll px-3 py-1.5 rounded-md text-sm {% if current_days == '90' %}bg-light-primary dark:bg-dark-primary text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">
-      Last 90 days
-    </a>
-    <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days='180', sort=current_sort) }}#resolved-alerts"
-       class="polymarket-preserve-scroll px-3 py-1.5 rounded-md text-sm {% if current_days == '180' %}bg-light-primary dark:bg-dark-primary text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">
-      Last 180 days
-    </a>
-  </div>
+  {% from "polymarket_time_filter.html" import render as polymarket_time_filter %}
+  {{ polymarket_time_filter('polymarket.polymarket_portfolio', current_days, {'filter': current_filter, 'sort': current_sort, 'category': current_category if current_category else none}, '#resolved-alerts') }}
   <div class="flex items-center gap-2">
     <span class="text-sm font-medium text-light-muted dark:text-dark-muted">Sort:</span>
-    <select id="polymarket-sort" onchange="sessionStorage.setItem('polymarket_scroll', window.scrollY); window.location.href=this.value+'#resolved-alerts';"
+    <select id="polymarket-sort" data-polymarket-nav onchange="sessionStorage.setItem('polymarket_scroll', window.scrollY); window.location.href=this.value+'#resolved-alerts';"
             class="px-3 py-1.5 rounded-md text-sm border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary">
-      <option value="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort='pnl_asc') }}" {% if current_sort == 'pnl_asc' %}selected{% endif %}>P/L lowest first</option>
-      <option value="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort='pnl_desc') }}" {% if current_sort == 'pnl_desc' %}selected{% endif %}>P/L highest first</option>
-      <option value="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort='date_desc') }}" {% if current_sort == 'date_desc' %}selected{% endif %}>Newest first</option>
-      <option value="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort='date_asc') }}" {% if current_sort == 'date_asc' %}selected{% endif %}>Oldest first</option>
-      <option value="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort='question_asc') }}" {% if current_sort == 'question_asc' %}selected{% endif %}>Question A–Z</option>
-      <option value="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort='question_desc') }}" {% if current_sort == 'question_desc' %}selected{% endif %}>Question Z–A</option>
-      <option value="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort='result_yes') }}" {% if current_sort == 'result_yes' %}selected{% endif %}>Result: YES first</option>
-      <option value="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort='result_no') }}" {% if current_sort == 'result_no' %}selected{% endif %}>Result: NO first</option>
+      <option value="{{ url_for('polymarket.polymarket_portfolio', filter=current_filter, days=current_days, sort='pnl_asc', category=current_category if current_category else none) }}" {% if current_sort == 'pnl_asc' %}selected{% endif %}>P/L lowest first</option>
+      <option value="{{ url_for('polymarket.polymarket_portfolio', filter=current_filter, days=current_days, sort='pnl_desc', category=current_category if current_category else none) }}" {% if current_sort == 'pnl_desc' %}selected{% endif %}>P/L highest first</option>
+      <option value="{{ url_for('polymarket.polymarket_portfolio', filter=current_filter, days=current_days, sort='date_desc', category=current_category if current_category else none) }}" {% if current_sort == 'date_desc' %}selected{% endif %}>Newest first</option>
+      <option value="{{ url_for('polymarket.polymarket_portfolio', filter=current_filter, days=current_days, sort='date_asc', category=current_category if current_category else none) }}" {% if current_sort == 'date_asc' %}selected{% endif %}>Oldest first</option>
+      <option value="{{ url_for('polymarket.polymarket_portfolio', filter=current_filter, days=current_days, sort='question_asc', category=current_category if current_category else none) }}" {% if current_sort == 'question_asc' %}selected{% endif %}>Question A–Z</option>
+      <option value="{{ url_for('polymarket.polymarket_portfolio', filter=current_filter, days=current_days, sort='question_desc', category=current_category if current_category else none) }}" {% if current_sort == 'question_desc' %}selected{% endif %}>Question Z–A</option>
+      <option value="{{ url_for('polymarket.polymarket_portfolio', filter=current_filter, days=current_days, sort='result_yes', category=current_category if current_category else none) }}" {% if current_sort == 'result_yes' %}selected{% endif %}>Result: YES first</option>
+      <option value="{{ url_for('polymarket.polymarket_portfolio', filter=current_filter, days=current_days, sort='result_no', category=current_category if current_category else none) }}" {% if current_sort == 'result_no' %}selected{% endif %}>Result: NO first</option>
     </select>
   </div>
-  <span class="text-xs text-light-muted dark:text-dark-muted">Display filter only affects this view; it does not delete data from the CSV. For actual deletion, use a retention script in polymarket-alerts.</span>
+  {% if current_category %}
+  <a href="{{ url_for('polymarket.polymarket_portfolio', filter=current_filter, days=current_days, sort=current_sort) }}#resolved-alerts"
+     class="polymarket-preserve-scroll px-3 py-1.5 rounded-md text-sm bg-status-down-light/20 dark:bg-status-down-dark/20 text-status-down-light dark:text-status-down-dark hover:bg-status-down-light/30 dark:hover:bg-status-down-dark/30 transition-colors">
+    Clear category ({{ current_category }})
+  </a>
+  {% endif %}
+  <span class="text-xs text-light-muted dark:text-dark-muted">Time window filter only affects this view; it does not delete data from the CSV. For actual deletion, use a retention script in polymarket-alerts.</span>
 </div>
 
-<!-- Summary cards -->
+<!-- Summary cards – Net P/L and Max Drawdown first (main metrics), then Win rate, then supporting -->
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
+    <div class="text-sm font-medium text-light-muted dark:text-dark-muted">Net P/L</div>
+    <div class="text-2xl font-bold mt-1 {% if stats.total_pnl >= 0 %}text-status-up-light dark:text-status-up-dark{% else %}text-status-down-light dark:text-status-down-dark{% endif %}">
+      {{ stats.total_pnl_display }}
+    </div>
+  </div>
+  {% if stats.get('max_drawdown') is defined and stats.max_drawdown < 0 %}
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-status-down-light/50 dark:border-status-down-dark/50 p-4">
+    <div class="text-sm font-medium text-light-muted dark:text-dark-muted">Max Drawdown</div>
+    <div class="text-2xl font-bold text-status-down-light dark:text-status-down-dark mt-1">{{ stats.max_drawdown_display }}</div>
+    {% if stats.worst_period %}<p class="text-xs text-light-muted dark:text-dark-muted mt-1">Worst: {{ stats.worst_period }}</p>{% endif %}
+  </div>
+  {% endif %}
+  {% if stats.resolved > 0 %}
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
+    <div class="text-sm font-medium text-light-muted dark:text-dark-muted">Win Rate</div>
+    <div class="text-2xl font-bold text-light-text dark:text-dark-text mt-1">{{ "%.1f"|format(stats.wins / stats.resolved * 100) }}%</div>
+    <p class="text-xs text-light-muted dark:text-dark-muted mt-1">{{ stats.wins }}/{{ stats.resolved }} resolved</p>
+  </div>
+  {% endif %}
   <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
     <div class="text-sm font-medium text-light-muted dark:text-dark-muted">Total Alerts</div>
     <div class="text-2xl font-bold text-light-text dark:text-dark-text mt-1">{{ stats.alerts_total }}</div>
@@ -136,32 +142,7 @@
     <div class="text-sm font-medium text-status-down-light dark:text-status-down-dark">Losses</div>
     <div class="text-2xl font-bold text-status-down-light dark:text-status-down-dark mt-1">{{ stats.losses }}</div>
   </div>
-  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
-    <div class="text-sm font-medium text-light-muted dark:text-dark-muted">Net P/L</div>
-    <div class="text-2xl font-bold mt-1 {% if stats.total_pnl >= 0 %}text-status-up-light dark:text-status-up-dark{% else %}text-status-down-light dark:text-status-down-dark{% endif %}">
-      {{ stats.total_pnl_display }}
-    </div>
-  </div>
 </div>
-
-<!-- Loss breakdown by category -->
-{% if loss_breakdown and loss_breakdown|length > 0 %}
-<div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4 mb-6">
-  <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-4">Losses by Category</h2>
-  <p class="text-sm text-light-muted dark:text-dark-muted mb-4">Breakdown of lost bets by market type (politics, sports, crypto, etc.). Respects Display filter.</p>
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-    {% for item in loss_breakdown %}
-    <div class="rounded-lg border border-status-down-light/30 dark:border-status-down-dark/30 bg-status-down-light/5 dark:bg-status-down-dark/5 p-4">
-      <div class="text-sm font-medium text-light-muted dark:text-dark-muted uppercase">{{ item.category }}</div>
-      <div class="text-xl font-bold text-status-down-light dark:text-status-down-dark mt-1">{{ item.count }} losses · {{ item.pnl_display }}</div>
-      {% for ex in item.examples %}
-      <p class="text-xs text-light-muted dark:text-dark-muted mt-2 truncate" title="{{ ex.question }}">{{ ex.question }}... ({{ ex.pnl_display }})</p>
-      {% endfor %}
-    </div>
-    {% endfor %}
-  </div>
-</div>
-{% endif %}
 
 <!-- P/L Chart -->
 {% if stats.chart_data and stats.chart_data|length > 0 %}
@@ -170,7 +151,16 @@
   <div class="h-64">
     <canvas id="pnl-chart"></canvas>
   </div>
-  <p class="text-xs text-light-muted dark:text-dark-muted mt-2">Resolved alerts with dates only. Respects Display filter.</p>
+  <p class="text-xs text-light-muted dark:text-dark-muted mt-2">Resolved bets only. Respects time window filter.</p>
+  {% if stats.get('max_drawdown') is defined and stats.max_drawdown < 0 %}
+  <div class="mt-4">
+    <h3 class="text-sm font-medium text-light-muted dark:text-dark-muted mb-2">Drawdown</h3>
+    <div class="h-48">
+      <canvas id="drawdown-chart"></canvas>
+    </div>
+    <p class="text-xs text-light-muted dark:text-dark-muted mt-2">Peak-to-trough decline. Resolved bets only.</p>
+  </div>
+  {% endif %}
 </div>
 {% endif %}
 
@@ -197,23 +187,8 @@
 </div>
 {% endif %}
 
-<!-- Tabs: Resolved | Loop Summary -->
-<div class="mb-4 flex border-b border-light-border dark:border-dark-border">
-  <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort=current_sort, tab='resolved') }}#resolved-alerts"
-     class="polymarket-preserve-scroll polymarket-tab px-4 py-3 text-sm font-medium {% if active_tab == 'resolved' %}border-b-2 border-light-primary dark:border-dark-primary text-light-primary dark:text-dark-primary{% else %}text-light-muted dark:text-dark-muted hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors">
-    Resolved Alerts
-  </a>
-  <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort=current_sort, tab='loop', debug_status=debug_status, debug_sort=debug_sort) }}#loop-summary"
-     class="polymarket-preserve-scroll polymarket-tab px-4 py-3 text-sm font-medium {% if active_tab == 'loop' %}border-b-2 border-light-primary dark:border-dark-primary text-light-primary dark:text-dark-primary{% else %}text-light-muted dark:text-dark-muted hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors">
-    Loop Summary
-    {% if debug_total > 0 %}
-    <span class="ml-1 text-xs">({{ debug_total }} rows)</span>
-    {% endif %}
-  </a>
-</div>
-
 <!-- Resolved list -->
-<div id="resolved-alerts" class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border overflow-hidden {% if active_tab != 'resolved' %}hidden{% endif %}">
+<div id="resolved-alerts" class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border overflow-hidden">
   <div class="px-4 py-3 border-b border-light-border dark:border-dark-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
     <div>
       <h2 class="text-lg font-semibold text-light-text dark:text-dark-text">Resolved Alerts</h2>
@@ -235,14 +210,14 @@
     </div>
   </div>
   {% if stats.resolved_list %}
-  <div class="overflow-x-auto">
+  <div class="overflow-x-auto max-h-[70vh] overflow-y-auto">
     <table class="min-w-full divide-y divide-light-border dark:divide-dark-border">
-      <thead class="bg-light-hover dark:bg-dark-hover">
+      <thead class="bg-light-hover dark:bg-dark-hover sticky top-0 z-10">
         <tr>
           <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Question</th>
           <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Result</th>
           <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">
-            <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort=('date_asc' if current_sort == 'date_desc' else 'date_desc'), page=1) }}#resolved-alerts" class="polymarket-preserve-scroll hover:underline {% if current_sort in ('date_desc','date_asc') %}text-light-primary dark:text-dark-primary{% endif %}" title="Click to sort {{ 'oldest first' if current_sort == 'date_desc' else 'newest first' }}">Date</a>
+            <a href="{{ url_for('polymarket.polymarket_portfolio', filter=current_filter, days=current_days, sort=('date_asc' if current_sort == 'date_desc' else 'date_desc'), page=1, category=current_category if current_category else none) }}#resolved-alerts" class="polymarket-preserve-scroll hover:underline {% if current_sort in ('date_desc','date_asc') %}text-light-primary dark:text-dark-primary{% endif %}" title="Click to sort {{ 'oldest first' if current_sort == 'date_desc' else 'newest first' }}">Date</a>
           </th>
           <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">P/L</th>
           <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Link</th>
@@ -300,7 +275,7 @@
     </p>
     <nav class="flex items-center gap-2" aria-label="Pagination">
       {% if pagination.has_prev %}
-      <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort=current_sort, page=pagination.page - 1) }}#resolved-alerts"
+      <a href="{{ url_for('polymarket.polymarket_portfolio', filter=current_filter, days=current_days, sort=current_sort, page=pagination.page - 1, category=current_category if current_category else none) }}#resolved-alerts"
          class="polymarket-preserve-scroll px-3 py-1.5 rounded-md text-sm text-light-text dark:text-dark-text hover:bg-light-hover dark:hover:bg-dark-hover transition-colors">
         Previous
       </a>
@@ -312,7 +287,7 @@
           {% if p == pagination.page %}
           <span class="px-2.5 py-1 rounded-md text-sm font-medium bg-light-primary dark:bg-dark-primary text-white">{{ p }}</span>
           {% elif p == 1 or p == pagination.total_pages or (p >= pagination.page - 2 and p <= pagination.page + 2) %}
-          <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort=current_sort, page=p) }}#resolved-alerts"
+          <a href="{{ url_for('polymarket.polymarket_portfolio', filter=current_filter, days=current_days, sort=current_sort, page=p, category=current_category if current_category else none) }}#resolved-alerts"
              class="polymarket-preserve-scroll px-2.5 py-1 rounded-md text-sm text-light-text dark:text-dark-text hover:bg-light-hover dark:hover:bg-dark-hover transition-colors">{{ p }}</a>
           {% elif p == pagination.page - 3 or p == pagination.page + 3 %}
           <span class="px-1 text-light-muted dark:text-dark-muted" aria-hidden="true">…</span>
@@ -320,7 +295,7 @@
         {% endfor %}
       </span>
       {% if pagination.has_next %}
-      <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort=current_sort, page=pagination.page + 1) }}#resolved-alerts"
+      <a href="{{ url_for('polymarket.polymarket_portfolio', filter=current_filter, days=current_days, sort=current_sort, page=pagination.page + 1, category=current_category if current_category else none) }}#resolved-alerts"
          class="polymarket-preserve-scroll px-3 py-1.5 rounded-md text-sm text-light-text dark:text-dark-text hover:bg-light-hover dark:hover:bg-dark-hover transition-colors">
         Next
       </a>
@@ -328,144 +303,6 @@
       <span class="px-3 py-1.5 rounded-md text-sm text-light-muted dark:text-dark-muted cursor-not-allowed">Next</span>
       {% endif %}
     </nav>
-  </div>
-  {% endif %}
-</div>
-
-<!-- Loop Summary (Full data → debug_candidates_v60.csv) -->
-<div id="loop-summary" class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border overflow-hidden {% if active_tab != 'loop' %}hidden{% endif %}">
-  <div class="px-4 py-3 border-b border-light-border dark:border-dark-border flex flex-col gap-3">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-      <div>
-        <h2 class="text-lg font-semibold text-light-text dark:text-dark-text">Loop Summary – Full Data</h2>
-        <p class="text-sm text-light-muted dark:text-dark-muted">
-          Candidates from <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">debug_candidates_v60.csv</code> (same as "Full data" in Telegram loop summary).
-        </p>
-      </div>
-      <div class="relative flex-shrink-0">
-        <input type="text"
-               id="loop-search"
-               placeholder="Search questions..."
-               class="w-full sm:w-64 px-3 py-2 pl-9 border border-light-border dark:border-dark-border rounded-md bg-light-card dark:bg-dark-card text-light-text dark:text-dark-text text-sm focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 absolute left-2.5 top-2.5 text-light-muted dark:text-dark-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-      </div>
-    </div>
-    <div class="flex flex-wrap items-center gap-4">
-      <div class="flex items-center gap-2">
-        <span class="text-sm font-medium text-light-muted dark:text-dark-muted">Status:</span>
-        <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort=current_sort, tab='loop', debug_status='all', debug_sort=debug_sort, debug_page=1) }}#loop-summary"
-           class="polymarket-preserve-scroll px-3 py-1.5 rounded-md text-sm {% if debug_status == 'all' %}bg-light-primary dark:bg-dark-primary text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">
-          All
-        </a>
-        <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort=current_sort, tab='loop', debug_status='alert', debug_sort=debug_sort, debug_page=1) }}#loop-summary"
-           class="polymarket-preserve-scroll px-3 py-1.5 rounded-md text-sm {% if debug_status == 'alert' %}bg-status-up-light dark:bg-status-up-dark text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">
-          ALERT only
-        </a>
-      </div>
-      <div class="flex items-center gap-2">
-        <span class="text-sm font-medium text-light-muted dark:text-dark-muted">Sort:</span>
-        <select id="loop-sort" onchange="sessionStorage.setItem('polymarket_scroll', window.scrollY); window.location.href=this.value+'#loop-summary';"
-                class="px-3 py-1.5 rounded-md text-sm border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary">
-          <option value="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort=current_sort, tab='loop', debug_status=debug_status, debug_sort='date_desc', debug_page=1) }}" {% if debug_sort == 'date_desc' %}selected{% endif %}>Newest first</option>
-          <option value="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort=current_sort, tab='loop', debug_status=debug_status, debug_sort='date_asc', debug_page=1) }}" {% if debug_sort == 'date_asc' %}selected{% endif %}>Oldest first</option>
-          <option value="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort=current_sort, tab='loop', debug_status=debug_status, debug_sort='edge_desc', debug_page=1) }}" {% if debug_sort == 'edge_desc' %}selected{% endif %}>Edge highest first</option>
-          <option value="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort=current_sort, tab='loop', debug_status=debug_status, debug_sort='edge_asc', debug_page=1) }}" {% if debug_sort == 'edge_asc' %}selected{% endif %}>Edge lowest first</option>
-          <option value="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort=current_sort, tab='loop', debug_status=debug_status, debug_sort='question_asc', debug_page=1) }}" {% if debug_sort == 'question_asc' %}selected{% endif %}>Question A–Z</option>
-          <option value="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort=current_sort, tab='loop', debug_status=debug_status, debug_sort='question_desc', debug_page=1) }}" {% if debug_sort == 'question_desc' %}selected{% endif %}>Question Z–A</option>
-          <option value="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort=current_sort, tab='loop', debug_status=debug_status, debug_sort='status', debug_page=1) }}" {% if debug_sort == 'status' %}selected{% endif %}>ALERT first</option>
-        </select>
-      </div>
-    </div>
-  </div>
-  {% if debug_candidates %}
-  <div class="overflow-x-auto">
-    <table class="min-w-full divide-y divide-light-border dark:divide-dark-border">
-      <thead class="bg-light-hover dark:bg-dark-hover">
-        <tr>
-          <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">
-            <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort=current_sort, tab='loop', debug_status=debug_status, debug_sort=('date_asc' if debug_sort == 'date_desc' else 'date_desc'), debug_page=1) }}#loop-summary" class="polymarket-preserve-scroll hover:underline {% if debug_sort in ('date_desc','date_asc') %}text-light-primary dark:text-dark-primary{% endif %}" title="Click to sort {{ 'oldest first' if debug_sort == 'date_desc' else 'newest first' }}">Time</a>
-          </th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">
-            <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort=current_sort, tab='loop', debug_status=debug_status, debug_sort=('question_desc' if debug_sort == 'question_asc' else 'question_asc'), debug_page=1) }}#loop-summary" class="polymarket-preserve-scroll hover:underline {% if debug_sort in ('question_asc','question_desc') %}text-light-primary dark:text-dark-primary{% endif %}" title="Click to sort question">Question</a>
-          </th>
-          <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Gamma</th>
-          <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Best Ask</th>
-          <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">
-            <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort=current_sort, tab='loop', debug_status=debug_status, debug_sort=('edge_asc' if debug_sort == 'edge_desc' else 'edge_desc'), debug_page=1) }}#loop-summary" class="polymarket-preserve-scroll hover:underline {% if debug_sort in ('edge_desc','edge_asc') %}text-light-primary dark:text-dark-primary{% endif %}" title="Click to sort by edge">Edge</a>
-          </th>
-          <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Effective</th>
-          <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Fill %</th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">
-            <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort=current_sort, tab='loop', debug_status=debug_status, debug_sort='status', debug_page=1) }}#loop-summary" class="polymarket-preserve-scroll hover:underline {% if debug_sort == 'status' %}text-light-primary dark:text-dark-primary{% endif %}" title="Click to sort ALERT first">Status</a>
-          </th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Link</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-light-border dark:divide-dark-border">
-        {% for row in debug_candidates %}
-        <tr class="loop-row hover:bg-light-hover dark:hover:bg-dark-hover transition-colors" data-search="{{ (row.question or '')|lower|e }}">
-          <td class="px-4 py-3 text-sm text-light-muted dark:text-dark-muted whitespace-nowrap">{{ row.ts_display }}</td>
-          <td class="px-4 py-3 text-sm text-light-text dark:text-dark-text max-w-md truncate" title="{{ row.question }}">{{ row.question }}</td>
-          <td class="px-4 py-3 text-right text-sm text-light-text dark:text-dark-text">{{ "%.4f"|format(row.gamma) if row.gamma else "—" }}</td>
-          <td class="px-4 py-3 text-right text-sm text-light-text dark:text-dark-text">{{ "%.4f"|format(row.best_ask) if row.best_ask else "—" }}</td>
-          <td class="px-4 py-3 text-right text-sm font-medium {% if row.edge and row.edge > 0 %}text-status-up-light dark:text-status-up-dark{% elif row.edge and row.edge < 0 %}text-status-down-light dark:text-status-down-dark{% else %}text-light-muted dark:text-dark-muted{% endif %}">{{ row.edge_pct }}</td>
-          <td class="px-4 py-3 text-right text-sm text-light-text dark:text-dark-text">{{ "%.2f"|format(row.effective * 100) if row.effective else "—" }}%</td>
-          <td class="px-4 py-3 text-right text-sm text-light-text dark:text-dark-text">{{ "%.0f"|format(row.fill_pct) if row.fill_pct else "—" }}%</td>
-          <td class="px-4 py-3">
-            <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium {% if row.status == 'ALERT' %}bg-status-up-light/20 dark:bg-status-up-dark/20 text-status-up-light dark:text-status-up-dark{% else %}bg-light-hover dark:bg-dark-hover text-light-muted dark:text-dark-muted{% endif %}">
-              {{ row.status or "—" }}
-            </span>
-          </td>
-          <td class="px-4 py-3">
-            {% if row.link %}
-            <a href="{{ row.link }}" target="_blank" rel="noopener noreferrer" class="text-light-primary dark:text-dark-primary hover:underline text-sm">Open</a>
-            {% else %}
-            <span class="text-light-muted dark:text-dark-muted text-sm">—</span>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% if debug_pagination and debug_pagination.total_count > 0 %}
-  <div class="px-4 py-3 border-t border-light-border dark:border-dark-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-    <p class="text-sm text-light-muted dark:text-dark-muted">
-      Showing {{ debug_pagination.start }}–{{ debug_pagination.end }} of {{ debug_pagination.total_count }}
-    </p>
-    <nav class="flex items-center gap-2 flex-wrap" aria-label="Pagination">
-      {% if debug_pagination.has_prev %}
-      <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort=current_sort, tab='loop', debug_status=debug_status, debug_sort=debug_sort, debug_page=debug_pagination.page - 1) }}#loop-summary"
-         class="polymarket-preserve-scroll px-3 py-1.5 rounded-md text-sm text-light-text dark:text-dark-text hover:bg-light-hover dark:hover:bg-dark-hover transition-colors">Previous</a>
-      {% else %}
-      <span class="px-3 py-1.5 rounded-md text-sm text-light-muted dark:text-dark-muted cursor-not-allowed">Previous</span>
-      {% endif %}
-      <span class="flex items-center gap-1 flex-wrap">
-        {% for p in range(1, debug_pagination.total_pages + 1) %}
-          {% if p == debug_pagination.page %}
-          <span class="px-2.5 py-1 rounded-md text-sm font-medium bg-light-primary dark:bg-dark-primary text-white">{{ p }}</span>
-          {% elif p == 1 or p == debug_pagination.total_pages or (p >= debug_pagination.page - 2 and p <= debug_pagination.page + 2) %}
-          <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort=current_sort, tab='loop', debug_status=debug_status, debug_sort=debug_sort, debug_page=p) }}#loop-summary"
-             class="polymarket-preserve-scroll px-2.5 py-1 rounded-md text-sm text-light-text dark:text-dark-text hover:bg-light-hover dark:hover:bg-dark-hover transition-colors">{{ p }}</a>
-          {% elif p == debug_pagination.page - 3 or p == debug_pagination.page + 3 %}
-          <span class="px-1 text-light-muted dark:text-dark-muted" aria-hidden="true">…</span>
-          {% endif %}
-        {% endfor %}
-      </span>
-      {% if debug_pagination.has_next %}
-      <a href="{{ url_for('polymarket.polymarket_page', filter=current_filter, days=current_days, sort=current_sort, tab='loop', debug_status=debug_status, debug_sort=debug_sort, debug_page=debug_pagination.page + 1) }}#loop-summary"
-         class="polymarket-preserve-scroll px-3 py-1.5 rounded-md text-sm text-light-text dark:text-dark-text hover:bg-light-hover dark:hover:bg-dark-hover transition-colors">Next</a>
-      {% else %}
-      <span class="px-3 py-1.5 rounded-md text-sm text-light-muted dark:text-dark-muted cursor-not-allowed">Next</span>
-      {% endif %}
-    </nav>
-  </div>
-  {% endif %}
-  {% else %}
-  <div class="px-4 py-8 text-center text-light-muted dark:text-dark-muted">
-    No debug candidates data. Ensure <code class="px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover">debug_candidates_v60.csv</code> exists in the polymarket-alerts directory.
   </div>
   {% endif %}
 </div>
@@ -496,18 +333,6 @@
       });
     });
   }
-  const loopSearchInput = document.getElementById('loop-search');
-  if (loopSearchInput) {
-    const loopRows = document.querySelectorAll('.loop-row');
-    loopSearchInput.addEventListener('input', function() {
-      const q = this.value.toLowerCase().trim();
-      loopRows.forEach(function(row) {
-        const text = (row.getAttribute('data-search') || '').toLowerCase();
-        row.style.display = (!q || text.includes(q)) ? '' : 'none';
-      });
-    });
-  }
-
   const runStatsData = {{ run_stats | tojson if run_stats else '[]' }};
   const runStatsChron = runStatsData.slice().reverse();
   const runStatsResolvedEl = document.getElementById('run-stats-resolved-chart');
@@ -552,24 +377,41 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false }
-        },
+        plugins: { legend: { display: false } },
         scales: {
-          x: {
-            grid: { color: gridColor },
-            ticks: { color: textColor, maxRotation: 45 }
-          },
-          y: {
-            grid: { color: gridColor },
-            ticks: {
-              color: textColor,
-              callback: v => '$' + v
-            }
-          }
+          x: { grid: { color: gridColor }, ticks: { color: textColor, maxRotation: 45 } },
+          y: { grid: { color: gridColor }, ticks: { color: textColor, callback: v => '$' + v } }
         }
       }
     });
+    const drawdownEl = document.getElementById('drawdown-chart');
+    if (drawdownEl && chartData.some(d => d.drawdown !== undefined)) {
+      new Chart(drawdownEl, {
+        type: 'line',
+        data: {
+          labels: chartData.map(d => d.date),
+          datasets: [{
+            label: 'Drawdown ($)',
+            data: chartData.map(d => d.drawdown || 0),
+            borderColor: '#DC2626',
+            backgroundColor: 'rgba(220, 38, 38, 0.1)',
+            fill: true,
+            tension: 0.2,
+            pointRadius: 2,
+            pointHoverRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { color: gridColor }, ticks: { color: textColor, maxRotation: 45 } },
+            y: { grid: { color: gridColor }, ticks: { color: textColor, callback: v => '$' + v } }
+          }
+        }
+      });
+    }
   }
 })();
 </script>

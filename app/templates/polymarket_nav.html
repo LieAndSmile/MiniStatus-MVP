@@ -1,0 +1,45 @@
+{% if polymarket_sections is defined and polymarket_sections %}
+<nav class="mb-6 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 border-b border-light-border dark:border-dark-border" aria-label="Polymarket sections">
+  <div class="flex flex-nowrap min-w-max gap-0">
+    {% for section_id, label, endpoint in polymarket_sections %}
+    <a href="{{ url_for(endpoint) }}"
+       class="polymarket-nav-link px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap flex-shrink-0
+         {% if active_section is defined and active_section == section_id %}
+         border-light-primary dark:border-dark-primary text-light-primary dark:text-dark-primary bg-light-primary/10 dark:bg-dark-primary/10 font-semibold
+         {% else %}
+         border-transparent text-light-muted dark:text-dark-muted hover:text-light-text dark:hover:text-dark-text hover:border-light-border dark:hover:border-dark-border hover:bg-light-hover/50 dark:hover:bg-dark-hover/50
+         {% endif %}
+         transition-colors">
+      {{ label }}
+    </a>
+    {% endfor %}
+  </div>
+</nav>
+<div id="polymarket-loading-overlay" class="fixed inset-0 bg-light-bg/80 dark:bg-dark-bg/80 z-[100] flex items-center justify-center pointer-events-none opacity-0 transition-opacity duration-200" aria-hidden="true">
+  <div class="rounded-lg bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border px-6 py-4 flex items-center gap-3 shadow-lg">
+    <div class="animate-spin rounded-full h-6 w-6 border-2 border-light-primary dark:border-dark-primary border-t-transparent"></div>
+    <span class="text-sm font-medium text-light-text dark:text-dark-text">Loading…</span>
+  </div>
+</div>
+<script>
+(function() {
+  var overlay = document.getElementById('polymarket-loading-overlay');
+  if (!overlay) return;
+  function showLoading() {
+    overlay.classList.remove('pointer-events-none');
+    overlay.classList.add('opacity-100');
+  }
+  document.querySelectorAll('.polymarket-nav-link').forEach(function(a) {
+    a.addEventListener('click', function() { showLoading(); });
+  });
+  document.querySelectorAll('[data-polymarket-filters] a[href]').forEach(function(a) {
+    if (a.target !== '_blank' && !a.href.startsWith('javascript:')) {
+      a.addEventListener('click', function() { showLoading(); });
+    }
+  });
+  document.querySelectorAll('select[data-polymarket-nav]').forEach(function(sel) {
+    sel.addEventListener('change', function() { showLoading(); });
+  });
+})();
+</script>
+{% endif %}

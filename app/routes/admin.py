@@ -5,7 +5,7 @@ from app.extensions import db, limiter
 from app.utils.system_check import has_systemctl
 from app.utils.password import verify_password, update_password_in_env
 from app.utils.helpers import get_system_stats, get_system_identity
-from functools import wraps
+from app.utils.decorators import admin_required
 import os
 from dotenv import load_dotenv
 from app.utils.auto_tag import get_auto_tagged_for_service
@@ -38,13 +38,6 @@ def ensure_default_tags():
             existing.is_public = tag.get("is_public", False)
     db.session.commit()
 
-def admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not session.get('authenticated'):
-            return redirect(url_for('admin.login'))
-        return f(*args, **kwargs)
-    return decorated_function
 
 @admin_bp.route("/")
 @admin_required

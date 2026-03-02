@@ -20,7 +20,7 @@ Built with Flask and SQLite. No Prometheus. No Grafana. Just clean uptime visibi
 - **Rate Limiting** - Protection against brute force attacks
 - **Dark/Light Theme** - Automatic theme support
 - **REST API** - Programmatic status reporting
-- **Polymarket Integration** - Admin-only dashboard for polymarket-alerts (resolved stats, losses, unresolved/open positions, loop summary, filters, pagination, export, live prices, health check)
+- **Polymarket Integration** - Admin-only dashboard for polymarket-alerts (Portfolio, Open Positions, Performance, Loss Lab, Loop/Dev; filters, search, charts, export, mtime caching)
 
 ## Quick Start
 
@@ -80,7 +80,7 @@ PUBLIC_REGION=US-East  # Region badge on public dashboard
 PUBLIC_ENVIRONMENT=Production  # Environment badge (Production/Staging/Development)
 
 # Polymarket Alerts integration (optional)
-POLYMARKET_DATA_PATH=/path/to/polymarket-alerts  # Path to polymarket-alerts dir (alerts_log.csv, polymarket_alerts.log)
+POLYMARKET_DATA_PATH=/path/to/polymarket-alerts  # Path to polymarket-alerts dir (alerts_log.csv, open_positions.csv, run_stats.csv, etc.)
 ```
 
 ### Security Features
@@ -98,7 +98,6 @@ POLYMARKET_DATA_PATH=/path/to/polymarket-alerts  # Path to polymarket-alerts dir
 Place configuration files in the `config/` directory:
 
 - `config/auto_tag_rules.yaml` - Auto-tagging rules
-- `config/quick_links.yaml` - Quick links panel
 - `config/services.yaml` - Service definitions (optional)
 
 ## RSS Feed
@@ -287,7 +286,7 @@ To show services on the public dashboard:
 **Admin Section (requires login):**
 - Admin Dashboard - Full admin control panel with system health info
 - Remote Hosts - Remote service monitoring
-- Polymarket - Resolved alerts, Losses, Unresolved (open positions with optional live prices), Loop Summary (filters, pagination, search, export CSV)
+- Polymarket - Portfolio, Open Positions, Performance, Loss Lab, Loop/Dev (filters, search, charts, export)
 - Tags - Service tag management (with public/private visibility)
 - Auto-Tag Rules - Automatic tagging configuration
 - Settings (collapsible menu)
@@ -331,34 +330,48 @@ The new password will be automatically hashed and saved. No need to restart the 
 
 ## Polymarket Integration
 
-When `POLYMARKET_DATA_PATH` points to a polymarket-alerts directory, an admin-only **Polymarket** page is available at `/polymarket`.
+When `POLYMARKET_DATA_PATH` points to a polymarket-alerts directory, an admin-only **Polymarket** sub-app is available at `/polymarket` with five pages:
 
-### Tabs
+### Pages
 
-- **Resolved Alerts** – Resolved bets with wins/losses, filters, sort, search, pagination, export
-- **Losses** – Full loss list with category filter (Politics, Sports, Crypto, etc.), sort, search, pagination, Export Losses CSV
-- **Unresolved** – Open positions (alerts not yet resolved). At-stake total, sort by alert date or days to resolution. Optional **live prices** – click "Load live prices" to fetch current YES price and show Entry, Live, Unrealized P/L columns
-- **Loop Summary** – Data from `debug_candidates_v60.csv`. Status filter (All / ALERT only), sort, search, pagination, export
+| Page | Route | Description |
+|------|-------|--------------|
+| **Portfolio** | `/polymarket/portfolio` | Resolved bets, KPIs (wins, losses, net P/L, max drawdown), cumulative P/L chart, drawdown chart, filter (all/wins/losses), time window, sort, search, pagination, export |
+| **Open Positions** | `/polymarket/positions` | Open positions from `open_positions.csv`, total cost, unrealized P/L, cluster exposure summary (top 5 by category), search |
+| **Performance** | `/polymarket/performance` | Expectancy by edge bands (0–0.5%, 0.5–1%, 1–2%, 2%+) and gamma bands; time window filter |
+| **Loss Lab** | `/polymarket/loss-lab` | Losses by category (politics, sports, crypto, etc.), time window filter |
+| **Loop / Dev** | `/polymarket/loop` | Debug candidates from `debug_candidates_v60.csv`, status filter (All/ALERT), sort, search, pagination, export |
 
 ### Features
 
-- **Summary stats** - Total alerts, resolved count, wins, losses, net P/L
-- **Filter** - All / Wins / Losses (Resolved tab)
-- **Display** - All time / Last 30 / 90 / 180 days (uses `resolved_ts` or `ts` from CSV)
-- **Pagination** - 50 items per page with Previous/Next and page numbers
-- **Sort options** - P/L, date, question, result (Resolved); category, date, P/L (Losses); alert date, days (Unresolved); date, edge, question, status (Loop Summary)
-- **Search** - Client-side search by question text
-- **Export CSV** - Resolved list, Losses (with category/rationale), Loop Summary
-- **Health check** - Shows "polymarket-alerts last run: X hours ago" from `polymarket_alerts.log`
-- **Losses by Category** - Breakdown by politics, sports, crypto, etc.
-- **Edge/Gamma bands** - Win rate and P/L by edge band (0–0.5%, 0.5–1%, etc.) and gamma band (0.90–0.95, etc.)
-- **P/L chart** - Cumulative P/L over time (line chart, respects Display filter)
-- **Per-run stats trend** - Resolved count and P/L over time per run (from `run_stats.csv`)
+- **Time window** – All time / Last 30 / 90 / 180 days (Portfolio, Performance, Loss Lab)
+- **Search** – Client-side search by question text (Portfolio, Positions, Loop)
+- **Sticky table headers** – Headers stay visible when scrolling
+- **mtime caching** – CSV reads are cached; cache invalidates when files change
+- **Charts** – Cumulative P/L, drawdown, per-run stats trend (Chart.js)
+- **Export CSV** – Resolved list, Loop Summary
+- **Health check** – "polymarket-alerts last run: X ago" from `polymarket_alerts.log`
+- **CSV schema validation** – Clear "CSV schema mismatch" banner when `alerts_log.csv` is invalid
+- **Cross-tab UX** – Active tab styling, mobile horizontal scroll, loading overlay when switching tabs/filters, empty states (e.g. "No open positions")
 
 ### Requirements
 
-- polymarket-alerts directory with `alerts_log.csv` (and optionally `polymarket_alerts.log` for health, `run_stats.csv` for per-run trend)
+- polymarket-alerts directory with `alerts_log.csv` (required)
+- Optional: `open_positions.csv` (run `update_open_positions.py` in polymarket-alerts), `polymarket_alerts.log` (health), `run_stats.csv` (per-run trend), `debug_candidates_v60.csv` (Loop page)
 - CSV columns: `question`, `link`, `resolved`, `actual_result`, `pnl_usd`, `resolved_ts` or `ts`
+
+### Open positions
+
+To show open positions on the **Open Positions** page, run `update_open_positions.py` in polymarket-alerts:
+
+```bash
+cd polymarket-alerts
+python3 update_open_positions.py          # Fetches live prices from CLOB API
+python3 update_open_positions.py --no-live   # Uses last known prices only (no API)
+python3 update_open_positions.py --dry-run   # Preview without writing
+```
+
+Creates `open_positions.csv` from unresolved alerts in `alerts_log.csv`. Columns: `market_id`, `question`, `side`, `shares`, `avg_price`, `cost_usd`, `current_mid`, `unrealized_pnl`, `last_updated`, `link`.
 
 ### Backfill resolved_ts
 
@@ -411,19 +424,25 @@ MiniStatus-MVP/
 │   │   ├── sync.py         # Service synchronization
 │   │   ├── remote.py       # Remote host monitoring
 │   │   ├── ports.py        # Port monitoring
-│   │   └── polymarket.py   # Polymarket alerts integration
+│   │   ├── polymarket.py   # Polymarket alerts integration
+│   │   └── error_handlers.py  # 403 and other error handlers
 │   ├── templates/          # Jinja2 templates
 │   │   ├── public/         # Public dashboard templates
-│   │   └── admin/           # Admin panel templates
+│   │   ├── admin/          # Admin panel templates
+│   │   ├── polymarket_nav.html      # Shared Polymarket tab navigation
+│   │   └── polymarket_time_filter.html  # Shared time window filter macro
 │   ├── models.py           # Database models (Service, Tag, Incident)
 │   ├── services/           # Business logic
 │   ├── utils/              # Utilities
-│   │   ├── password.py      # Password hashing utilities
-│   │   ├── helpers.py      # Helper functions
-│   │   └── polymarket.py   # Polymarket CSV/log parsing
-│   └── extensions.py       # Flask extensions (db, csrf, limiter)
-├── config/                  # YAML configuration files
-├── scripts/                 # Installation and utility scripts
+│   │   ├── decorators.py   # admin_required and shared decorators
+│   │   ├── password.py    # Password hashing utilities
+│   │   ├── helpers.py     # Helper functions (system stats, identity)
+│   │   ├── polymarket.py  # Polymarket CSV/log parsing
+│   │   ├── ports.py       # Port scanning utilities
+│   │   └── auto_tag.py    # Auto-tagging rules
+│   └── extensions.py      # Flask extensions (db, csrf, limiter)
+├── config/                 # YAML configuration files
+├── scripts/                # Installation and utility scripts
 │   ├── install.sh          # Installation script
 │   ├── uninstall.sh        # Uninstallation script
 │   ├── start.sh            # Start script
@@ -432,10 +451,10 @@ MiniStatus-MVP/
 │   ├── backfill_resolved_ts.py   # Backfill resolved_ts from ts for date filters
 │   ├── log_run_stats.py          # Append per-run stats to run_stats.csv for trend analysis
 │   └── deploy_to_vm.sh           # Deploy to VM (rsync + restart); set VM_HOST, VM_USER, VM_PATH in .env
-├── tests/                   # Test files
-├── run.py                   # Application entry point
-├── .env.example             # Environment variables template
-└── requirements.txt         # Python dependencies
+├── tests/                  # Test files
+├── run.py                  # Application entry point
+├── .env.example            # Environment variables template
+└── requirements.txt        # Python dependencies
 ```
 
 ## Database Schema

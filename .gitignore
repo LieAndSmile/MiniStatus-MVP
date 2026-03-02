@@ -39,6 +39,7 @@ instance/
 # IDEs and editors
 .idea/
 .vscode/
+.cursor/
 *.swp
 *.swo
 *~

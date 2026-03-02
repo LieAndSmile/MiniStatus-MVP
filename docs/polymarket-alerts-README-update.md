@@ -50,8 +50,31 @@ When running on the same machine as [MiniStatus](https://github.com/LieAndSmile/
 MiniStatus reads:
 - `alerts_log.csv` – resolved stats, wins/losses, filters, export
 - `polymarket_alerts.log` – last run time ("X hours ago")
+- `run_stats.csv` – per-run stats for trend charts (optional; run `log_run_stats.py` after resolution_tracker)
 
-No changes to polymarket-alerts are required; MiniStatus reads the files directly.
+No changes to polymarket-alerts are required; MiniStatus reads the files directly. For per-run trend charts, copy and run `log_run_stats.py` from MiniStatus after each resolution_tracker run.
+
+## Per-run stats log (trend analysis)
+
+Append a stats snapshot after each run to enable trend charts in MiniStatus:
+
+```bash
+cp /path/to/MiniStatus-MVP/scripts/log_run_stats.py .
+# Run after resolution_tracker (e.g. in same timer)
+./venv/bin/python resolution_tracker.py --once && python3 log_run_stats.py
+```
+
+Creates `run_stats.csv`. MiniStatus shows "Per-Run Stats Trend" charts.
+
+## Backfill resolved_ts
+
+For older resolved rows that lack `resolved_ts`, backfill from `ts` so date filters work:
+
+```bash
+cp /path/to/MiniStatus-MVP/scripts/backfill_resolved_ts.py .
+python3 backfill_resolved_ts.py --dry-run   # Preview
+python3 backfill_resolved_ts.py             # Backfill (creates .bak backup)
+```
 
 ## Retention Script
 
@@ -91,7 +114,8 @@ The alert pipeline is split into modules for easier testing and changes:
 | `resolution_tracker.py` | Reads `alerts_log.csv`, checks resolutions, updates P/L, sends summary. |
 | `retention_alerts_log.py` | Optional: trim old rows from alerts_log.csv (copy from MiniStatus). |
 | `.env` | Config: `TELEGRAM_TOKEN`, `CHAT_ID`, and optional thresholds. |
-| `alerts_log.csv` | Log of every alert sent (used by resolution_tracker and MiniStatus). |
+| `alerts_log.csv` | Log of every alert sent (ts, question, gamma, event_time, link, token_id, resolved, pnl_usd, etc.). Used by resolution_tracker and MiniStatus. |
+| `run_stats.csv` | Per-run stats (ts, resolved, wins, losses, total_pnl); created by `log_run_stats.py` for MiniStatus trend charts. |
 | `cooldown.json` | Per-token cooldown so the same market isn't re-alerted. |
 | `polymarket_alerts.log` | Application log (used by MiniStatus for "last run"; rotate with logrotate). |
 | `venv/` | Python virtual environment. |

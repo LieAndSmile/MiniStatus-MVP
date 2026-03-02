@@ -6,6 +6,8 @@ All notable changes to MiniStatus are documented in this file.
 
 ### Added
 
+- **Polymarket cross-tab UX** – Active tab styling (background, font weight), mobile horizontal scroll for tabs, loading overlay when switching tabs or applying filters, empty states (e.g. "No open positions", "No resolved alerts yet")
+
 - **Polymarket Losses tab** – Dedicated tab for full loss list with category filter (Politics, Sports, Crypto, Entertainment, Other), display filter (All time / Last 30/90/180 days), sort (biggest first, date, question, by category), search, pagination, and Export Losses CSV.
 
 - **Polymarket Unresolved tab** – Open positions (alerts not yet resolved). Shows at-stake total, sort by alert date or days to resolution, search, pagination. Optional **live prices** – click "Load live prices" to fetch current YES price from Polymarket CLOB API and display Entry, Live, and Unrealized P/L columns.
@@ -42,3 +44,16 @@ All notable changes to MiniStatus are documented in this file.
   - Creates `.bak` backup before modifying
   - Usage: `python3 retention_alerts_log.py --days 90 [--dry-run]`
   - Designed to be copied to polymarket-alerts and run via cron
+
+### Changed
+
+- **Unified admin_required decorator** – All admin-protected routes now use shared `app.utils.decorators.admin_required`; removed duplicate definitions from admin.py and sync.py
+- **Polymarket refactoring** – Added `_polymarket_configured_required` decorator for not-configured handling; `_get_data_path()` helper; `build_pagination()` and `_STATS_EMPTY` in polymarket utils; shared `polymarket_time_filter.html` macro for time window UI; simplified `_parse_filter_days()` to return `(filter_val, days_val, days)`
+- **403 error handler** – `errors_bp` now registered in app; custom 403 page renders when access is forbidden
+
+### Removed
+
+- **Unused files** – `polymarket_placeholder.html`, `public/home.html`, `scan_systemd.html`, `static/dark.css`
+- **Dead code** – `register_blueprints()` from routes/__init__.py; `_bucket()` from polymarket utils; orphaned helpers (get_all_quick_links, get_security_summary, get_public_holidays, etc.) from helpers.py
+- **Duplicate PORT_LABELS** – Removed from ports route; port labels come from port data
+- **YAML config references** – `quick_links.yaml` and `security_summary.yaml` removed from docs (features were unused)
