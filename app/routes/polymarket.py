@@ -1,9 +1,9 @@
-from flask import Blueprint, render_template, request, send_file, redirect, url_for
+from flask import Blueprint, render_template, request, send_file, redirect, url_for, flash
 from functools import wraps
 import os
 import csv
 import io
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from app.utils.polymarket import (
     get_polymarket_stats,
@@ -20,6 +20,8 @@ from app.utils.polymarket import (
     build_pagination,
     SORT_OPTIONS,
     DEBUG_SORT_OPTIONS,
+    POSITIONS_SORT_OPTIONS,
+    POSITIONS_EXPIRY_FILTERS,
 )
 from app.utils.decorators import admin_required
 
@@ -100,13 +102,14 @@ def polymarket_portfolio():
     """Display Polymarket Alerts stats from local CSV data."""
     data_path = _get_data_path()
     filter_val, days_val, days = _parse_filter_days()
+    from_date_val = (request.args.get("from_date") or "").strip() or None
     category_val = (request.args.get("category") or "").strip()
     page = max(1, int(request.args.get("page", 1) or 1))
     sort_val = request.args.get("sort", "pnl_asc")
     if sort_val not in SORT_OPTIONS:
         sort_val = "pnl_asc"
 
-    stats = get_polymarket_stats(data_path, filter=filter_val, days=days, sort=sort_val, category=category_val or None)
+    stats = get_polymarket_stats(data_path, filter=filter_val, days=days, from_date=from_date_val, sort=sort_val, category=category_val or None)
     last_loop = get_last_loop_time(data_path)
     run_stats = get_run_stats_log(data_path)
 
@@ -124,6 +127,7 @@ def polymarket_portfolio():
         total_count=total_count,
         current_filter=filter_val,
         current_days=days_val or "all",
+        current_from_date=from_date_val,
         current_category=category_val,
         current_sort=sort_val,
         sort_options=SORT_OPTIONS,
@@ -135,13 +139,52 @@ def polymarket_portfolio():
     )
 
 
+def _parse_positions_days():
+    """Parse days from request for positions time filter."""
+    days_val = request.args.get("days", "all")
+    days = None
+    if days_val != "all":
+        try:
+            days = int(days_val)
+            if days <= 0:
+                days = None
+        except ValueError:
+            days = None
+    return days_val or "all", days
+
+
 @polymarket_bp.route("/positions")
 @admin_required
 @_polymarket_configured_required("positions")
 def polymarket_positions():
     """Open positions from open_positions.csv."""
     data_path = _get_data_path()
-    positions = get_open_positions(data_path)
+    days_val, days = _parse_positions_days()
+    from_date_val = (request.args.get("from_date") or "").strip() or None
+    category_val = (request.args.get("category") or "").strip() or None
+    sort_val = request.args.get("sort", "cost_desc")
+    if sort_val not in POSITIONS_SORT_OPTIONS:
+        sort_val = "cost_desc"
+    expiry_filter_val = (request.args.get("expiry") or "").strip() or None
+    if expiry_filter_val not in POSITIONS_EXPIRY_FILTERS:
+        expiry_filter_val = None
+    hours_max_val = None
+    try:
+        hm = request.args.get("hours_max", "").strip()
+        if hm:
+            hours_max_val = float(hm)
+    except (ValueError, TypeError):
+        pass
+
+    positions = get_open_positions(
+        data_path,
+        days=days,
+        from_date=from_date_val,
+        category=category_val,
+        sort=sort_val,
+        expiry_filter=expiry_filter_val,
+        hours_max=hours_max_val,
+    )
     total_cost = sum(p["cost_usd"] for p in positions)
     total_unrealized = sum(p["unrealized_pnl"] for p in positions)
     exposure = get_exposure_summary(positions)
@@ -156,7 +199,54 @@ def polymarket_positions():
         total_unrealized=total_unrealized,
         total_unrealized_display=format_compact_usd(total_unrealized) if total_unrealized != 0 else None,
         exposure=exposure,
+        current_days=days_val,
+        current_from_date=from_date_val,
+        current_category=category_val,
+        current_sort=sort_val,
+        current_expiry=expiry_filter_val,
+        current_hours_max=hours_max_val,
+        sort_options=POSITIONS_SORT_OPTIONS,
+        expiry_filters=POSITIONS_EXPIRY_FILTERS,
     )
+
+
+@polymarket_bp.route("/positions/refresh", methods=["POST"])
+@admin_required
+@_polymarket_configured_required("positions")
+def polymarket_positions_refresh():
+    """Run update_open_positions.py to refresh open_positions.csv."""
+    import subprocess
+    data_path = _get_data_path()
+    script_path = os.path.join(data_path, "update_open_positions.py")
+    if not os.path.isfile(script_path):
+        flash("update_open_positions.py not found in polymarket-alerts directory.", "error")
+        return redirect(url_for("polymarket.polymarket_positions"))
+    # Preserve current filters in redirect (from form hidden fields)
+    redirect_kw = {}
+    for k in ("days", "category", "sort", "from_date", "expiry", "hours_max"):
+        v = request.form.get(k) or request.args.get(k)
+        if v:
+            redirect_kw[k] = v
+    try:
+        result = subprocess.run(
+            ["python3", "update_open_positions.py", "--no-live"],
+            cwd=data_path,
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        if result.returncode == 0:
+            out = (result.stdout or "").strip()
+            msg = out.split("\n")[-1] if out else "Positions refreshed."
+            flash(msg, "success")
+        else:
+            err = (result.stderr or result.stdout or "").strip()[:300]
+            flash(f"Refresh failed: {err or 'Unknown error'}", "error")
+    except subprocess.TimeoutExpired:
+        flash("Refresh timed out (5 min). Try running manually.", "error")
+    except Exception as e:
+        flash(f"Refresh failed: {e}", "error")
+    return redirect(url_for("polymarket.polymarket_positions", **redirect_kw))
 
 
 @polymarket_bp.route("/performance")
@@ -216,7 +306,18 @@ def polymarket_loop():
     debug_sort = request.args.get("debug_sort", "date_desc")
     if debug_sort not in DEBUG_SORT_OPTIONS:
         debug_sort = "date_desc"
-    debug_result = get_debug_candidates(data_path, status_filter=debug_status, sort=debug_sort)
+    from_date_val = (request.args.get("from_date") or "").strip() or None
+    days_val = request.args.get("days", "all")
+    days = None
+    if days_val != "all":
+        try:
+            days = int(days_val)
+            if days > 0 and not from_date_val:
+                cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+                from_date_val = cutoff.strftime("%Y-%m-%d")
+        except ValueError:
+            pass
+    debug_result = get_debug_candidates(data_path, status_filter=debug_status, sort=debug_sort, from_date=from_date_val)
     debug_candidates = []
     debug_total = 0
     debug_page = max(1, int(request.args.get("debug_page", 1) or 1))
@@ -236,6 +337,8 @@ def polymarket_loop():
         debug_pagination=pagination,
         debug_status=debug_status,
         debug_sort=debug_sort,
+        current_days=days_val or "all",
+        current_from_date=from_date_val,
         active_section="loop",
         polymarket_sections=POLYMARKET_SECTIONS,
     )
@@ -250,12 +353,13 @@ def polymarket_export():
 
     data_path = _get_data_path()
     filter_val, _, days = _parse_filter_days()
+    from_date_val = (request.args.get("from_date") or "").strip() or None
     category_val = (request.args.get("category") or "").strip() or None
     sort_val = request.args.get("sort", "pnl_asc")
     if sort_val not in SORT_OPTIONS:
         sort_val = "pnl_asc"
 
-    stats = get_polymarket_stats(data_path, filter=filter_val, days=days, sort=sort_val, category=category_val)
+    stats = get_polymarket_stats(data_path, filter=filter_val, days=days, from_date=from_date_val, sort=sort_val, category=category_val)
     if not stats or "resolved_list" not in stats:
         return "No data to export", 404
 

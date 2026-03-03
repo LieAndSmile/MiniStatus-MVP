@@ -337,14 +337,14 @@ When `POLYMARKET_DATA_PATH` points to a polymarket-alerts directory, an admin-on
 | Page | Route | Description |
 |------|-------|--------------|
 | **Portfolio** | `/polymarket/portfolio` | Resolved bets, KPIs (wins, losses, net P/L, max drawdown), cumulative P/L chart, drawdown chart, filter (all/wins/losses), time window, sort, search, pagination, export |
-| **Open Positions** | `/polymarket/positions` | Open positions from `open_positions.csv`, total cost, unrealized P/L, cluster exposure summary (top 5 by category), search |
+| **Open Positions** | `/polymarket/positions` | Open positions from `open_positions.csv`, total cost, unrealized P/L, cluster exposure summary (top 5 by category), search, **filter by opened date** (All time / Last 30/90/180 days, or click a date to filter from that date), category filter, sort, clickable Opened column header |
 | **Performance** | `/polymarket/performance` | Expectancy by edge bands (0–0.5%, 0.5–1%, 1–2%, 2%+) and gamma bands; time window filter |
 | **Loss Lab** | `/polymarket/loss-lab` | Losses by category (politics, sports, crypto, etc.), time window filter |
-| **Loop / Dev** | `/polymarket/loop` | Debug candidates from `debug_candidates_v60.csv`, status filter (All/ALERT), sort, search, pagination, export |
+| **Loop / Dev** | `/polymarket/loop` | Debug candidates from `debug_candidates_v60.csv`, time window filter, status filter (All/ALERT), sort, search, pagination, export, clickable dates for filtering |
 
 ### Features
 
-- **Time window** – All time / Last 30 / 90 / 180 days (Portfolio, Performance, Loss Lab)
+- **Time window** – All time / Last 30 / 90 / 180 days (Portfolio, Performance, Loss Lab, Open Positions, Loop/Dev). **Click date cells** to filter from that date (Portfolio, Positions, Loop)
 - **Search** – Client-side search by question text (Portfolio, Positions, Loop)
 - **Sticky table headers** – Headers stay visible when scrolling
 - **mtime caching** – CSV reads are cached; cache invalidates when files change
@@ -371,7 +371,7 @@ python3 update_open_positions.py --no-live   # Uses last known prices only (no A
 python3 update_open_positions.py --dry-run   # Preview without writing
 ```
 
-Creates `open_positions.csv` from unresolved alerts in `alerts_log.csv`. Columns: `market_id`, `question`, `side`, `shares`, `avg_price`, `cost_usd`, `current_mid`, `unrealized_pnl`, `last_updated`, `link`.
+Creates `open_positions.csv` from unresolved alerts in `alerts_log.csv`. Columns: `market_id`, `question`, `side`, `shares`, `avg_price`, `cost_usd`, `current_mid`, `unrealized_pnl`, `last_updated`, `link`, `alert_ts` (for date filtering). Dates use **YYYY-MM-DD HH:MM** format across all tabs.
 
 ### Backfill resolved_ts
 
