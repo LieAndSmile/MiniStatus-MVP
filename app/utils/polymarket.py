@@ -79,6 +79,20 @@ def _get_display_label(question: str, max_len: int = 80) -> str:
     return q
 
 
+# Standard date display format across Portfolio, Open Positions, Loop/Dev
+TS_DISPLAY_FMT = "%Y-%m-%d %H:%M"
+
+
+def format_ts_display(dt: Optional[datetime], raw_fallback: str = "") -> str:
+    """Format datetime for display. Returns standard format (YYYY-MM-DD HH:MM) or fallback."""
+    if dt:
+        return dt.strftime(TS_DISPLAY_FMT)
+    if raw_fallback:
+        s = raw_fallback.replace("T", " ", 1).strip()
+        return s[:16] if len(s) >= 10 else (s or "—")
+    return "—"
+
+
 def _parse_date(val) -> Optional[datetime]:
     """Parse date from ts or resolved_ts column for retention filtering."""
     if not val or not isinstance(val, str):
@@ -88,10 +102,34 @@ def _parse_date(val) -> Optional[datetime]:
         return None
     for fmt in ("%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
         try:
-            return datetime.strptime(val[:19], fmt) if len(val) >= 10 else datetime.strptime(val, fmt)
+            dt = datetime.strptime(val[:19], fmt) if len(val) >= 10 else datetime.strptime(val, fmt)
+            return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
         except ValueError:
             continue
     return None
+
+
+def _format_countdown(event_time: Optional[datetime]) -> str:
+    """Human-readable countdown: '2d 5h', '3h 12m', 'Expired', or '—'."""
+    if not event_time:
+        return "—"
+    now = datetime.now(timezone.utc)
+    et = event_time.replace(tzinfo=timezone.utc) if event_time.tzinfo is None else event_time
+    delta = et - now
+    total_secs = delta.total_seconds()
+    if total_secs < 0:
+        return "Expired"
+    if total_secs < 60:
+        return "<1m"
+    if total_secs < 3600:
+        return f"{int(total_secs // 60)}m"
+    if total_secs < 86400:
+        h = int(total_secs // 3600)
+        m = int((total_secs % 3600) // 60)
+        return f"{h}h {m}m" if m else f"{h}h"
+    d = int(total_secs // 86400)
+    h = int((total_secs % 86400) // 3600)
+    return f"{d}d {h}h" if h else f"{d}d"
 
 
 # Required columns for alerts_log.csv schema validation
@@ -195,6 +233,7 @@ def get_polymarket_stats(
     data_path: str,
     filter: Literal["all", "wins", "losses"] = "all",
     days: Optional[int] = None,
+    from_date: Optional[str] = None,
     sort: str = "pnl_asc",
     category: Optional[str] = None,
 ) -> Optional[dict]:
@@ -202,7 +241,8 @@ def get_polymarket_stats(
     Read alerts_log.csv from polymarket-alerts directory and compute stats.
     Returns dict with: alerts_total, resolved, wins, losses, total_pnl, resolved_list.
     filter: "all" | "wins" | "losses" - filter displayed list
-    days: if set, only include resolved alerts older than (now - days) days
+    days: if set, only include resolved alerts from last N days
+    from_date: if set (YYYY-MM-DD), only include resolved_ts >= that date (overrides days when both set)
     sort: pnl_asc | pnl_desc | date_desc | date_asc | question_asc | question_desc | result_yes | result_no
     """
     if not data_path or not os.path.isdir(data_path):
@@ -272,9 +312,17 @@ def get_polymarket_stats(
     except (IOError, csv.Error) as e:
         return {**_STATS_EMPTY, "error": str(e)}
 
-    # Retention filter: exclude resolved older than (now - days)
-    if days is not None and days > 0:
+    # Date filter: from_date (YYYY-MM-DD) or days
+    cutoff = None
+    if from_date and len(from_date) >= 10:
+        try:
+            cutoff = datetime.strptime(from_date[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        except ValueError:
+            pass
+    if cutoff is None and days is not None and days > 0:
         cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
+    if cutoff is not None:
         def _within_cutoff(r):
             ts = r.get("resolved_ts")
             if not ts:
@@ -329,6 +377,8 @@ def get_polymarket_stats(
 
     for r in sorted_rows:
         r["pnl_display"] = f"${r['pnl_usd']:.2f}"
+        r["resolved_ts_display"] = format_ts_display(r.get("resolved_ts"))
+        r["resolved_date_param"] = r["resolved_ts"].strftime("%Y-%m-%d") if r.get("resolved_ts") else ""
     cumulative = 0.0
     peak = 0.0
     max_drawdown = 0.0
@@ -376,11 +426,36 @@ def is_polymarket_configured() -> bool:
     return bool(path and os.path.isdir(path))
 
 
-def get_open_positions(data_path: str) -> list[dict]:
+POSITIONS_SORT_OPTIONS = (
+    "cost_desc", "cost_asc", "pnl_desc", "pnl_asc",
+    "gamma_desc", "gamma_asc", "edge_desc", "edge_asc",
+    "expiry_asc", "expiry_desc",
+    "question_asc", "question_desc", "date_desc", "date_asc",
+)
+
+POSITIONS_EXPIRY_FILTERS = ("all", "next_6h", "next_12h", "next_24h", "next_48h", "next_3d", "next_7d", "next_30d")
+
+
+def get_open_positions(
+    data_path: str,
+    days: Optional[int] = None,
+    from_date: Optional[str] = None,
+    category: Optional[str] = None,
+    sort: str = "cost_desc",
+    expiry_filter: Optional[str] = None,
+    hours_max: Optional[float] = None,
+) -> list[dict]:
     """
     Read open_positions.csv from polymarket-alerts directory.
     Returns list of dicts: market_id, question, side, shares, avg_price, cost_usd,
-    current_mid, unrealized_pnl, last_updated.
+    current_mid, unrealized_pnl, last_updated, alert_ts, category, event_time, resolution_time,
+    hours_remaining, countdown.
+    days: if set, only include positions opened in the last N days (by alert_ts).
+    from_date: if set (YYYY-MM-DD), only include alert_ts >= that date (overrides days when both set).
+    category: if set, filter by category (politics, sports, crypto, other).
+    sort: cost_desc, cost_asc, pnl_desc, pnl_asc, expiry_asc, expiry_desc, question_asc, question_desc, date_desc, date_asc.
+    expiry_filter: all, next_6h, next_12h, next_24h, next_48h, next_3d, next_7d, next_30d - filter by hours left.
+    hours_max: if set, custom max hours left (overrides expiry_filter when both set).
     """
     if not data_path or not os.path.isdir(data_path):
         return []
@@ -394,14 +469,72 @@ def get_open_positions(data_path: str) -> list[dict]:
         return []
     _, raw_rows = result
     rows = []
+    cutoff = None
+    if from_date and len(from_date) >= 10:
+        try:
+            cutoff = datetime.strptime(from_date[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        except ValueError:
+            pass
+    if cutoff is None and days is not None and days > 0:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
     try:
         for row in raw_rows:
             cost = _parse_float(row.get("cost_usd", 0))
             unrealized = _parse_float(row.get("unrealized_pnl", 0))
             link = (row.get("link") or "").strip()
+            alert_ts_raw = (row.get("alert_ts") or "").strip()
+            alert_ts = _parse_date(alert_ts_raw) if alert_ts_raw else None
+
+            if cutoff is not None:
+                if alert_ts is None:
+                    continue
+                ts_aware = alert_ts.replace(tzinfo=timezone.utc) if alert_ts.tzinfo is None else alert_ts
+                if ts_aware < cutoff:
+                    continue
+
+            question = (row.get("question") or "").strip()[:200]
+            cat = _categorize_question(question)
+            if category and cat.lower() != category.lower():
+                continue
+
+            gamma_val, edge_val = (row.get("gamma") or "").strip(), (row.get("edge") or "").strip()
+            gamma = _parse_float(gamma_val) if gamma_val else None
+            edge = _parse_float(edge_val) if edge_val else None
+            alert_ts_display = format_ts_display(alert_ts, alert_ts_raw)
+            alert_date_param = alert_ts.strftime("%Y-%m-%d") if alert_ts else ""
+            edge_pct = f"{edge * 100:+.2f}%" if edge is not None else "—"
+
+            event_time_raw = (row.get("event_time") or "").strip()
+            event_time = _parse_date(event_time_raw) if event_time_raw else None
+            now = datetime.now(timezone.utc)
+            hours_remaining = (event_time - now).total_seconds() / 3600.0 if event_time else None
+            resolution_time_display = format_ts_display(event_time, event_time_raw)
+            countdown = _format_countdown(event_time)
+
+            # Expiry filter by hours left
+            max_hours = None
+            if hours_max is not None and hours_max > 0:
+                max_hours = float(hours_max)
+            elif expiry_filter and expiry_filter != "all":
+                max_hours = {
+                    "next_6h": 6,
+                    "next_12h": 12,
+                    "next_24h": 24,
+                    "next_48h": 48,
+                    "next_3d": 72,
+                    "next_7d": 24 * 7,
+                    "next_30d": 24 * 30,
+                }.get(expiry_filter)
+            if max_hours is not None:
+                if event_time is None:
+                    continue
+                if hours_remaining is None or hours_remaining < 0 or hours_remaining > max_hours:
+                    continue
+
             rows.append({
                 "market_id": (row.get("market_id") or "").strip(),
-                "question": (row.get("question") or "").strip()[:200],
+                "question": question,
                 "side": (row.get("side") or "YES").strip(),
                 "shares": _parse_float(row.get("shares", 0)),
                 "avg_price": _parse_float(row.get("avg_price", 0)),
@@ -412,9 +545,63 @@ def get_open_positions(data_path: str) -> list[dict]:
                 "cost_display": format_compact_usd(cost),
                 "last_updated": (row.get("last_updated") or "").strip(),
                 "link": link if link.startswith("http") else "",
+                "alert_ts": alert_ts,
+                "alert_ts_raw": alert_ts_raw,
+                "alert_ts_display": alert_ts_display,
+                "alert_date_param": alert_date_param,
+                "gamma": gamma,
+                "edge": edge,
+                "gamma_display": f"{gamma:.4f}" if gamma is not None else "—",
+                "edge_pct": edge_pct,
+                "category": cat.upper(),
+                "event_time": event_time,
+                "resolution_time_display": resolution_time_display,
+                "hours_remaining": hours_remaining,
+                "hours_remaining_display": f"{hours_remaining:.1f}h" if hours_remaining is not None and hours_remaining >= 0 else ("Expired" if hours_remaining is not None else "—"),
+                "countdown": countdown,
             })
     except (IOError, csv.Error):
         return []
+
+    if sort not in POSITIONS_SORT_OPTIONS:
+        sort = "cost_desc"
+
+    def _sort_key(p):
+        if sort == "cost_desc":
+            return (-p["cost_usd"],)
+        if sort == "cost_asc":
+            return (p["cost_usd"],)
+        if sort == "pnl_desc":
+            return (-p["unrealized_pnl"],)
+        if sort == "pnl_asc":
+            return (p["unrealized_pnl"],)
+        if sort == "gamma_desc":
+            return (-(p.get("gamma") or 0),)
+        if sort == "gamma_asc":
+            return ((p.get("gamma") or 0),)
+        if sort == "edge_desc":
+            return (-(p.get("edge") or 0),)
+        if sort == "edge_asc":
+            return ((p.get("edge") or 0),)
+        if sort == "date_desc":
+            ts = p.get("alert_ts")
+            return (-(ts.timestamp() if ts else 0),)
+        if sort == "date_asc":
+            ts = p.get("alert_ts")
+            return ((ts.timestamp() if ts else 0),)
+        if sort == "expiry_asc":
+            et = p.get("event_time")
+            return ((et.timestamp() if et else float("inf")),)
+        if sort == "expiry_desc":
+            et = p.get("event_time")
+            return (-(et.timestamp() if et else 0),)
+        return (-p["cost_usd"],)
+
+    if sort in ("question_asc", "question_desc"):
+        rows.sort(key=lambda p: (p.get("question") or "").lower(), reverse=(sort == "question_desc"))
+    else:
+        rows.sort(key=_sort_key)
+
     return rows
 
 
@@ -677,12 +864,14 @@ def get_debug_candidates(
     limit: int = 5000,
     status_filter: Literal["all", "alert"] = "all",
     sort: str = "date_desc",
+    from_date: Optional[str] = None,
 ) -> Optional[tuple[list[dict], int]]:
     """
     Read debug_candidates_v60.csv (or debug_candidates*.csv) from polymarket-alerts.
     Returns (rows, total_count). Used for Loop Summary tab.
     status_filter: "all" | "alert" – when "alert", only rows with status ALERT.
     sort: date_desc | date_asc | edge_desc | edge_asc | question_asc | question_desc | status
+    from_date: if set (YYYY-MM-DD), only include ts >= that date.
     """
     if not data_path or not os.path.isdir(data_path):
         return None
@@ -707,7 +896,8 @@ def get_debug_candidates(
             edge = _parse_float(row.get("edge"))
             ts_raw = row.get("ts", "")
             dt = _parse_date(ts_raw)
-            ts_display = dt.strftime("%b %d, %Y %I:%M %p") if dt else (ts_raw[:19] if ts_raw else "—")
+            ts_display = format_ts_display(dt, ts_raw)
+            ts_date_param = dt.strftime("%Y-%m-%d") if dt else ""
             question = (row.get("question") or "").strip()
             # Use link from CSV (actual event URL); fallback to search only when missing
             link = (row.get("link") or "").strip()
@@ -716,7 +906,9 @@ def get_debug_candidates(
                 link = f"https://polymarket.com/search?q={q_enc}" if q_enc else ""
             rows.append({
                 "ts": ts_raw,
+                "ts_dt": dt,
                 "ts_display": ts_display,
+                "ts_date_param": ts_date_param,
                 "question": question[:80],
                 "link": link,
                 "gamma": _parse_float(row.get("gamma")),
@@ -735,6 +927,14 @@ def get_debug_candidates(
     # Status filter
     if status_filter == "alert":
         rows = [r for r in rows if (r.get("status") or "").strip().upper() == "ALERT"]
+
+    # from_date filter
+    if from_date and len(from_date) >= 10:
+        try:
+            cutoff_dt = datetime.strptime(from_date[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            rows = [r for r in rows if r.get("ts_dt") and (r["ts_dt"].replace(tzinfo=timezone.utc) if r["ts_dt"].tzinfo is None else r["ts_dt"]) >= cutoff_dt]
+        except ValueError:
+            pass
 
     # Sort
     def _ts_key(r):

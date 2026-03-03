@@ -22,6 +22,8 @@ Both run on the same VM. MiniStatus reads polymarket-alerts data via `POLYMARKET
 - Admin-only page at `/polymarket` with sub-nav: Portfolio, Open Positions, Performance, Loss Lab, Loop/Dev
 - Reads from polymarket-alerts dir: `alerts_log.csv`, `polymarket_alerts.log`, `run_stats.csv` (optional), `open_positions.csv`, `debug_candidates_v60.csv`
 - Features: summary stats, filter (All/Wins/Losses), time window (All time / 30/90/180 days), sort options, pagination (50/page), search, export CSV, P/L chart, per-run stats trend, Loop Summary tab
+- Date filtering: click date cells to filter from that date; standardized format (YYYY-MM-DD HH:MM) across Portfolio, Open Positions, Loop/Dev
+- Open Positions: filter by opened date (time window + click dates), category, sort; `open_positions.csv` includes `alert_ts`
 - Cross-tab UX: active tab styling, mobile scroll, loading overlay, empty states
 - Shared templates: `polymarket_nav.html`, `polymarket_time_filter.html`
 

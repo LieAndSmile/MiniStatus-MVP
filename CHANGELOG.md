@@ -6,6 +6,10 @@ All notable changes to MiniStatus are documented in this file.
 
 ### Added
 
+- **Polymarket date/time filtering** – Standardized date format (YYYY-MM-DD HH:MM) across Portfolio, Open Positions, and Loop/Dev. Click any date cell to filter from that date. Time window filter (All time / Last 30/90/180 days) on Open Positions and Loop/Dev. Clickable "Opened" column header for sort; "Filter by opened" bar above positions table.
+
+- **Polymarket Open Positions filters** – Time window (All time, Last 30/90/180 days), category filter (Politics, Sports, Crypto, Other), sort (cost, P/L, date, question). `open_positions.csv` now includes `alert_ts` from `alerts_log.csv` for date filtering.
+
 - **Polymarket cross-tab UX** – Active tab styling (background, font weight), mobile horizontal scroll for tabs, loading overlay when switching tabs or applying filters, empty states (e.g. "No open positions", "No resolved alerts yet")
 
 - **Polymarket Losses tab** – Dedicated tab for full loss list with category filter (Politics, Sports, Crypto, Entertainment, Other), display filter (All time / Last 30/90/180 days), sort (biggest first, date, question, by category), search, pagination, and Export Losses CSV.
