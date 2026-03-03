@@ -11,14 +11,14 @@
       <div>
         <h2 class="text-lg font-semibold text-light-text dark:text-dark-text">Loop Summary – Full Data</h2>
         <p class="text-sm text-light-muted dark:text-dark-muted">
-          Candidates from <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">debug_candidates_v60.csv</code> (same as "Full data" in Telegram loop summary).
+          Candidates from the debug candidates CSV (default <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">debug_candidates.csv</code>; same as "Full data" in Telegram loop summary).
           {% if last_loop %}<span class="ml-2">Last run: <strong class="text-light-text dark:text-dark-text">{{ last_loop }}</strong></span>{% endif %}
         </p>
       </div>
       <div class="flex items-center gap-3">
         <a href="{{ url_for('polymarket.polymarket_export_debug') }}"
            class="inline-flex items-center px-3 py-1.5 rounded-md text-sm border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card text-light-text dark:text-dark-text hover:bg-light-hover dark:hover:bg-dark-hover transition-colors"
-           title="Download Loop Summary full data (debug_candidates_v60.csv)">
+           title="Download Loop Summary full data (debug candidates CSV)">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
@@ -163,7 +163,7 @@
   {% endif %}
   {% else %}
   <div class="px-4 py-8 text-center text-light-muted dark:text-dark-muted">
-    No debug candidates data. Ensure <code class="px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover">debug_candidates_v60.csv</code> exists in the polymarket-alerts directory.
+    No debug candidates data. Ensure the debug candidates CSV (e.g. <code class="px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover">debug_candidates.csv</code>) exists in the polymarket-alerts directory.
   </div>
   {% endif %}
 </div>
