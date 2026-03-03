@@ -340,7 +340,7 @@ When `POLYMARKET_DATA_PATH` points to a polymarket-alerts directory, an admin-on
 | **Open Positions** | `/polymarket/positions` | Open positions from `open_positions.csv`, total cost, unrealized P/L, cluster exposure summary (top 5 by category), search, **filter by opened date** (All time / Last 30/90/180 days, or click a date to filter from that date), category filter, sort, clickable Opened column header |
 | **Performance** | `/polymarket/performance` | Expectancy by edge bands (0–0.5%, 0.5–1%, 1–2%, 2%+) and gamma bands; time window filter |
 | **Loss Lab** | `/polymarket/loss-lab` | Losses by category (politics, sports, crypto, etc.), time window filter |
-| **Loop / Dev** | `/polymarket/loop` | Debug candidates from `debug_candidates_v60.csv`, time window filter, status filter (All/ALERT), sort, search, pagination, export, clickable dates for filtering |
+| **Loop / Dev** | `/polymarket/loop` | Debug candidates from CSV (default `debug_candidates.csv`; set `POLYMARKET_DEBUG_CSV` to match polymarket-alerts), time window filter, status filter (All/ALERT), sort, search, pagination, export, clickable dates for filtering |
 
 ### Features
 
@@ -357,7 +357,7 @@ When `POLYMARKET_DATA_PATH` points to a polymarket-alerts directory, an admin-on
 ### Requirements
 
 - polymarket-alerts directory with `alerts_log.csv` (required)
-- Optional: `open_positions.csv` (run `update_open_positions.py` in polymarket-alerts), `polymarket_alerts.log` (health), `run_stats.csv` (per-run trend), `debug_candidates_v60.csv` (Loop page)
+- Optional: `open_positions.csv` (run `update_open_positions.py` in polymarket-alerts), `polymarket_alerts.log` (health), `run_stats.csv` (per-run trend), debug candidates CSV (default `debug_candidates.csv`; configure `POLYMARKET_DEBUG_CSV` if different)
 - CSV columns: `question`, `link`, `resolved`, `actual_result`, `pnl_usd`, `resolved_ts` or `ts`
 
 ### Open positions

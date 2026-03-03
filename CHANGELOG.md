@@ -6,6 +6,7 @@ All notable changes to MiniStatus are documented in this file.
 
 ### Added
 
+- **Polymarket debug candidates filename** – Loop/Dev tab reads the debug candidates CSV by name from `POLYMARKET_DEBUG_CSV` (default: `debug_candidates.csv`), with fallback to `debug_candidates_v60.csv` and then any `debug_candidates*.csv` for backward compatibility. Set to match polymarket-alerts `DEBUG_CANDIDATES_CSV` if you use a custom name.
 - **Polymarket date/time filtering** – Standardized date format (YYYY-MM-DD HH:MM) across Portfolio, Open Positions, and Loop/Dev. Click any date cell to filter from that date. Time window filter (All time / Last 30/90/180 days) on Open Positions and Loop/Dev. Clickable "Opened" column header for sort; "Filter by opened" bar above positions table.
 
 - **Polymarket Open Positions filters** – Time window (All time, Last 30/90/180 days), category filter (Politics, Sports, Crypto, Other), sort (cost, P/L, date, question). `open_positions.csv` now includes `alert_ts` from `alerts_log.csv` for date filtering.

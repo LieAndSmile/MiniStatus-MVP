@@ -867,7 +867,8 @@ def get_debug_candidates(
     from_date: Optional[str] = None,
 ) -> Optional[tuple[list[dict], int]]:
     """
-    Read debug_candidates_v60.csv (or debug_candidates*.csv) from polymarket-alerts.
+    Read debug candidates CSV from polymarket-alerts. Filename from POLYMARKET_DEBUG_CSV
+    (default: debug_candidates.csv). Falls back to debug_candidates_v60.csv then any debug_candidates*.csv.
     Returns (rows, total_count). Used for Loop Summary tab.
     status_filter: "all" | "alert" – when "alert", only rows with status ALERT.
     sort: date_desc | date_asc | edge_desc | edge_asc | question_asc | question_desc | status
@@ -876,10 +877,18 @@ def get_debug_candidates(
     if not data_path or not os.path.isdir(data_path):
         return None
 
-    # Try v60 first, then any debug_candidates*.csv
-    csv_path = os.path.join(data_path, "debug_candidates_v60.csv")
-    if not os.path.isfile(csv_path):
-        import glob
+    import glob
+    default_name = os.getenv("POLYMARKET_DEBUG_CSV", "debug_candidates.csv")
+    candidates = [
+        os.path.join(data_path, default_name),
+        os.path.join(data_path, "debug_candidates_v60.csv"),  # backward compat
+    ]
+    csv_path = None
+    for p in candidates:
+        if os.path.isfile(p):
+            csv_path = p
+            break
+    if not csv_path:
         matches = glob.glob(os.path.join(data_path, "debug_candidates*.csv"))
         csv_path = matches[0] if matches else None
     if not csv_path or not os.path.isfile(csv_path):
