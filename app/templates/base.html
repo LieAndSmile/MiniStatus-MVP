@@ -80,6 +80,7 @@
     function toggleSidebar() {
       const sidebar = document.getElementById('sidebar');
       const mainContent = document.getElementById('main-content');
+      const polymarketMenu = document.getElementById('polymarket-menu');
       const navLabels = document.querySelectorAll('.nav-label');
       const isCollapsed = sidebar.classList.contains('w-16');
       
@@ -94,7 +95,11 @@
         sidebar.classList.add('w-16');
         mainContent.classList.remove('ml-64');
         mainContent.classList.add('ml-16');
-        navLabels.forEach(label => label.classList.add('hidden'));
+        // Keep Polymarket submenu labels visible when collapsed (they have no icons)
+        navLabels.forEach(function(label) {
+          if (polymarketMenu && polymarketMenu.contains(label)) return;
+          label.classList.add('hidden');
+        });
       }
     }
 
@@ -259,6 +264,10 @@
               <a href="{{ url_for('polymarket.polymarket_positions') }}"
                  class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_positions' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
                 <span class="nav-label text-sm">Open Positions</span>
+              </a>
+              <a href="{{ url_for('polymarket.polymarket_risky') }}"
+                 class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_risky' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
+                <span class="nav-label text-sm">Risky</span>
               </a>
               <a href="{{ url_for('polymarket.polymarket_performance') }}"
                  class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_performance' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
