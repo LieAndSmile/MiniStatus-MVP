@@ -86,7 +86,7 @@ WorkingDirectory=$PROJECT_ROOT
 Environment="PATH=$PROJECT_ROOT/venv/bin"
 ExecStart=$PROJECT_ROOT/venv/bin/gunicorn -c gunicorn.conf.py "run:app"
 Restart=always
-RestartSec=10
+RestartSec=2
 StandardOutput=journal
 StandardError=journal
 

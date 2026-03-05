@@ -431,7 +431,10 @@ POSITIONS_SORT_OPTIONS = (
     "gamma_desc", "gamma_asc", "edge_desc", "edge_asc",
     "expiry_asc", "expiry_desc",
     "question_asc", "question_desc", "date_desc", "date_asc",
+    "interesting_first",
 )
+
+INTERESTING_POSITIONS_FILENAME = "interesting_positions.json"
 
 POSITIONS_EXPIRY_FILTERS = ("all", "next_6h", "next_12h", "next_24h", "next_48h", "next_3d", "next_7d", "next_30d")
 
@@ -603,6 +606,124 @@ def get_open_positions(
         rows.sort(key=_sort_key)
 
     return rows
+
+
+# Risky strategy: config via env or defaults (edge_min as decimal, gamma_max, expiry_hours_max)
+def get_risky_criteria() -> dict:
+    """Return risky strategy criteria: edge_min (decimal), gamma_max, expiry_hours_max. Used for Risky tab."""
+    edge_min = 0.01
+    try:
+        e = (os.getenv("RISKY_EDGE_MIN_PCT") or "").strip()
+        if e:
+            edge_min = float(e) / 100.0
+    except (ValueError, TypeError):
+        pass
+    gamma_max = 0.94
+    try:
+        g = (os.getenv("RISKY_GAMMA_MAX") or "").strip()
+        if g:
+            gamma_max = float(g)
+    except (ValueError, TypeError):
+        pass
+    expiry_hours_max = 48.0
+    try:
+        h = (os.getenv("RISKY_EXPIRY_HOURS_MAX") or "").strip()
+        if h:
+            expiry_hours_max = float(h)
+    except (ValueError, TypeError):
+        pass
+    return {"edge_min": edge_min, "gamma_max": gamma_max, "expiry_hours_max": expiry_hours_max}
+
+
+def get_risky_positions(
+    data_path: str,
+    days: Optional[int] = None,
+    from_date: Optional[str] = None,
+    sort: str = "cost_desc",
+) -> list[dict]:
+    """
+    Return open positions that match the Risky strategy criteria (high edge, low gamma, short expiry).
+    Uses get_open_positions then filters by RISKY_EDGE_MIN_PCT, RISKY_GAMMA_MAX, RISKY_EXPIRY_HOURS_MAX.
+    Excludes expired positions (only currently risky, short-dated).
+    """
+    criteria = get_risky_criteria()
+    edge_min = criteria["edge_min"]
+    gamma_max = criteria["gamma_max"]
+    expiry_hours_max = criteria["expiry_hours_max"]
+
+    all_positions = get_open_positions(
+        data_path,
+        days=days,
+        from_date=from_date,
+        category=None,
+        sort=sort,
+        expiry_filter=None,
+        hours_max=None,
+    )
+    risky = []
+    for p in all_positions:
+        edge = p.get("edge")
+        gamma = p.get("gamma")
+        hours_remaining = p.get("hours_remaining")
+        if edge is None or edge < edge_min:
+            continue
+        if gamma is None or gamma > gamma_max:
+            continue
+        if hours_remaining is None:
+            continue
+        if hours_remaining < 0 or hours_remaining > expiry_hours_max:
+            continue
+        risky.append(p)
+    return risky
+
+
+def get_interesting_ids(data_path: str) -> set[str]:
+    """
+    Load set of market_ids marked as interesting from interesting_positions.json.
+    File lives in POLYMARKET_DATA_PATH. Returns empty set if file missing or invalid.
+    """
+    if not data_path or not os.path.isdir(data_path):
+        return set()
+    path = os.path.join(data_path, INTERESTING_POSITIONS_FILENAME)
+    if not os.path.isfile(path):
+        return set()
+    try:
+        import json
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        ids = data.get("market_ids") if isinstance(data, dict) else data
+        if isinstance(ids, list):
+            return set(str(x).strip() for x in ids if x)
+        return set()
+    except (json.JSONDecodeError, IOError, TypeError):
+        return set()
+
+
+def toggle_interesting(data_path: str, market_id: str) -> bool:
+    """
+    Toggle market_id in the interesting set. Returns True if now interesting, False if removed.
+    Persists to interesting_positions.json in data_path.
+    """
+    if not data_path or not os.path.isdir(data_path):
+        return False
+    market_id = (market_id or "").strip()
+    if not market_id:
+        return False
+    import json
+    path = os.path.join(data_path, INTERESTING_POSITIONS_FILENAME)
+    current = get_interesting_ids(data_path)
+    if market_id in current:
+        current.discard(market_id)
+        is_now = False
+    else:
+        current.add(market_id)
+        is_now = True
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"market_ids": sorted(current)}, f, indent=2)
+        return is_now
+    except IOError:
+        return not is_now  # revert to previous state on write failure
 
 
 def get_exposure_summary(positions: list[dict]) -> list[dict]:

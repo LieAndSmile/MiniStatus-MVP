@@ -20,7 +20,7 @@ Built with Flask and SQLite. No Prometheus. No Grafana. Just clean uptime visibi
 - **Rate Limiting** - Protection against brute force attacks
 - **Dark/Light Theme** - Automatic theme support
 - **REST API** - Programmatic status reporting
-- **Polymarket Integration** - Admin-only dashboard for polymarket-alerts (Portfolio, Open Positions, Performance, Loss Lab, Loop/Dev; filters, search, charts, export, mtime caching)
+- **Polymarket Integration** - Admin-only dashboard for polymarket-alerts (Portfolio, Open Positions, Risky, Performance, Loss Lab, Loop/Dev; filters, search, charts, export, track interesting positions, mtime caching)
 
 ## Quick Start
 
@@ -50,12 +50,22 @@ The app runs as a systemd service and auto-starts on boot.
 
 ### Service Management
 
+Restart the app (recommended; also applies a faster restart delay if needed):
+
+```bash
+./scripts/restart.sh
+```
+
+Or use systemd directly:
+
 ```bash
 sudo systemctl status ministatus   # Check status
 sudo systemctl restart ministatus  # Restart service
 sudo systemctl stop ministatus     # Stop service
 sudo journalctl -u ministatus -f   # View logs
 ```
+
+**Note:** The service uses `RestartSec=2` so restarts complete in a few seconds. If you previously installed with an older version, run `./scripts/restart.sh` once to update the delay and restart.
 
 ## Configuration
 
@@ -286,7 +296,7 @@ To show services on the public dashboard:
 **Admin Section (requires login):**
 - Admin Dashboard - Full admin control panel with system health info
 - Remote Hosts - Remote service monitoring
-- Polymarket - Portfolio, Open Positions, Performance, Loss Lab, Loop/Dev (filters, search, charts, export)
+- Polymarket - Portfolio, Open Positions, Risky, Performance, Loss Lab, Loop/Dev (filters, search, charts, export, track interesting positions)
 - Tags - Service tag management (with public/private visibility)
 - Auto-Tag Rules - Automatic tagging configuration
 - Settings (collapsible menu)
@@ -330,14 +340,15 @@ The new password will be automatically hashed and saved. No need to restart the 
 
 ## Polymarket Integration
 
-When `POLYMARKET_DATA_PATH` points to a polymarket-alerts directory, an admin-only **Polymarket** sub-app is available at `/polymarket` with five pages:
+When `POLYMARKET_DATA_PATH` points to a polymarket-alerts directory, an admin-only **Polymarket** sub-app is available at `/polymarket` with six pages:
 
 ### Pages
 
 | Page | Route | Description |
 |------|-------|--------------|
 | **Portfolio** | `/polymarket/portfolio` | Resolved bets, KPIs (wins, losses, net P/L, max drawdown), cumulative P/L chart, drawdown chart, filter (all/wins/losses), time window, sort, search, pagination, export |
-| **Open Positions** | `/polymarket/positions` | Open positions from `open_positions.csv`, total cost, unrealized P/L, cluster exposure summary (top 5 by category), search, **filter by opened date** (All time / Last 30/90/180 days, or click a date to filter from that date), category filter, sort, clickable Opened column header |
+| **Open Positions** | `/polymarket/positions` | Open positions from `open_positions.csv`, total cost, unrealized P/L, cluster exposure summary (top 5 by category), search, **filter by opened date** (All time / Last 30/90/180 days, or click a date to filter from that date), category filter, **track interesting** (star to mark positions; filter "Interesting only", sort "Interesting first"), sort, clickable Opened column header |
+| **Risky** | `/polymarket/risky` | Positions matching the Risky strategy: edge ≥ 1%, gamma ≤ 0.94, expiry within 48h. **Excludes expired.** Tune via `RISKY_EDGE_MIN_PCT`, `RISKY_GAMMA_MAX`, `RISKY_EXPIRY_HOURS_MAX`. Results of resolved risky positions appear in **Performance** (expectancy by edge/gamma). |
 | **Performance** | `/polymarket/performance` | Expectancy by edge bands (0–0.5%, 0.5–1%, 1–2%, 2%+) and gamma bands; time window filter |
 | **Loss Lab** | `/polymarket/loss-lab` | Losses by category (politics, sports, crypto, etc.), time window filter |
 | **Loop / Dev** | `/polymarket/loop` | Debug candidates from CSV (default `debug_candidates.csv`; set `POLYMARKET_DEBUG_CSV` to match polymarket-alerts), time window filter, status filter (All/ALERT), sort, search, pagination, export, clickable dates for filtering |
@@ -360,7 +371,7 @@ When `POLYMARKET_DATA_PATH` points to a polymarket-alerts directory, an admin-on
 - Optional: `open_positions.csv` (run `update_open_positions.py` in polymarket-alerts), `polymarket_alerts.log` (health), `run_stats.csv` (per-run trend), debug candidates CSV (default `debug_candidates.csv`; configure `POLYMARKET_DEBUG_CSV` if different)
 - CSV columns: `question`, `link`, `resolved`, `actual_result`, `pnl_usd`, `resolved_ts` or `ts`
 
-### Open positions
+### Open positions and tracking
 
 To show open positions on the **Open Positions** page, run `update_open_positions.py` in polymarket-alerts:
 
@@ -372,6 +383,8 @@ python3 update_open_positions.py --dry-run   # Preview without writing
 ```
 
 Creates `open_positions.csv` from unresolved alerts in `alerts_log.csv`. Columns: `market_id`, `question`, `side`, `shares`, `avg_price`, `cost_usd`, `current_mid`, `unrealized_pnl`, `last_updated`, `link`, `alert_ts` (for date filtering). Dates use **YYYY-MM-DD HH:MM** format across all tabs.
+
+**Track interesting positions:** Use the star (★) in the "Track" column to mark positions you want to follow. Your list is stored in `interesting_positions.json` in the polymarket-alerts directory. Filter with **Track: Interesting only** or sort by **Interesting first** to keep them at the top until resolution.
 
 ### Backfill resolved_ts
 
@@ -430,6 +443,7 @@ MiniStatus-MVP/
 │   │   ├── public/         # Public dashboard templates
 │   │   ├── admin/          # Admin panel templates
 │   │   ├── polymarket_nav.html      # Shared Polymarket tab navigation
+│   │   ├── polymarket_risky.html    # Risky strategy tab
 │   │   └── polymarket_time_filter.html  # Shared time window filter macro
 │   ├── models.py           # Database models (Service, Tag, Incident)
 │   ├── services/           # Business logic
@@ -445,6 +459,7 @@ MiniStatus-MVP/
 ├── scripts/                # Installation and utility scripts
 │   ├── install.sh          # Installation script
 │   ├── uninstall.sh        # Uninstallation script
+│   ├── restart.sh          # Restart systemd service (and apply faster RestartSec if needed)
 │   ├── start.sh            # Start script
 │   ├── test_api.sh         # API testing script
 │   ├── retention_alerts_log.py  # Trim old rows from polymarket alerts_log.csv

@@ -18,6 +18,7 @@
     {% if current_from_date %}<input type="hidden" name="from_date" value="{{ current_from_date }}">{% endif %}
     {% if current_expiry %}<input type="hidden" name="expiry" value="{{ current_expiry }}">{% endif %}
     {% if current_hours_max %}<input type="hidden" name="hours_max" value="{{ current_hours_max }}">{% endif %}
+    {% if current_interesting %}<input type="hidden" name="interesting" value="only">{% endif %}
     <button type="submit" class="px-4 py-2 rounded-md text-sm font-medium bg-light-primary dark:bg-dark-primary text-white hover:opacity-90 transition-opacity">
       Refresh positions
     </button>
@@ -36,25 +37,34 @@
 {% if current_from_date %}{% set _ = positions_extra.update({'from_date': current_from_date}) %}{% endif %}
 {% if current_expiry %}{% set _ = positions_extra.update({'expiry': current_expiry}) %}{% endif %}
 {% if current_hours_max %}{% set _ = positions_extra.update({'hours_max': current_hours_max}) %}{% endif %}
+{% if current_interesting %}{% set _ = positions_extra.update({'interesting': 'only'}) %}{% endif %}
 {% set positions_extra_no_from = {'sort': current_sort} %}
 {% if current_category %}{% set _ = positions_extra_no_from.update({'category': current_category}) %}{% endif %}
 {% if current_expiry %}{% set _ = positions_extra_no_from.update({'expiry': current_expiry}) %}{% endif %}
 {% if current_hours_max %}{% set _ = positions_extra_no_from.update({'hours_max': current_hours_max}) %}{% endif %}
+{% if current_interesting %}{% set _ = positions_extra_no_from.update({'interesting': 'only'}) %}{% endif %}
 <div class="mb-6 flex flex-wrap items-center gap-4" data-polymarket-filters>
   {% from "polymarket_time_filter.html" import render as polymarket_time_filter %}
   {{ polymarket_time_filter('polymarket.polymarket_positions', current_days, positions_extra_no_from) }}
   <div class="flex items-center gap-2">
     <span class="text-sm font-medium text-light-muted dark:text-dark-muted">Category:</span>
-    <a href="{{ url_for('polymarket.polymarket_positions', days=current_days, sort=current_sort, from_date=current_from_date, expiry=current_expiry, hours_max=current_hours_max) }}"
+    <a href="{{ url_for('polymarket.polymarket_positions', days=current_days, sort=current_sort, from_date=current_from_date, expiry=current_expiry, hours_max=current_hours_max, **({'interesting': 'only'} if current_interesting else {})) }}"
        class="px-3 py-1.5 rounded-md text-sm {% if not current_category %}bg-light-primary dark:bg-dark-primary text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">All</a>
-    <a href="{{ url_for('polymarket.polymarket_positions', days=current_days, category='politics', sort=current_sort, from_date=current_from_date, expiry=current_expiry, hours_max=current_hours_max) }}"
+    <a href="{{ url_for('polymarket.polymarket_positions', days=current_days, category='politics', sort=current_sort, from_date=current_from_date, expiry=current_expiry, hours_max=current_hours_max, **({'interesting': 'only'} if current_interesting else {})) }}"
        class="px-3 py-1.5 rounded-md text-sm {% if current_category == 'politics' %}bg-light-primary dark:bg-dark-primary text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">Politics</a>
-    <a href="{{ url_for('polymarket.polymarket_positions', days=current_days, category='sports', sort=current_sort, from_date=current_from_date, expiry=current_expiry, hours_max=current_hours_max) }}"
+    <a href="{{ url_for('polymarket.polymarket_positions', days=current_days, category='sports', sort=current_sort, from_date=current_from_date, expiry=current_expiry, hours_max=current_hours_max, **({'interesting': 'only'} if current_interesting else {})) }}"
        class="px-3 py-1.5 rounded-md text-sm {% if current_category == 'sports' %}bg-light-primary dark:bg-dark-primary text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">Sports</a>
-    <a href="{{ url_for('polymarket.polymarket_positions', days=current_days, category='crypto', sort=current_sort, from_date=current_from_date, expiry=current_expiry, hours_max=current_hours_max) }}"
+    <a href="{{ url_for('polymarket.polymarket_positions', days=current_days, category='crypto', sort=current_sort, from_date=current_from_date, expiry=current_expiry, hours_max=current_hours_max, **({'interesting': 'only'} if current_interesting else {})) }}"
        class="px-3 py-1.5 rounded-md text-sm {% if current_category == 'crypto' %}bg-light-primary dark:bg-dark-primary text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">Crypto</a>
-    <a href="{{ url_for('polymarket.polymarket_positions', days=current_days, category='other', sort=current_sort, from_date=current_from_date, expiry=current_expiry, hours_max=current_hours_max) }}"
+    <a href="{{ url_for('polymarket.polymarket_positions', days=current_days, category='other', sort=current_sort, from_date=current_from_date, expiry=current_expiry, hours_max=current_hours_max, **({'interesting': 'only'} if current_interesting else {})) }}"
        class="px-3 py-1.5 rounded-md text-sm {% if current_category == 'other' %}bg-light-primary dark:bg-dark-primary text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">Other</a>
+  </div>
+  <div class="flex items-center gap-2">
+    <span class="text-sm font-medium text-light-muted dark:text-dark-muted">Track:</span>
+    <a href="{{ url_for('polymarket.polymarket_positions', days=current_days, category=current_category or none, sort=current_sort, from_date=current_from_date, expiry=current_expiry, hours_max=current_hours_max) }}"
+       class="px-3 py-1.5 rounded-md text-sm {% if not current_interesting %}bg-light-primary dark:bg-dark-primary text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">All</a>
+    <a href="{{ url_for('polymarket.polymarket_positions', days=current_days, category=current_category or none, sort=current_sort, from_date=current_from_date, expiry=current_expiry, hours_max=current_hours_max, interesting='only') }}"
+       class="px-3 py-1.5 rounded-md text-sm {% if current_interesting %}bg-light-primary dark:bg-dark-primary text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">Interesting only</a>
   </div>
   <div class="flex items-center gap-2 flex-wrap">
     <span class="text-sm font-medium text-light-muted dark:text-dark-muted">Hrs left:</span>
@@ -79,6 +89,7 @@
       <input type="hidden" name="sort" value="{{ current_sort or 'cost_desc' }}">
       {% if current_category %}<input type="hidden" name="category" value="{{ current_category }}">{% endif %}
       {% if current_from_date %}<input type="hidden" name="from_date" value="{{ current_from_date }}">{% endif %}
+      {% if current_interesting %}<input type="hidden" name="interesting" value="only">{% endif %}
       <input type="number" name="hours_max" value="{{ current_hours_max or '' }}" placeholder="Custom hrs" min="0" step="0.5"
              class="w-20 px-2 py-1 rounded-md text-sm border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary">
       <button type="submit" class="px-2 py-1 rounded-md text-sm bg-light-hover dark:bg-dark-hover text-light-text dark:text-dark-text hover:bg-light-border dark:hover:bg-dark-border">Apply</button>
@@ -93,6 +104,7 @@
       {% if current_from_date %}{% set _ = sp.update({'from_date': current_from_date}) %}{% endif %}
       {% if current_expiry %}{% set _ = sp.update({'expiry': current_expiry}) %}{% endif %}
       {% if current_hours_max %}{% set _ = sp.update({'hours_max': current_hours_max}) %}{% endif %}
+      {% if current_interesting %}{% set _ = sp.update({'interesting': 'only'}) %}{% endif %}
       <option value="{{ url_for('polymarket.polymarket_positions', **sp) }}" {% if current_sort == 'cost_desc' %}selected{% endif %}>Cost (high→low)</option>
       {% set _ = sp.update({'sort': 'cost_asc'}) %}
       <option value="{{ url_for('polymarket.polymarket_positions', **sp) }}" {% if current_sort == 'cost_asc' %}selected{% endif %}>Cost (low→high)</option>
@@ -120,6 +132,8 @@
       <option value="{{ url_for('polymarket.polymarket_positions', **sp) }}" {% if current_sort == 'question_asc' %}selected{% endif %}>Question A–Z</option>
       {% set _ = sp.update({'sort': 'question_desc'}) %}
       <option value="{{ url_for('polymarket.polymarket_positions', **sp) }}" {% if current_sort == 'question_desc' %}selected{% endif %}>Question Z–A</option>
+      {% set _ = sp.update({'sort': 'interesting_first'}) %}
+      <option value="{{ url_for('polymarket.polymarket_positions', **sp) }}" {% if current_sort == 'interesting_first' %}selected{% endif %}>Interesting first</option>
     </select>
   </div>
   {% if current_from_date %}
@@ -206,9 +220,10 @@
     </div>
   </div>
   <div class="overflow-x-auto max-h-[60vh] overflow-y-auto">
-    <table class="min-w-full divide-y divide-light-border dark:divide-dark-border">
+    <table class="min-w-full divide-y divide-light-border dark:divide-dark-border" data-csrf-token="{{ csrf_token() }}" data-toggle-interesting-url="{{ url_for('polymarket.polymarket_positions_toggle_interesting') }}">
       <thead class="bg-light-hover dark:bg-dark-hover sticky top-0 z-10">
         <tr>
+          <th class="px-2 py-3 text-center text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider w-10" title="Mark as interesting to track resolution">Track</th>
           <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Question</th>
           <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider whitespace-nowrap">
             <a href="{{ url_for('polymarket.polymarket_positions', days=current_days, category=current_category or none, sort=('date_asc' if current_sort == 'date_desc' else 'date_desc'), from_date=current_from_date, expiry=current_expiry, hours_max=current_hours_max) }}" class="hover:underline {% if current_sort in ('date_desc','date_asc') %}text-light-primary dark:text-dark-primary{% endif %}" title="Click to sort {{ 'oldest first' if current_sort == 'date_desc' else 'newest first' }}; click a date to filter from that date">Opened</a>
@@ -233,7 +248,16 @@
       </thead>
       <tbody class="divide-y divide-light-border dark:divide-dark-border">
         {% for p in positions %}
-        <tr class="positions-row hover:bg-light-hover dark:hover:bg-dark-hover transition-colors" data-search="{{ p.question|lower|e }}">
+        <tr class="positions-row hover:bg-light-hover dark:hover:bg-dark-hover transition-colors" data-search="{{ p.question|lower|e }}" data-market-id="{{ p.market_id|e }}" data-is-interesting="{{ 'true' if p.is_interesting else 'false' }}">
+          <td class="px-2 py-3 text-center">
+            <button type="button" class="positions-interesting-btn p-1 rounded hover:bg-light-hover dark:hover:bg-dark-hover transition-colors focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary" data-market-id="{{ p.market_id|e }}" title="{{ 'Remove from interesting' if p.is_interesting else 'Mark as interesting to track resolution' }}" aria-label="{{ 'Remove from interesting' if p.is_interesting else 'Mark as interesting' }}">
+              {% if p.is_interesting %}
+              <svg class="w-5 h-5 text-amber-500 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+              {% else %}
+              <svg class="w-5 h-5 text-light-muted dark:text-dark-muted hover:text-amber-500 fill-none stroke currentColor stroke-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" stroke-linejoin="round"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+              {% endif %}
+            </button>
+          </td>
           <td class="px-4 py-3 text-sm text-light-text dark:text-dark-text max-w-md truncate" title="{{ p.question }}">{{ p.question }}</td>
           <td class="px-4 py-3 text-sm whitespace-nowrap">
             {% if p.alert_date_param %}
@@ -293,6 +317,44 @@
         const text = (row.getAttribute('data-search') || '').toLowerCase();
         row.style.display = (!q || text.includes(q)) ? '' : 'none';
       });
+    });
+  }
+
+  const table = document.querySelector('table[data-csrf-token][data-toggle-interesting-url]');
+  if (table) {
+    const csrfToken = table.getAttribute('data-csrf-token');
+    const url = table.getAttribute('data-toggle-interesting-url');
+    table.addEventListener('click', function(e) {
+      const btn = e.target.closest('.positions-interesting-btn');
+      if (!btn) return;
+      e.preventDefault();
+      const marketId = btn.getAttribute('data-market-id');
+      if (!marketId) return;
+      btn.disabled = true;
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ market_id: marketId })
+      }).then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
+        .then(function(result) {
+          btn.disabled = false;
+          if (result.ok && result.data.is_interesting !== undefined) {
+            const row = btn.closest('tr');
+            row.setAttribute('data-is-interesting', result.data.is_interesting ? 'true' : 'false');
+            if (result.data.is_interesting) {
+              btn.innerHTML = '<svg class="w-5 h-5 text-amber-500 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>';
+              btn.title = 'Remove from interesting';
+            } else {
+              btn.innerHTML = '<svg class="w-5 h-5 text-light-muted dark:text-dark-muted hover:text-amber-500 fill-none stroke currentColor stroke-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" stroke-linejoin="round"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>';
+              btn.title = 'Mark as interesting to track resolution';
+            }
+          }
+        })
+        .catch(function() { btn.disabled = false; });
     });
   }
   const exposureData = {{ exposure[:5] | tojson if exposure else '[]' }};

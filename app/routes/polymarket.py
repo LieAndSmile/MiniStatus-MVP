@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, send_file, redirect, url_for, flash
+from flask import Blueprint, render_template, request, send_file, redirect, url_for, flash, jsonify
 from functools import wraps
 import os
 import csv
@@ -13,6 +13,10 @@ from app.utils.polymarket import (
     get_loss_breakdown,
     get_debug_candidates,
     get_open_positions,
+    get_risky_positions,
+    get_risky_criteria,
+    get_interesting_ids,
+    toggle_interesting,
     get_expectancy_by_bands,
     get_exposure_summary,
     validate_alerts_log_schema,
@@ -34,6 +38,7 @@ DEBUG_PER_PAGE = 100
 POLYMARKET_SECTIONS = [
     ("portfolio", "Portfolio", "polymarket.polymarket_portfolio"),
     ("positions", "Open Positions", "polymarket.polymarket_positions"),
+    ("risky", "Risky", "polymarket.polymarket_risky"),
     ("performance", "Performance", "polymarket.polymarket_performance"),
     ("loss-lab", "Loss Lab", "polymarket.polymarket_loss_lab"),
     ("loop", "Loop / Dev", "polymarket.polymarket_loop"),
@@ -157,7 +162,7 @@ def _parse_positions_days():
 @admin_required
 @_polymarket_configured_required("positions")
 def polymarket_positions():
-    """Open positions from open_positions.csv."""
+    """Open positions from open_positions.csv. Supports marking positions as interesting and filter/sort by them."""
     data_path = _get_data_path()
     days_val, days = _parse_positions_days()
     from_date_val = (request.args.get("from_date") or "").strip() or None
@@ -165,6 +170,7 @@ def polymarket_positions():
     sort_val = request.args.get("sort", "cost_desc")
     if sort_val not in POSITIONS_SORT_OPTIONS:
         sort_val = "cost_desc"
+    interesting_filter = (request.args.get("interesting") or "").strip() == "only"
     expiry_filter_val = (request.args.get("expiry") or "").strip() or None
     if expiry_filter_val not in POSITIONS_EXPIRY_FILTERS:
         expiry_filter_val = None
@@ -176,15 +182,24 @@ def polymarket_positions():
     except (ValueError, TypeError):
         pass
 
+    effective_sort = "cost_desc" if sort_val == "interesting_first" else sort_val
     positions = get_open_positions(
         data_path,
         days=days,
         from_date=from_date_val,
         category=category_val,
-        sort=sort_val,
+        sort=effective_sort,
         expiry_filter=expiry_filter_val,
         hours_max=hours_max_val,
     )
+    interesting_ids = get_interesting_ids(data_path)
+    for p in positions:
+        p["is_interesting"] = (p.get("market_id") or "") in interesting_ids
+    if interesting_filter:
+        positions = [p for p in positions if p.get("is_interesting")]
+    if sort_val == "interesting_first":
+        positions.sort(key=lambda p: (0 if p.get("is_interesting") else 1, -(p.get("cost_usd") or 0)))
+
     total_cost = sum(p["cost_usd"] for p in positions)
     total_unrealized = sum(p["unrealized_pnl"] for p in positions)
     exposure = get_exposure_summary(positions)
@@ -203,10 +218,53 @@ def polymarket_positions():
         current_from_date=from_date_val,
         current_category=category_val,
         current_sort=sort_val,
+        current_interesting=interesting_filter,
         current_expiry=expiry_filter_val,
         current_hours_max=hours_max_val,
         sort_options=POSITIONS_SORT_OPTIONS,
         expiry_filters=POSITIONS_EXPIRY_FILTERS,
+    )
+
+
+@polymarket_bp.route("/risky")
+@admin_required
+@_polymarket_configured_required("risky")
+def polymarket_risky():
+    """Risky strategy tab: positions matching high edge, low gamma, short expiry."""
+    data_path = _get_data_path()
+    days_val, days = _parse_positions_days()
+    from_date_val = (request.args.get("from_date") or "").strip() or None
+    sort_val = request.args.get("sort", "cost_desc")
+    if sort_val not in POSITIONS_SORT_OPTIONS:
+        sort_val = "cost_desc"
+
+    criteria = get_risky_criteria()
+    positions = get_risky_positions(
+        data_path,
+        days=days,
+        from_date=from_date_val,
+        sort=sort_val,
+    )
+    total_cost = sum(p["cost_usd"] for p in positions)
+    total_unrealized = sum(p["unrealized_pnl"] for p in positions)
+    exposure = get_exposure_summary(positions)
+
+    return render_template(
+        "polymarket_risky.html",
+        configured=True,
+        active_section="risky",
+        polymarket_sections=POLYMARKET_SECTIONS,
+        positions=positions,
+        risky_criteria=criteria,
+        total_cost=total_cost,
+        total_cost_display=format_compact_usd(total_cost),
+        total_unrealized=total_unrealized,
+        total_unrealized_display=format_compact_usd(total_unrealized) if total_unrealized != 0 else None,
+        exposure=exposure,
+        current_days=days_val,
+        current_from_date=from_date_val,
+        current_sort=sort_val,
+        sort_options=POSITIONS_SORT_OPTIONS,
     )
 
 
@@ -223,7 +281,7 @@ def polymarket_positions_refresh():
         return redirect(url_for("polymarket.polymarket_positions"))
     # Preserve current filters in redirect (from form hidden fields)
     redirect_kw = {}
-    for k in ("days", "category", "sort", "from_date", "expiry", "hours_max"):
+    for k in ("days", "category", "sort", "from_date", "expiry", "hours_max", "interesting"):
         v = request.form.get(k) or request.args.get(k)
         if v:
             redirect_kw[k] = v
@@ -247,6 +305,23 @@ def polymarket_positions_refresh():
     except Exception as e:
         flash(f"Refresh failed: {e}", "error")
     return redirect(url_for("polymarket.polymarket_positions", **redirect_kw))
+
+
+@polymarket_bp.route("/positions/toggle-interesting", methods=["POST"])
+@admin_required
+@_polymarket_configured_required("positions")
+def polymarket_positions_toggle_interesting():
+    """Toggle a position's interesting flag by market_id. Returns JSON { ok, is_interesting }."""
+    data_path = _get_data_path()
+    payload = request.get_json(silent=True) or {}
+    market_id = (payload.get("market_id") or request.form.get("market_id") or "").strip()
+    if not market_id:
+        return jsonify({"ok": False, "error": "market_id required"}), 400
+    try:
+        is_interesting = toggle_interesting(data_path, market_id)
+        return jsonify({"ok": True, "is_interesting": is_interesting})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @polymarket_bp.route("/performance")
