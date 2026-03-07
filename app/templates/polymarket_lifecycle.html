@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Lifecycle – Polymarket{% endblock %}
+{% block header %}Polymarket Alerts{% endblock %}
+
+{% block content %}
+{% include "polymarket_nav.html" %}
+
+<div class="mb-6 flex flex-wrap items-center gap-4 justify-between">
+  <div>
+    <p class="text-sm text-light-muted dark:text-dark-muted">
+      Promotion and kill verdicts per strategy. Data from <code>lifecycle.json</code>.
+    </p>
+    {% if lifecycle_age %}
+    <p class="text-xs text-light-muted dark:text-dark-muted mt-1">Last updated: {{ lifecycle_age }}</p>
+    {% elif lifecycle and lifecycle.get('generated_at') %}
+    <p class="text-xs text-light-muted dark:text-dark-muted mt-1">Generated: {{ lifecycle.generated_at }}</p>
+    {% endif %}
+  </div>
+  <form method="post" action="{{ url_for('polymarket.polymarket_lifecycle_refresh') }}" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <button type="submit" class="px-4 py-2 text-sm font-medium rounded border border-light-border dark:border-dark-border bg-light-hover dark:bg-dark-hover text-light-text dark:text-dark-text hover:opacity-90">Refresh lifecycle</button>
+  </form>
+</div>
+
+{% if not lifecycle %}
+<div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-6">
+  <p class="text-light-muted dark:text-dark-muted">No <code>lifecycle.json</code> found. In polymarket-alerts run: <code>./venv/bin/python evaluate_strategy_lifecycle.py --data-dir . --out lifecycle.json</code></p>
+</div>
+{% else %}
+
+{% set thresholds = lifecycle.get('thresholds_used') or {} %}
+{% if thresholds %}
+<div class="mb-4 p-4 rounded-lg bg-light-hover dark:bg-dark-hover border border-light-border dark:border-dark-border">
+  <h3 class="text-sm font-medium text-light-text dark:text-dark-text mb-2">Thresholds</h3>
+  <p class="text-xs text-light-muted dark:text-dark-muted">
+    Promotion: min {{ thresholds.get('promotion_min_resolved', '—') }} resolved, ROI ≥ {{ thresholds.get('promotion_min_roi_pct', '—') }}% ·
+    Kill: min {{ thresholds.get('kill_min_resolved', '—') }} resolved, ROI ≤ {{ thresholds.get('kill_max_roi_pct', '—') }}%
+  </p>
+</div>
+{% endif %}
+
+<div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
+  <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-4">Strategy verdicts</h2>
+  {% set strategies = lifecycle.get('strategies') or {} %}
+  {% if strategies %}
+  <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-light-border dark:divide-dark-border">
+      <thead class="bg-light-hover dark:bg-dark-hover">
+        <tr>
+          <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Strategy</th>
+          <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Mode</th>
+          <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Verdict</th>
+          <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Resolved</th>
+          <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">ROI %</th>
+          <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Total P/L</th>
+          <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Reasons</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-light-border dark:divide-dark-border">
+        {% for sid, s in strategies.items() %}
+        {% set verdict = s.get('verdict') or '—' %}
+        <tr class="hover:bg-light-hover dark:hover:bg-dark-hover">
+          <td class="px-4 py-2 text-sm font-medium text-light-text dark:text-dark-text">{{ sid }}</td>
+          <td class="px-4 py-2 text-sm text-light-muted dark:text-dark-muted">{{ s.get('mode', '—') }}</td>
+          <td class="px-4 py-2">
+            <span class="text-sm font-medium
+              {% if verdict == 'PROMOTE' %}text-status-up-light dark:text-status-up-dark
+              {% elif verdict == 'KILL' %}text-status-down-light dark:text-status-down-dark
+              {% elif verdict == 'HOLD' %}text-light-text dark:text-dark-text
+              {% else %}text-light-muted dark:text-dark-muted{% endif %}">
+              {{ verdict }}
+            </span>
+          </td>
+          <td class="px-4 py-2 text-right text-sm">{{ s.get('resolved_count', 0) }}</td>
+          <td class="px-4 py-2 text-right text-sm">{{ "%.2f"|format(s.get('roi_pct') or 0) }}%</td>
+          <td class="px-4 py-2 text-right text-sm {% if (s.get('total_pnl') or 0) > 0 %}text-status-up-light dark:text-status-up-dark{% elif (s.get('total_pnl') or 0) < 0 %}text-status-down-light dark:text-status-down-dark{% else %}text-light-muted dark:text-dark-muted{% endif %}">${{ "%.2f"|format(s.get('total_pnl') or 0) }}</td>
+          <td class="px-4 py-2 text-sm text-light-muted dark:text-dark-muted max-w-xs">
+            {% for r in (s.get('reasons') or []) %}
+            <div class="text-xs">{{ r }}</div>
+            {% endfor %}
+            {% if not (s.get('reasons') or []) %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-sm text-light-muted dark:text-dark-muted py-4">No strategy data in lifecycle.json.</p>
+  {% endif %}
+</div>
+
+{% endif %}
+{% endblock %}
