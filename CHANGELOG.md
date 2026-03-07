@@ -7,6 +7,8 @@ All notable changes to MiniStatus are documented in this file.
 ### Added
 
 - **Polymarket Analytics and Lifecycle tabs** – **Analytics** tab: Edge Quality (by edge bucket), Timing (by time-to-resolution bucket), Strategy Cohort (per strategy with sent/shadow, resolved, open, W/L, P/L, ROI, current/max drawdown %), and MTM/Exit Study (per-strategy avg price move at 1m, 5m, 30m, 2h, 1d). **Lifecycle** tab: promote/kill verdicts per strategy (PROMOTE / HOLD / KILL / INSUFFICIENT_DATA) with reasons and thresholds. Data from `analytics.json` and `lifecycle.json` in POLYMARKET_DATA_PATH. **Refresh** buttons on both tabs run `analytics_export.py` and `evaluate_strategy_lifecycle.py` in the data path to regenerate JSON (uses venv python when present). **File age:** Analytics and Lifecycle pages show "Last updated: X min/hours/days ago" from file mtime when available.
+- **Repo cleanup** – Removed redundant `docs/polymarket-alerts-CHANGELOG-update.md` and `docs/polymarket-alerts-README-update.md` (canonical docs live in polymarket-alerts repo).
+
 - **Polymarket Strategy dropdown** – Options are now dynamic: merged from `STRATEGY_OPTIONS` and any strategy IDs present in `analytics.json` strategy_cohort, so new strategies from polymarket-alerts appear in the dropdown without code changes. Fallback remains the full list: safe, safe_v2, same_day_probe, hold_*_probe, gamma_*_probe, mid_gamma, resolution_sprint.
 
 - **Polymarket debug candidates filename** – Loop/Dev tab reads the debug candidates CSV by name from `POLYMARKET_DEBUG_CSV` (default: `debug_candidates.csv`), with fallback to `debug_candidates_v60.csv` and then any `debug_candidates*.csv` for backward compatibility. Set to match polymarket-alerts `DEBUG_CANDIDATES_CSV` if you use a custom name.
