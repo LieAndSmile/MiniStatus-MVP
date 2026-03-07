@@ -1,8 +1,9 @@
 {% if polymarket_sections is defined and polymarket_sections %}
 <nav class="mb-6 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 border-b border-light-border dark:border-dark-border" aria-label="Polymarket sections">
-  <div class="flex flex-nowrap min-w-max gap-0">
+  <div class="flex flex-wrap items-center gap-2 sm:gap-4">
+    <div class="flex flex-nowrap min-w-max gap-0">
     {% for section_id, label, endpoint in polymarket_sections %}
-    <a href="{{ url_for(endpoint) }}"
+    <a href="{{ url_for(endpoint, strategy=current_strategy if current_strategy is defined else 'safe') }}"
        class="polymarket-nav-link px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap flex-shrink-0
          {% if active_section is defined and active_section == section_id %}
          border-light-primary dark:border-dark-primary text-light-primary dark:text-dark-primary bg-light-primary/10 dark:bg-dark-primary/10 font-semibold
@@ -13,6 +14,18 @@
       {{ label }}
     </a>
     {% endfor %}
+    </div>
+    {% if strategy_options is defined and strategy_options %}
+    <div class="flex items-center gap-2 ml-auto">
+      <label for="polymarket-strategy" class="text-sm text-light-muted dark:text-dark-muted whitespace-nowrap">Strategy</label>
+      <select id="polymarket-strategy" name="strategy" data-polymarket-nav
+              class="text-sm rounded border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text px-2 py-1.5 focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary">
+        {% for opt in strategy_options %}
+        <option value="{{ opt }}" {% if current_strategy is defined and current_strategy == opt %}selected{% endif %}>{{ opt }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
   </div>
 </nav>
 <div id="polymarket-loading-overlay" class="fixed inset-0 bg-light-bg/80 dark:bg-dark-bg/80 z-[100] flex items-center justify-center pointer-events-none opacity-0 transition-opacity duration-200" aria-hidden="true">
@@ -38,7 +51,12 @@
     }
   });
   document.querySelectorAll('select[data-polymarket-nav]').forEach(function(sel) {
-    sel.addEventListener('change', function() { showLoading(); });
+    sel.addEventListener('change', function() {
+      showLoading();
+      var params = new URLSearchParams(window.location.search);
+      params.set('strategy', this.value);
+      window.location = window.location.pathname + '?' + params.toString();
+    });
   });
 })();
 </script>

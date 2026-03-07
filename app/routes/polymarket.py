@@ -22,10 +22,16 @@ from app.utils.polymarket import (
     validate_alerts_log_schema,
     format_compact_usd,
     build_pagination,
+    get_analytics_json,
+    get_lifecycle_json,
+    get_analytics_file_age,
+    get_lifecycle_file_age,
+    get_strategy_options_for_nav,
     SORT_OPTIONS,
     DEBUG_SORT_OPTIONS,
     POSITIONS_SORT_OPTIONS,
     POSITIONS_EXPIRY_FILTERS,
+    STRATEGY_OPTIONS,
 )
 from app.utils.decorators import admin_required
 
@@ -41,6 +47,8 @@ POLYMARKET_SECTIONS = [
     ("risky", "Risky", "polymarket.polymarket_risky"),
     ("performance", "Performance", "polymarket.polymarket_performance"),
     ("loss-lab", "Loss Lab", "polymarket.polymarket_loss_lab"),
+    ("analytics", "Analytics", "polymarket.polymarket_analytics"),
+    ("lifecycle", "Lifecycle", "polymarket.polymarket_lifecycle"),
     ("loop", "Loop / Dev", "polymarket.polymarket_loop"),
 ]
 
@@ -92,6 +100,15 @@ def _pagination_params():
     return {"filter": filter_val, "days": days_val or "all", "page": page}
 
 
+def _get_strategy(allowed=None):
+    """Return strategy from request (v3). Default 'safe'; must be in allowed set or STRATEGY_OPTIONS."""
+    s = (request.args.get("strategy") or "safe").strip()
+    options = allowed if allowed is not None else STRATEGY_OPTIONS
+    if s in options:
+        return s
+    return "safe" if "safe" in options else (options[0] if options else "safe")
+
+
 @polymarket_bp.route("")
 @polymarket_bp.route("/")
 @admin_required
@@ -106,6 +123,8 @@ def polymarket_index():
 def polymarket_portfolio():
     """Display Polymarket Alerts stats from local CSV data."""
     data_path = _get_data_path()
+    strategy_options = get_strategy_options_for_nav(data_path)
+    strategy_val = _get_strategy(strategy_options)
     filter_val, days_val, days = _parse_filter_days()
     from_date_val = (request.args.get("from_date") or "").strip() or None
     category_val = (request.args.get("category") or "").strip()
@@ -114,7 +133,7 @@ def polymarket_portfolio():
     if sort_val not in SORT_OPTIONS:
         sort_val = "pnl_asc"
 
-    stats = get_polymarket_stats(data_path, filter=filter_val, days=days, from_date=from_date_val, sort=sort_val, category=category_val or None)
+    stats = get_polymarket_stats(data_path, filter=filter_val, days=days, from_date=from_date_val, sort=sort_val, category=category_val or None, strategy=strategy_val)
     last_loop = get_last_loop_time(data_path)
     run_stats = get_run_stats_log(data_path)
 
@@ -135,6 +154,8 @@ def polymarket_portfolio():
         current_from_date=from_date_val,
         current_category=category_val,
         current_sort=sort_val,
+        current_strategy=strategy_val,
+        strategy_options=strategy_options,
         sort_options=SORT_OPTIONS,
         last_loop=last_loop,
         run_stats=run_stats,
@@ -164,6 +185,8 @@ def _parse_positions_days():
 def polymarket_positions():
     """Open positions from open_positions.csv. Supports marking positions as interesting and filter/sort by them."""
     data_path = _get_data_path()
+    strategy_options = get_strategy_options_for_nav(data_path)
+    strategy_val = _get_strategy(strategy_options)
     days_val, days = _parse_positions_days()
     from_date_val = (request.args.get("from_date") or "").strip() or None
     category_val = (request.args.get("category") or "").strip() or None
@@ -191,6 +214,7 @@ def polymarket_positions():
         sort=effective_sort,
         expiry_filter=expiry_filter_val,
         hours_max=hours_max_val,
+        strategy=strategy_val,
     )
     interesting_ids = get_interesting_ids(data_path)
     for p in positions:
@@ -221,6 +245,8 @@ def polymarket_positions():
         current_interesting=interesting_filter,
         current_expiry=expiry_filter_val,
         current_hours_max=hours_max_val,
+        current_strategy=strategy_val,
+        strategy_options=strategy_options,
         sort_options=POSITIONS_SORT_OPTIONS,
         expiry_filters=POSITIONS_EXPIRY_FILTERS,
     )
@@ -232,6 +258,8 @@ def polymarket_positions():
 def polymarket_risky():
     """Risky strategy tab: positions matching high edge, low gamma, short expiry."""
     data_path = _get_data_path()
+    strategy_options = get_strategy_options_for_nav(data_path)
+    strategy_val = _get_strategy(strategy_options)
     days_val, days = _parse_positions_days()
     from_date_val = (request.args.get("from_date") or "").strip() or None
     sort_val = request.args.get("sort", "cost_desc")
@@ -244,6 +272,7 @@ def polymarket_risky():
         days=days,
         from_date=from_date_val,
         sort=sort_val,
+        strategy=strategy_val,
     )
     total_cost = sum(p["cost_usd"] for p in positions)
     total_unrealized = sum(p["unrealized_pnl"] for p in positions)
@@ -264,6 +293,8 @@ def polymarket_risky():
         current_days=days_val,
         current_from_date=from_date_val,
         current_sort=sort_val,
+        current_strategy=strategy_val,
+        strategy_options=strategy_options,
         sort_options=POSITIONS_SORT_OPTIONS,
     )
 
@@ -281,7 +312,7 @@ def polymarket_positions_refresh():
         return redirect(url_for("polymarket.polymarket_positions"))
     # Preserve current filters in redirect (from form hidden fields)
     redirect_kw = {}
-    for k in ("days", "category", "sort", "from_date", "expiry", "hours_max", "interesting"):
+    for k in ("days", "category", "sort", "from_date", "expiry", "hours_max", "interesting", "strategy"):
         v = request.form.get(k) or request.args.get(k)
         if v:
             redirect_kw[k] = v
@@ -330,8 +361,10 @@ def polymarket_positions_toggle_interesting():
 def polymarket_performance():
     """Performance analytics – expectancy by edge/gamma bands."""
     data_path = _get_data_path()
+    strategy_options = get_strategy_options_for_nav(data_path)
+    strategy_val = _get_strategy(strategy_options)
     _, days_val, days = _parse_filter_days()
-    expectancy = get_expectancy_by_bands(data_path, days=days)
+    expectancy = get_expectancy_by_bands(data_path, days=days, strategy=strategy_val)
     return render_template(
         "polymarket_performance.html",
         configured=True,
@@ -342,6 +375,8 @@ def polymarket_performance():
         insight_edge=expectancy.get("insight_edge"),
         insight_gamma=expectancy.get("insight_gamma"),
         current_days=days_val if days_val else "all",
+        current_strategy=strategy_val,
+        strategy_options=strategy_options,
     )
 
 
@@ -351,9 +386,11 @@ def polymarket_performance():
 def polymarket_loss_lab():
     """Loss Lab – breakdown of losses by category."""
     data_path = _get_data_path()
+    strategy_options = get_strategy_options_for_nav(data_path)
+    strategy_val = _get_strategy(strategy_options)
     _, days_val, days = _parse_filter_days()
     valid, schema_error = validate_alerts_log_schema(data_path)
-    loss_breakdown = get_loss_breakdown(data_path, days=days) if valid else []
+    loss_breakdown = get_loss_breakdown(data_path, days=days, strategy=strategy_val) if valid else []
     total_losses = sum(item["pnl"] for item in loss_breakdown)
     return render_template(
         "polymarket_loss_lab.html",
@@ -364,16 +401,128 @@ def polymarket_loss_lab():
         total_losses=total_losses,
         total_losses_display=f"${total_losses:.2f}",
         current_days=days_val if days_val else "all",
+        current_strategy=strategy_val,
+        strategy_options=strategy_options,
         csv_schema_error=schema_error if not valid else None,
     )
+
+
+@polymarket_bp.route("/analytics")
+@admin_required
+@_polymarket_configured_required("analytics")
+def polymarket_analytics():
+    """Analytics dashboard: Edge Quality, Timing, Strategy Cohort (with drawdown), Exit Study (MTM). Data from analytics.json."""
+    data_path = _get_data_path()
+    strategy_options = get_strategy_options_for_nav(data_path)
+    strategy_val = _get_strategy(strategy_options)
+    analytics = get_analytics_json(data_path)
+    analytics_age = get_analytics_file_age(data_path)
+    return render_template(
+        "polymarket_analytics.html",
+        configured=True,
+        active_section="analytics",
+        polymarket_sections=POLYMARKET_SECTIONS,
+        analytics=analytics,
+        analytics_age=analytics_age,
+        current_strategy=strategy_val,
+        strategy_options=strategy_options,
+    )
+
+
+@polymarket_bp.route("/analytics/refresh", methods=["POST"])
+@admin_required
+@_polymarket_configured_required("analytics")
+def polymarket_analytics_refresh():
+    """Run analytics_export.py to regenerate analytics.json."""
+    import subprocess
+    data_path = _get_data_path()
+    script_path = os.path.join(data_path, "analytics_export.py")
+    if not os.path.isfile(script_path):
+        flash("analytics_export.py not found in polymarket-alerts directory.", "error")
+        return redirect(url_for("polymarket.polymarket_analytics"))
+    python_exe = os.path.join(data_path, "venv", "bin", "python") if os.path.isfile(os.path.join(data_path, "venv", "bin", "python")) else "python3"
+    try:
+        result = subprocess.run(
+            [python_exe, "analytics_export.py", "--data-dir", data_path, "--out", "analytics.json"],
+            cwd=data_path,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        if result.returncode == 0:
+            flash("Analytics refreshed. analytics.json updated.", "success")
+        else:
+            err = (result.stderr or result.stdout or "").strip()[:300]
+            flash(f"Refresh failed: {err or 'Unknown error'}", "error")
+    except subprocess.TimeoutExpired:
+        flash("Refresh timed out (2 min). Try running manually.", "error")
+    except Exception as e:
+        flash(f"Refresh failed: {e}", "error")
+    return redirect(url_for("polymarket.polymarket_analytics"))
+
+
+@polymarket_bp.route("/lifecycle")
+@admin_required
+@_polymarket_configured_required("lifecycle")
+def polymarket_lifecycle():
+    """Strategy lifecycle: promote/kill verdicts from lifecycle.json."""
+    data_path = _get_data_path()
+    strategy_options = get_strategy_options_for_nav(data_path)
+    strategy_val = _get_strategy(strategy_options)
+    lifecycle = get_lifecycle_json(data_path)
+    lifecycle_age = get_lifecycle_file_age(data_path)
+    return render_template(
+        "polymarket_lifecycle.html",
+        configured=True,
+        active_section="lifecycle",
+        polymarket_sections=POLYMARKET_SECTIONS,
+        lifecycle=lifecycle,
+        lifecycle_age=lifecycle_age,
+        current_strategy=strategy_val,
+        strategy_options=strategy_options,
+    )
+
+
+@polymarket_bp.route("/lifecycle/refresh", methods=["POST"])
+@admin_required
+@_polymarket_configured_required("lifecycle")
+def polymarket_lifecycle_refresh():
+    """Run evaluate_strategy_lifecycle.py to regenerate lifecycle.json."""
+    import subprocess
+    data_path = _get_data_path()
+    script_path = os.path.join(data_path, "evaluate_strategy_lifecycle.py")
+    if not os.path.isfile(script_path):
+        flash("evaluate_strategy_lifecycle.py not found in polymarket-alerts directory.", "error")
+        return redirect(url_for("polymarket.polymarket_lifecycle"))
+    python_exe = os.path.join(data_path, "venv", "bin", "python") if os.path.isfile(os.path.join(data_path, "venv", "bin", "python")) else "python3"
+    try:
+        result = subprocess.run(
+            [python_exe, "evaluate_strategy_lifecycle.py", "--data-dir", data_path, "--out", "lifecycle.json"],
+            cwd=data_path,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if result.returncode == 0:
+            flash("Lifecycle refreshed. lifecycle.json updated.", "success")
+        else:
+            err = (result.stderr or result.stdout or "").strip()[:300]
+            flash(f"Refresh failed: {err or 'Unknown error'}", "error")
+    except subprocess.TimeoutExpired:
+        flash("Refresh timed out (1 min). Try running manually.", "error")
+    except Exception as e:
+        flash(f"Refresh failed: {e}", "error")
+    return redirect(url_for("polymarket.polymarket_lifecycle"))
 
 
 @polymarket_bp.route("/loop")
 @admin_required
 @_polymarket_configured_required("loop")
 def polymarket_loop():
-    """Loop / Dev – debug candidates from debug_candidates_v60.csv."""
+    """Loop / Dev – debug candidates from debug_candidates.csv."""
     data_path = _get_data_path()
+    strategy_options = get_strategy_options_for_nav(data_path)
+    strategy_val = _get_strategy(strategy_options)
     last_loop = get_last_loop_time(data_path)
     debug_status = request.args.get("debug_status", "all")
     if debug_status not in ("all", "alert"):
@@ -392,7 +541,7 @@ def polymarket_loop():
                 from_date_val = cutoff.strftime("%Y-%m-%d")
         except ValueError:
             pass
-    debug_result = get_debug_candidates(data_path, status_filter=debug_status, sort=debug_sort, from_date=from_date_val)
+    debug_result = get_debug_candidates(data_path, status_filter=debug_status, sort=debug_sort, from_date=from_date_val, strategy=strategy_val)
     debug_candidates = []
     debug_total = 0
     debug_page = max(1, int(request.args.get("debug_page", 1) or 1))
@@ -414,6 +563,8 @@ def polymarket_loop():
         debug_sort=debug_sort,
         current_days=days_val or "all",
         current_from_date=from_date_val,
+        current_strategy=strategy_val,
+        strategy_options=strategy_options,
         active_section="loop",
         polymarket_sections=POLYMARKET_SECTIONS,
     )
@@ -427,6 +578,8 @@ def polymarket_export():
         return "Polymarket not configured", 404
 
     data_path = _get_data_path()
+    strategy_options = get_strategy_options_for_nav(data_path)
+    strategy_val = _get_strategy(strategy_options)
     filter_val, _, days = _parse_filter_days()
     from_date_val = (request.args.get("from_date") or "").strip() or None
     category_val = (request.args.get("category") or "").strip() or None
@@ -434,7 +587,7 @@ def polymarket_export():
     if sort_val not in SORT_OPTIONS:
         sort_val = "pnl_asc"
 
-    stats = get_polymarket_stats(data_path, filter=filter_val, days=days, from_date=from_date_val, sort=sort_val, category=category_val)
+    stats = get_polymarket_stats(data_path, filter=filter_val, days=days, from_date=from_date_val, sort=sort_val, category=category_val, strategy=strategy_val)
     if not stats or "resolved_list" not in stats:
         return "No data to export", 404
 
@@ -467,7 +620,9 @@ def polymarket_export_debug():
         return "Polymarket not configured", 404
 
     data_path = _get_data_path()
-    result = get_debug_candidates(data_path)
+    strategy_options = get_strategy_options_for_nav(data_path)
+    strategy_val = _get_strategy(strategy_options)
+    result = get_debug_candidates(data_path, strategy=strategy_val)
     if not result:
         return "Debug candidates file not found", 404
 

@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}Analytics – Polymarket{% endblock %}
+{% block header %}Polymarket Alerts{% endblock %}
+
+{% block content %}
+{% include "polymarket_nav.html" %}
+
+<div class="mb-6 flex flex-wrap items-center gap-4 justify-between">
+  <div>
+    <p class="text-sm text-light-muted dark:text-dark-muted">
+      Edge Quality, Timing, Strategy Cohort (with drawdown), and MTM/Exit Study. Data from <code>analytics.json</code>.
+    </p>
+    {% if analytics_age %}
+    <p class="text-xs text-light-muted dark:text-dark-muted mt-1">Last updated: {{ analytics_age }}</p>
+    {% elif analytics and analytics.get('generated_at') %}
+    <p class="text-xs text-light-muted dark:text-dark-muted mt-1">Generated: {{ analytics.generated_at }}</p>
+    {% endif %}
+  </div>
+  <form method="post" action="{{ url_for('polymarket.polymarket_analytics_refresh') }}" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <button type="submit" class="px-4 py-2 text-sm font-medium rounded border border-light-border dark:border-dark-border bg-light-hover dark:bg-dark-hover text-light-text dark:text-dark-text hover:opacity-90">Refresh analytics</button>
+  </form>
+</div>
+
+{% if not analytics %}
+<div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-6">
+  <p class="text-light-muted dark:text-dark-muted">No <code>analytics.json</code> found. In polymarket-alerts run: <code>./venv/bin/python analytics_export.py --data-dir . --out analytics.json</code></p>
+</div>
+{% else %}
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
+    <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-4">Edge Quality</h2>
+    {% set eq = analytics.get('edge_quality') or {} %}
+    {% if eq %}
+    <div class="overflow-x-auto max-h-80 overflow-y-auto">
+      <table class="min-w-full divide-y divide-light-border dark:divide-dark-border">
+        <thead class="bg-light-hover dark:bg-dark-hover sticky top-0 z-10">
+          <tr>
+            <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Edge bucket</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Count</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">W/L</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Total P/L</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">ROI %</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Avg P/L per trade</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-light-border dark:divide-dark-border">
+          {% for bucket, s in eq.items() %}
+          <tr class="hover:bg-light-hover dark:hover:bg-dark-hover">
+            <td class="px-4 py-2 text-sm text-light-text dark:text-dark-text">{{ bucket }}</td>
+            <td class="px-4 py-2 text-right text-sm">{{ s.get('resolved_count', 0) }}</td>
+            <td class="px-4 py-2 text-right text-sm">{{ s.get('wins', 0) }}/{{ s.get('losses', 0) }}</td>
+            <td class="px-4 py-2 text-right text-sm {% if (s.get('total_pnl') or 0) > 0 %}text-status-up-light dark:text-status-up-dark{% elif (s.get('total_pnl') or 0) < 0 %}text-status-down-light dark:text-status-down-dark{% else %}text-light-muted dark:text-dark-muted{% endif %}">${{ "%.2f"|format(s.get('total_pnl') or 0) }}</td>
+            <td class="px-4 py-2 text-right text-sm">{{ "%.1f"|format(s.get('roi_pct') or 0) }}%</td>
+            <td class="px-4 py-2 text-right text-sm">${{ "%.2f"|format(s.get('avg_pnl_per_trade') or 0) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-sm text-light-muted dark:text-dark-muted py-4">No edge quality data.</p>
+    {% endif %}
+  </div>
+
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
+    <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-4">Timing</h2>
+    {% set tm = analytics.get('timing') or {} %}
+    {% if tm %}
+    <div class="overflow-x-auto max-h-80 overflow-y-auto">
+      <table class="min-w-full divide-y divide-light-border dark:divide-dark-border">
+        <thead class="bg-light-hover dark:bg-dark-hover sticky top-0 z-10">
+          <tr>
+            <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Window</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Count</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">W/L</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Total P/L</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">ROI %</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Avg P/L per trade</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-light-border dark:divide-dark-border">
+          {% for bucket, s in tm.items() %}
+          <tr class="hover:bg-light-hover dark:hover:bg-dark-hover">
+            <td class="px-4 py-2 text-sm text-light-text dark:text-dark-text">{{ bucket }}</td>
+            <td class="px-4 py-2 text-right text-sm">{{ s.get('resolved_count', 0) }}</td>
+            <td class="px-4 py-2 text-right text-sm">{{ s.get('wins', 0) }}/{{ s.get('losses', 0) }}</td>
+            <td class="px-4 py-2 text-right text-sm {% if (s.get('total_pnl') or 0) > 0 %}text-status-up-light dark:text-status-up-dark{% elif (s.get('total_pnl') or 0) < 0 %}text-status-down-light dark:text-status-down-dark{% else %}text-light-muted dark:text-dark-muted{% endif %}">${{ "%.2f"|format(s.get('total_pnl') or 0) }}</td>
+            <td class="px-4 py-2 text-right text-sm">{{ "%.1f"|format(s.get('roi_pct') or 0) }}%</td>
+            <td class="px-4 py-2 text-right text-sm">${{ "%.2f"|format(s.get('avg_pnl_per_trade') or 0) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-sm text-light-muted dark:text-dark-muted py-4">No timing data.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid grid-cols-1 gap-6 mb-6">
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
+    <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-4">Strategy Cohort (with drawdown)</h2>
+    {% set sc = analytics.get('strategy_cohort') or {} %}
+    {% if sc %}
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-light-border dark:divide-dark-border">
+        <thead class="bg-light-hover dark:bg-dark-hover">
+          <tr>
+            <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Strategy</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Sent</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Shadow</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Resolved</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Open</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">W/L</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Total P/L</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">ROI %</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Avg hold (d)</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Drawdown %</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-light-border dark:divide-dark-border">
+          {% for sid, s in sc.items() %}
+          <tr class="hover:bg-light-hover dark:hover:bg-dark-hover">
+            <td class="px-4 py-2 text-sm font-medium text-light-text dark:text-dark-text">{{ sid }}</td>
+            <td class="px-4 py-2 text-right text-sm">{{ s.get('alerts_sent', 0) }}</td>
+            <td class="px-4 py-2 text-right text-sm">{{ s.get('alerts_shadow', 0) }}</td>
+            <td class="px-4 py-2 text-right text-sm">{{ s.get('resolved_count', 0) }}</td>
+            <td class="px-4 py-2 text-right text-sm">{{ s.get('open_count', 0) }}</td>
+            <td class="px-4 py-2 text-right text-sm">{{ s.get('wins', 0) }}/{{ s.get('losses', 0) }}</td>
+            <td class="px-4 py-2 text-right text-sm {% if (s.get('total_pnl') or 0) > 0 %}text-status-up-light dark:text-status-up-dark{% elif (s.get('total_pnl') or 0) < 0 %}text-status-down-light dark:text-status-down-dark{% else %}text-light-muted dark:text-dark-muted{% endif %}">${{ "%.2f"|format(s.get('total_pnl') or 0) }}</td>
+            <td class="px-4 py-2 text-right text-sm">{{ "%.1f"|format(s.get('roi_pct') or 0) }}%</td>
+            <td class="px-4 py-2 text-right text-sm">{{ s.get('avg_hold_days') if s.get('avg_hold_days') is not none else '—' }}</td>
+            <td class="px-4 py-2 text-right text-sm">cur {{ s.get('current_drawdown_pct') | default('—') }}% / max {{ s.get('max_drawdown_pct') | default('—') }}%</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-sm text-light-muted dark:text-dark-muted py-4">No strategy cohort data.</p>
+    {% endif %}
+  </div>
+
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
+    <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-4">MTM / Exit Study (avg price move)</h2>
+    {% set ex = analytics.get('exit_study') or {} %}
+    {% if ex %}
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-light-border dark:divide-dark-border">
+        <thead class="bg-light-hover dark:bg-dark-hover">
+          <tr>
+            <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Strategy</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">1m (n)</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">5m (n)</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">30m (n)</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">2h (n)</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">1d (n)</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-light-border dark:divide-dark-border">
+          {% for sid, horizons in ex.items() %}
+          <tr class="hover:bg-light-hover dark:hover:bg-dark-hover">
+            <td class="px-4 py-2 text-sm font-medium text-light-text dark:text-dark-text">{{ sid }}</td>
+            {% for key in ['1m', '5m', '30m', '2h', '1d'] %}
+            {% set h = horizons.get(key) or {} %}
+            {% set avg = h.get('avg_move') %}
+            <td class="px-4 py-2 text-right text-sm">{% if avg is not none %}{{ "%.4f"|format(avg) }}{% else %}—{% endif %} ({{ h.get('count', 0) }})</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="text-xs text-light-muted dark:text-dark-muted mt-2">Avg move = price_after − mid_at_alert. (n) = sample count. Fill with backfill_drift.</p>
+    {% else %}
+    <p class="text-sm text-light-muted dark:text-dark-muted py-4">No exit study data. Run backfill_drift to populate execution_log price snapshots.</p>
+    {% endif %}
+  </div>
+</div>
+
+{% if analytics.get('totals') %}
+<div class="text-sm text-light-muted dark:text-dark-muted">
+  Totals: {{ analytics.totals.get('alerts_resolved', 0) }} resolved, {{ analytics.totals.get('alerts_open', 0) }} open, {{ analytics.totals.get('alerts_total', 0) }} total alerts.
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}

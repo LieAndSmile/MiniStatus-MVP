@@ -136,6 +136,41 @@ def _format_countdown(event_time: Optional[datetime]) -> str:
 ALERTS_LOG_REQUIRED = ("question", "pnl_usd", "resolved", "actual_result")
 ALERTS_LOG_NEEDS_ONE_OF = ("ts", "resolved_ts")
 
+# v3: strategy filter options (match strategies.yaml; extended for Phase 1–3 probes)
+STRATEGY_OPTIONS = (
+    "safe",
+    "safe_v2",
+    "same_day_probe",
+    "hold_3to7d_probe",
+    "hold_8to10d_probe",
+    "gamma_84_86_probe",
+    "gamma_86_92_probe",
+    "gamma_92_96_probe",
+    "mid_gamma",
+    "resolution_sprint",
+)
+
+
+def get_strategy_options_for_nav(data_path: str) -> tuple[str, ...]:
+    """
+    Return strategy list for nav dropdown. If analytics.json exists, merge its strategy_cohort
+    keys with STRATEGY_OPTIONS so any new strategy in data appears; otherwise return STRATEGY_OPTIONS.
+    """
+    analytics = get_analytics_json(data_path) if data_path else None
+    cohort = (analytics or {}).get("strategy_cohort") or {}
+    from_data = tuple(sorted(cohort.keys())) if cohort else ()
+    merged = set(STRATEGY_OPTIONS) | set(from_data)
+    return tuple(sorted(merged))
+
+
+def _filter_sent_rows(rows: list[dict]) -> list[dict]:
+    """v3: exclude rows where status is not 'sent' (e.g. blocked_risk_limit, shadow). If no status column, keep all."""
+    if not rows:
+        return rows
+    if "status" not in (rows[0] or {}):
+        return rows
+    return [r for r in rows if (r.get("status") or "").strip().lower() == "sent"]
+
 # Empty stats structure for error/fallback responses
 _STATS_EMPTY = {
     "alerts_total": 0,
@@ -236,6 +271,7 @@ def get_polymarket_stats(
     from_date: Optional[str] = None,
     sort: str = "pnl_asc",
     category: Optional[str] = None,
+    strategy: Optional[str] = None,
 ) -> Optional[dict]:
     """
     Read alerts_log.csv from polymarket-alerts directory and compute stats.
@@ -244,6 +280,7 @@ def get_polymarket_stats(
     days: if set, only include resolved alerts from last N days
     from_date: if set (YYYY-MM-DD), only include resolved_ts >= that date (overrides days when both set)
     sort: pnl_asc | pnl_desc | date_desc | date_asc | question_asc | question_desc | result_yes | result_no
+    strategy: if set, only include rows with strategy_id == strategy (v3).
     """
     if not data_path or not os.path.isdir(data_path):
         return None
@@ -266,6 +303,10 @@ def get_polymarket_stats(
         fieldnames, all_rows = result
         if not fieldnames:
             return _STATS_EMPTY.copy()
+
+        all_rows = _filter_sent_rows(all_rows)
+        if strategy and strategy.strip():
+            all_rows = [r for r in all_rows if (r.get("strategy_id") or "").strip() == strategy.strip()]
 
         for row in all_rows:
                 alerts_total += 1
@@ -447,6 +488,7 @@ def get_open_positions(
     sort: str = "cost_desc",
     expiry_filter: Optional[str] = None,
     hours_max: Optional[float] = None,
+    strategy: Optional[str] = None,
 ) -> list[dict]:
     """
     Read open_positions.csv from polymarket-alerts directory.
@@ -471,6 +513,8 @@ def get_open_positions(
     if result is None:
         return []
     _, raw_rows = result
+    if strategy and strategy.strip():
+        raw_rows = [r for r in raw_rows if (r.get("strategy_id") or "").strip() == strategy.strip()]
     rows = []
     cutoff = None
     if from_date and len(from_date) >= 10:
@@ -640,6 +684,7 @@ def get_risky_positions(
     days: Optional[int] = None,
     from_date: Optional[str] = None,
     sort: str = "cost_desc",
+    strategy: Optional[str] = None,
 ) -> list[dict]:
     """
     Return open positions that match the Risky strategy criteria (high edge, low gamma, short expiry).
@@ -659,6 +704,7 @@ def get_risky_positions(
         sort=sort,
         expiry_filter=None,
         hours_max=None,
+        strategy=strategy,
     )
     risky = []
     for p in all_positions:
@@ -800,11 +846,11 @@ _EDGE_BANDS = [(0, 0.005, "0–0.5%"), (0.005, 0.01, "0.5–1%"), (0.01, 0.02, "
 _GAMMA_BANDS = [(0.90, 0.92), (0.92, 0.94), (0.94, 0.96), (0.96, 0.98), (0.98, 1.01)]
 
 
-def get_expectancy_by_bands(data_path: str, days: Optional[int] = None) -> dict:
+def get_expectancy_by_bands(data_path: str, days: Optional[int] = None, strategy: Optional[str] = None) -> dict:
     """
     Compute expectancy by edge and gamma bands from resolved alerts.
     Returns { "edge_bands": [...], "gamma_bands": [...] }.
-    Each band: label, count, wins, win_rate, total_pnl, avg_pnl, expectancy.
+    strategy: if set, only include rows with strategy_id == strategy (v3).
     """
     if not data_path or not os.path.isdir(data_path):
         return {"edge_bands": [], "gamma_bands": []}
@@ -821,6 +867,9 @@ def get_expectancy_by_bands(data_path: str, days: Optional[int] = None) -> dict:
     if result is None:
         return {"edge_bands": [], "gamma_bands": []}
     _, raw_rows = result
+    raw_rows = _filter_sent_rows(raw_rows)
+    if strategy and strategy.strip():
+        raw_rows = [r for r in raw_rows if (r.get("strategy_id") or "").strip() == strategy.strip()]
 
     resolved = []
     try:
@@ -907,11 +956,11 @@ def _categorize_question(question: str) -> str:
     return "other"
 
 
-def get_loss_breakdown(data_path: str, days: Optional[int] = None) -> list[dict]:
+def get_loss_breakdown(data_path: str, days: Optional[int] = None, strategy: Optional[str] = None) -> list[dict]:
     """
     Analyze losses by market category (politics, sports, crypto, etc.).
     Returns list of dicts: category, count, pnl, examples (up to 3).
-    Respects days filter (same as get_polymarket_stats).
+    strategy: if set, only include rows with strategy_id == strategy (v3).
     """
     if not data_path or not os.path.isdir(data_path):
         return []
@@ -926,6 +975,9 @@ def get_loss_breakdown(data_path: str, days: Optional[int] = None) -> list[dict]
     if result is None:
         return []
     _, raw_rows = result
+    raw_rows = _filter_sent_rows(raw_rows)
+    if strategy and strategy.strip():
+        raw_rows = [r for r in raw_rows if (r.get("strategy_id") or "").strip() == strategy.strip()]
 
     try:
         for row in raw_rows:
@@ -986,6 +1038,7 @@ def get_debug_candidates(
     status_filter: Literal["all", "alert"] = "all",
     sort: str = "date_desc",
     from_date: Optional[str] = None,
+    strategy: Optional[str] = None,
 ) -> Optional[tuple[list[dict], int]]:
     """
     Read debug candidates CSV from polymarket-alerts. Filename from POLYMARKET_DEBUG_CSV
@@ -994,6 +1047,7 @@ def get_debug_candidates(
     status_filter: "all" | "alert" – when "alert", only rows with status ALERT.
     sort: date_desc | date_asc | edge_desc | edge_asc | question_asc | question_desc | status
     from_date: if set (YYYY-MM-DD), only include ts >= that date.
+    strategy: if set, only include rows with strategy_id == strategy (v3).
     """
     if not data_path or not os.path.isdir(data_path):
         return None
@@ -1019,6 +1073,8 @@ def get_debug_candidates(
     if result is None:
         return None
     _, raw_rows = result
+    if strategy and strategy.strip():
+        raw_rows = [r for r in raw_rows if (r.get("strategy_id") or "").strip() == strategy.strip()]
 
     rows = []
     try:
@@ -1050,6 +1106,7 @@ def get_debug_candidates(
                 "edge_pct": f"{edge * 100:+.2f}%" if edge else "—",
                 "days": row.get("days", ""),
                 "status": (row.get("status") or "").strip(),
+                "strategy_id": (row.get("strategy_id") or "").strip(),
             })
     except (IOError, csv.Error):
         return None
@@ -1145,3 +1202,82 @@ def get_last_loop_time(data_path: str) -> Optional[str]:
         return f"{hours} hour{'s' if hours != 1 else ''} ago"
     days = int(delta.total_seconds() / 86400)
     return f"{days} day{'s' if days != 1 else ''} ago"
+
+
+def get_analytics_json(data_path: str) -> Optional[dict]:
+    """
+    Load analytics.json from polymarket-alerts (from analytics_export.py).
+    Returns dict with edge_quality, timing, strategy_cohort, exit_study, totals; or None if missing.
+    """
+    if not data_path or not os.path.isdir(data_path):
+        return None
+    import json
+    path = os.path.join(data_path, "analytics.json")
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (IOError, json.JSONDecodeError):
+        return None
+
+
+def get_lifecycle_json(data_path: str) -> Optional[dict]:
+    """
+    Load lifecycle.json from polymarket-alerts (from evaluate_strategy_lifecycle.py).
+    Returns dict with strategies, thresholds_used, generated_at; or None if missing.
+    """
+    if not data_path or not os.path.isdir(data_path):
+        return None
+    import json
+    path = os.path.join(data_path, "lifecycle.json")
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (IOError, json.JSONDecodeError):
+        return None
+
+
+def _format_file_age(mtime: float) -> str:
+    """Format a file mtime as 'X min ago' / 'X hours ago' / 'X days ago'."""
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).timestamp()
+    delta_sec = max(0, now - mtime)
+    if delta_sec < 60:
+        return "just now"
+    if delta_sec < 3600:
+        mins = int(delta_sec / 60)
+        return f"{mins} min ago"
+    if delta_sec < 86400:
+        hours = int(delta_sec / 3600)
+        return f"{hours} hour{'s' if hours != 1 else ''} ago"
+    days = int(delta_sec / 86400)
+    return f"{days} day{'s' if days != 1 else ''} ago"
+
+
+def get_analytics_file_age(data_path: str) -> Optional[str]:
+    """Return human-readable age of analytics.json, or None if missing."""
+    if not data_path or not os.path.isdir(data_path):
+        return None
+    path = os.path.join(data_path, "analytics.json")
+    if not os.path.isfile(path):
+        return None
+    try:
+        return _format_file_age(os.path.getmtime(path))
+    except OSError:
+        return None
+
+
+def get_lifecycle_file_age(data_path: str) -> Optional[str]:
+    """Return human-readable age of lifecycle.json, or None if missing."""
+    if not data_path or not os.path.isdir(data_path):
+        return None
+    path = os.path.join(data_path, "lifecycle.json")
+    if not os.path.isfile(path):
+        return None
+    try:
+        return _format_file_age(os.path.getmtime(path))
+    except OSError:
+        return None
