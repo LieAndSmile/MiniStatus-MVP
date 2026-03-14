@@ -348,14 +348,15 @@ When `POLYMARKET_DATA_PATH` points to a polymarket-alerts directory, an admin-on
 |------|-------|--------------|
 | **Portfolio** | `/polymarket/portfolio` | Resolved bets, KPIs (wins, losses, net P/L, max drawdown), cumulative P/L chart, drawdown chart, filter (all/wins/losses), time window, sort, search, pagination, export |
 | **Open Positions** | `/polymarket/positions` | Open positions from `open_positions.csv`, total cost, unrealized P/L, cluster exposure summary (top 5 by category), search, **filter by opened date** (All time / Last 30/90/180 days, or click a date to filter from that date), category filter, **track interesting** (star to mark positions; filter "Interesting only", sort "Interesting first"), sort, clickable Opened column header |
-| **Risky** | `/polymarket/risky` | Positions matching the Risky strategy: edge ≥ 1%, gamma ≤ 0.94, expiry within 48h. **Excludes expired.** Tune via `RISKY_EDGE_MIN_PCT`, `RISKY_GAMMA_MAX`, `RISKY_EXPIRY_HOURS_MAX`. Results of resolved risky positions appear in **Performance** (expectancy by edge/gamma). |
-| **Performance** | `/polymarket/performance` | Expectancy by edge bands (0–0.5%, 0.5–1%, 1–2%, 2%+) and gamma bands; time window filter |
+| **Risky** | `/polymarket/risky` | Positions matching the Risky strategy: edge ≥ 1%, gamma ≤ 0.94, expiry within 48h. **Excludes expired.** Tune via `RISKY_EDGE_MIN_PCT`, `RISKY_GAMMA_MAX`, `RISKY_EXPIRY_HOURS_MAX`. Results of resolved risky positions appear in **Analytics** (edge quality, timing, strategy cohort). |
 | **Loss Lab** | `/polymarket/loss-lab` | Losses by category (politics, sports, crypto, etc.), time window filter |
+| **Analytics** | `/polymarket/analytics` | Edge Quality, Timing, Strategy Cohort (with drawdown), MTM/Exit Study from `analytics.json`; refresh button |
+| **Lifecycle** | `/polymarket/lifecycle` | Promote/kill verdicts per strategy from `lifecycle.json`; refresh button |
 | **Loop / Dev** | `/polymarket/loop` | Debug candidates from CSV (default `debug_candidates.csv`; set `POLYMARKET_DEBUG_CSV` to match polymarket-alerts), time window filter, status filter (All/ALERT), sort, search, pagination, export, clickable dates for filtering |
 
 ### Features
 
-- **Time window** – All time / Last 30 / 90 / 180 days (Portfolio, Performance, Loss Lab, Open Positions, Loop/Dev). **Click date cells** to filter from that date (Portfolio, Positions, Loop)
+- **Time window** – All time / Last 30 / 90 / 180 days (Portfolio, Loss Lab, Open Positions, Loop/Dev). **Click date cells** to filter from that date (Portfolio, Positions, Loop)
 - **Search** – Client-side search by question text (Portfolio, Positions, Loop)
 - **Sticky table headers** – Headers stay visible when scrolling
 - **mtime caching** – CSV reads are cached; cache invalidates when files change

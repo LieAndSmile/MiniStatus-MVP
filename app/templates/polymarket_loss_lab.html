@@ -15,7 +15,8 @@
 
 <div class="mb-6 flex flex-wrap items-center gap-4" data-polymarket-filters>
   {% from "polymarket_time_filter.html" import render as polymarket_time_filter %}
-  {{ polymarket_time_filter('polymarket.polymarket_loss_lab', current_days) }}
+  {{ polymarket_time_filter('polymarket.polymarket_loss_lab', current_days, {'strategy': current_strategy}) }}
+  {% if data_freshness %}<span class="text-xs text-light-muted dark:text-dark-muted">alerts_log: {{ data_freshness }}</span>{% endif %}
 </div>
 
 <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-6">
@@ -34,19 +35,32 @@
     <div class="rounded-lg border border-status-down-light/30 dark:border-status-down-dark/30 bg-status-down-light/5 dark:bg-status-down-dark/5 p-4">
       <div class="flex items-center justify-between gap-2">
         <div class="text-sm font-medium text-light-muted dark:text-dark-muted uppercase">{{ item.category }}</div>
-        <a href="{{ url_for('polymarket.polymarket_portfolio', filter='losses', days=current_days, category=item.category) }}"
+        <a href="{{ url_for('polymarket.polymarket_portfolio', filter='losses', days=current_days, category=item.category, strategy=current_strategy) }}"
            class="text-xs text-light-primary dark:text-dark-primary hover:underline">View in Portfolio</a>
       </div>
       <div class="text-xl font-bold text-status-down-light dark:text-status-down-dark mt-1">{{ item.count }} losses · {{ item.pnl_display }}</div>
       {% if item.examples %}
-      <details class="mt-2">
-        <summary class="cursor-pointer text-xs text-light-muted dark:text-dark-muted hover:text-light-text dark:hover:text-dark-text">Show examples</summary>
-        <div class="mt-2 space-y-1">
-          {% for ex in item.examples %}
-          <p class="text-xs text-light-muted dark:text-dark-muted truncate" title="{{ ex.question }}">{{ ex.question }}... ({{ ex.pnl_display }})</p>
-          {% endfor %}
+        {% if loop.first %}
+        <div class="mt-3 border-t border-status-down-light/20 dark:border-status-down-dark/20 pt-2">
+          <div class="text-xs font-medium text-light-muted dark:text-dark-muted mb-1">Examples (worst losses)</div>
+          <div class="space-y-1">
+            {% for ex in item.examples %}
+            <p class="text-xs text-light-muted dark:text-dark-muted truncate" title="{{ ex.question }}">{{ ex.question }}... ({{ ex.pnl_display }})</p>
+            {% endfor %}
+          </div>
         </div>
-      </details>
+        {% else %}
+        <details class="mt-2">
+          <summary class="cursor-pointer text-xs text-light-muted dark:text-dark-muted hover:text-light-text dark:hover:text-dark-text">
+            Show examples ({{ item.examples|length }})
+          </summary>
+          <div class="mt-2 space-y-1">
+            {% for ex in item.examples %}
+            <p class="text-xs text-light-muted dark:text-dark-muted truncate" title="{{ ex.question }}">{{ ex.question }}... ({{ ex.pnl_display }})</p>
+            {% endfor %}
+          </div>
+        </details>
+        {% endif %}
       {% endif %}
     </div>
     {% endfor %}
@@ -54,6 +68,192 @@
   {% else %}
   <div class="py-12 text-center text-light-muted dark:text-dark-muted">
     No loss data in this time window. Losses are categorized from resolved alerts in <code class="px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover">alerts_log.csv</code>.
+  </div>
+  {% endif %}
+</div>
+
+<div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-6">
+    <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-2">Losses by Edge Bucket</h2>
+    <p class="text-sm text-light-muted dark:text-dark-muted mb-4">
+      How realized losses cluster by estimated edge at entry.
+    </p>
+    {% if edge_buckets and edge_buckets|length > 0 %}
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="text-left text-xs font-semibold text-light-muted dark:text-dark-muted border-b border-light-border dark:border-dark-border">
+            <th class="py-2 pr-4" title="Edge: Estimated advantage at entry (e.g. 1% = market mispriced by 1%).">Edge bucket</th>
+            <th class="py-2 pr-4 text-right">Losses</th>
+            <th class="py-2 text-right" title="Total P/L: Sum of profit/loss in USD.">Total P/L</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in edge_buckets %}
+          <tr class="border-b border-light-border/60 dark:border-dark-border/60 last:border-b-0">
+            <td class="py-1.5 pr-4 text-light-text dark:text-dark-text">{{ row.bucket }}</td>
+            <td class="py-1.5 pr-4 text-right text-light-text dark:text-dark-text">{{ row.count }}</td>
+            <td class="py-1.5 text-right text-status-down-light dark:text-status-down-dark">{{ row.pnl_display }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="py-6 text-sm text-light-muted dark:text-dark-muted">
+      No loss data available for edge buckets in this time window.
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-6">
+    <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-2">Losses by Gamma Bucket</h2>
+    <p class="text-sm text-light-muted dark:text-dark-muted mb-4">
+      How realized losses cluster by market depth/convexity (gamma).
+    </p>
+    {% if gamma_buckets and gamma_buckets|length > 0 %}
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="text-left text-xs font-semibold text-light-muted dark:text-dark-muted border-b border-light-border dark:border-dark-border">
+            <th class="py-2 pr-4" title="Gamma: Probability implied by market price (0–1). Lower = market more confident against our position.">Gamma bucket</th>
+            <th class="py-2 pr-4 text-right">Losses</th>
+            <th class="py-2 text-right" title="Total P/L: Sum of profit/loss in USD.">Total P/L</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in gamma_buckets %}
+          <tr class="border-b border-light-border/60 dark:border-dark-border/60 last:border-b-0">
+            <td class="py-1.5 pr-4 text-light-text dark:text-dark-text">{{ row.bucket }}</td>
+            <td class="py-1.5 pr-4 text-right text-light-text dark:text-dark-text">{{ row.count }}</td>
+            <td class="py-1.5 text-right text-status-down-light dark:text-status-down-dark">{{ row.pnl_display }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="py-6 text-sm text-light-muted dark:text-dark-muted">
+      No loss data available for gamma buckets in this time window.
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-6">
+    <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-2">Losses by Hold Duration</h2>
+    <p class="text-sm text-light-muted dark:text-dark-muted mb-4">
+      How long losing trades were held from alert to resolution.
+    </p>
+    {% if hold_buckets and hold_buckets|length > 0 %}
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="text-left text-xs font-semibold text-light-muted dark:text-dark-muted border-b border-light-border dark:border-dark-border">
+            <th class="py-2 pr-4" title="Avg hold: Average days from alert to resolution for resolved trades.">Hold bucket</th>
+            <th class="py-2 pr-4 text-right">Losses</th>
+            <th class="py-2 text-right" title="Total P/L: Sum of profit/loss in USD.">Total P/L</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in hold_buckets %}
+          <tr class="border-b border-light-border/60 dark:border-dark-border/60 last:border-b-0">
+            <td class="py-1.5 pr-4 text-light-text dark:text-dark-text">{{ row.bucket }}</td>
+            <td class="py-1.5 pr-4 text-right text-light-text dark:text-dark-text">{{ row.count }}</td>
+            <td class="py-1.5 text-right text-status-down-light dark:text-status-down-dark">{{ row.pnl_display }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="py-6 text-sm text-light-muted dark:text-dark-muted">
+      No loss data available for hold-duration buckets in this time window.
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-6">
+    <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-2">Losses by Time to Resolution</h2>
+    <p class="text-sm text-light-muted dark:text-dark-muted mb-4">
+      Same buckets as Analytics timing: time from alert to market resolution.
+    </p>
+    {% if ttr_buckets and ttr_buckets|length > 0 %}
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="text-left text-xs font-semibold text-light-muted dark:text-dark-muted border-b border-light-border dark:border-dark-border">
+            <th class="py-2 pr-4" title="Time from alert to resolution (hold window).">Time-to-resolution</th>
+            <th class="py-2 pr-4 text-right">Losses</th>
+            <th class="py-2 text-right" title="Total P/L: Sum of profit/loss in USD.">Total P/L</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in ttr_buckets %}
+          <tr class="border-b border-light-border/60 dark:border-dark-border/60 last:border-b-0">
+            <td class="py-1.5 pr-4 text-light-text dark:text-dark-text">{{ row.bucket }}</td>
+            <td class="py-1.5 pr-4 text-right text-light-text dark:text-dark-text">{{ row.count }}</td>
+            <td class="py-1.5 text-right text-status-down-light dark:text-status-down-dark">{{ row.pnl_display }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="py-6 text-sm text-light-muted dark:text-dark-muted">
+      No loss data available for time-to-resolution buckets in this time window.
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="mt-6 bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-6">
+  <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-2">Monthly Trend by Category</h2>
+  <p class="text-sm text-light-muted dark:text-dark-muted mb-4">
+    Net P/L per month, broken down by category. Respects the current time window and strategy.
+  </p>
+  {% if loss_trend and loss_trend|length > 0 %}
+  <div class="overflow-x-auto">
+    <table class="min-w-full text-sm">
+      <thead>
+        <tr class="text-left text-xs font-semibold text-light-muted dark:text-dark-muted border-b border-light-border dark:border-dark-border">
+          <th class="py-2 pr-4">Month</th>
+          <th class="py-2 pr-4 text-right">Net P/L</th>
+          <th class="py-2 text-left">By category</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in loss_trend %}
+        <tr class="border-b border-light-border/60 dark:border-dark-border/60 last:border-b-0 align-top">
+          <td class="py-1.5 pr-4 text-light-text dark:text-dark-text whitespace-nowrap">{{ row.month }}</td>
+          <td class="py-1.5 pr-4 text-right {% if row.total_pnl < 0 %}text-status-down-light dark:text-status-down-dark{% else %}text-light-success dark:text-dark-success{% endif %}">
+            {{ row.total_pnl_display }}
+          </td>
+          <td class="py-1.5 text-xs text-light-muted dark:text-dark-muted">
+            {% if row.categories and row.categories|length > 0 %}
+              {% for cat in row.categories %}
+                <div class="flex items-center gap-2 mb-0.5">
+                  <span class="inline-flex px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover text-[10px] font-medium text-light-text dark:text-dark-text">
+                    {{ cat.category|upper }}
+                  </span>
+                  <span class="{% if cat.pnl < 0 %}text-status-down-light dark:text-status-down-dark{% else %}text-light-success dark:text-dark-success{% endif %}">
+                    {{ cat.pnl_display }}
+                  </span>
+                </div>
+              {% endfor %}
+            {% else %}
+              No category breakdown available for this month.
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="py-6 text-sm text-light-muted dark:text-dark-muted">
+    No resolved alerts in this window to build a monthly trend.
   </div>
   {% endif %}
 </div>

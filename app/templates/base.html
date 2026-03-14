@@ -2,6 +2,7 @@
 <html lang="en" class="h-full">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
   <title>{% block title %}MiniStatus{% endblock %}</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Add Lucide Icons -->
@@ -269,13 +270,17 @@
                  class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_risky' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
                 <span class="nav-label text-sm">Risky</span>
               </a>
-              <a href="{{ url_for('polymarket.polymarket_performance') }}"
-                 class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_performance' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
-                <span class="nav-label text-sm">Performance</span>
-              </a>
               <a href="{{ url_for('polymarket.polymarket_loss_lab') }}"
                  class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_loss_lab' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
                 <span class="nav-label text-sm">Loss Lab</span>
+              </a>
+              <a href="{{ url_for('polymarket.polymarket_analytics') }}"
+                 class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_analytics' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
+                <span class="nav-label text-sm">Analytics</span>
+              </a>
+              <a href="{{ url_for('polymarket.polymarket_lifecycle') }}"
+                 class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_lifecycle' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
+                <span class="nav-label text-sm">Lifecycle</span>
               </a>
               <a href="{{ url_for('polymarket.polymarket_loop') }}"
                  class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_loop' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">

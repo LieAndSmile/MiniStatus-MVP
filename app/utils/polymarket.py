@@ -158,6 +158,8 @@ def get_strategy_options_for_nav(data_path: str) -> tuple[str, ...]:
     """
     analytics = get_analytics_json(data_path) if data_path else None
     cohort = (analytics or {}).get("strategy_cohort") or {}
+    if not isinstance(cohort, dict):
+        cohort = {}
     from_data = tuple(sorted(cohort.keys())) if cohort else ()
     merged = set(STRATEGY_OPTIONS) | set(from_data)
     return tuple(sorted(merged))
@@ -685,16 +687,19 @@ def get_risky_positions(
     from_date: Optional[str] = None,
     sort: str = "cost_desc",
     strategy: Optional[str] = None,
+    edge_min: Optional[float] = None,
+    gamma_max: Optional[float] = None,
+    expiry_hours_max: Optional[float] = None,
 ) -> list[dict]:
     """
     Return open positions that match the Risky strategy criteria (high edge, low gamma, short expiry).
-    Uses get_open_positions then filters by RISKY_EDGE_MIN_PCT, RISKY_GAMMA_MAX, RISKY_EXPIRY_HOURS_MAX.
+    When edge_min, gamma_max, or expiry_hours_max are provided, they override get_risky_criteria().
     Excludes expired positions (only currently risky, short-dated).
     """
     criteria = get_risky_criteria()
-    edge_min = criteria["edge_min"]
-    gamma_max = criteria["gamma_max"]
-    expiry_hours_max = criteria["expiry_hours_max"]
+    edge_min = edge_min if edge_min is not None else criteria["edge_min"]
+    gamma_max = gamma_max if gamma_max is not None else criteria["gamma_max"]
+    expiry_hours_max = expiry_hours_max if expiry_hours_max is not None else criteria["expiry_hours_max"]
 
     all_positions = get_open_positions(
         data_path,
@@ -721,6 +726,270 @@ def get_risky_positions(
             continue
         risky.append(p)
     return risky
+
+
+# Tolerances for "near risky" (plan: edge 0.25 pp, gamma 0.02, expiry 12h)
+NEAR_RISKY_EDGE_TOL = 0.0025   # 0.25 percentage points
+NEAR_RISKY_GAMMA_TOL = 0.02
+NEAR_RISKY_EXPIRY_TOL_HOURS = 12.0
+
+
+def get_near_risky_positions(
+    data_path: str,
+    days: Optional[int] = None,
+    from_date: Optional[str] = None,
+    sort: str = "cost_desc",
+    strategy: Optional[str] = None,
+    edge_min: Optional[float] = None,
+    gamma_max: Optional[float] = None,
+    expiry_hours_max: Optional[float] = None,
+) -> list[dict]:
+    """
+    Open positions that narrowly miss one Risky threshold (edge within 0.25 pp,
+    gamma within 0.02, expiry within 12h). Excludes positions that already qualify as risky.
+    Each returned dict includes near_reason: "edge" | "gamma" | "expiry" (first miss found).
+    """
+    criteria = get_risky_criteria()
+    edge_min = edge_min if edge_min is not None else criteria["edge_min"]
+    gamma_max = gamma_max if gamma_max is not None else criteria["gamma_max"]
+    expiry_hours_max = expiry_hours_max if expiry_hours_max is not None else criteria["expiry_hours_max"]
+
+    all_positions = get_open_positions(
+        data_path,
+        days=days,
+        from_date=from_date,
+        category=None,
+        sort=sort,
+        expiry_filter=None,
+        hours_max=None,
+        strategy=strategy,
+    )
+    def _key_ts(v):
+        if v is None:
+            return ""
+        return str(v).strip() if isinstance(v, str) else str(v)
+
+    risky_set = {
+        (p.get("market_id"), _key_ts(p.get("alert_ts")), _key_ts(p.get("question")))
+        for p in get_risky_positions(
+            data_path, days=days, from_date=from_date, sort=sort, strategy=strategy,
+            edge_min=edge_min, gamma_max=gamma_max, expiry_hours_max=expiry_hours_max,
+        )
+    }
+
+    near = []
+    for p in all_positions:
+        key = (p.get("market_id"), _key_ts(p.get("alert_ts")), _key_ts(p.get("question")))
+        if key in risky_set:
+            continue
+        edge = p.get("edge")
+        gamma = p.get("gamma")
+        hours_remaining = p.get("hours_remaining")
+        if hours_remaining is not None and hours_remaining < 0:
+            continue
+
+        # Narrowly misses edge: within 0.25 pp below min, and passes gamma and expiry
+        fails_edge = edge is None or edge < edge_min
+        near_edge = (
+            edge is not None
+            and edge_min - NEAR_RISKY_EDGE_TOL <= edge < edge_min
+            and (gamma is not None and gamma <= gamma_max)
+            and (hours_remaining is not None and 0 <= hours_remaining <= expiry_hours_max)
+        )
+        # Narrowly misses gamma: just above max, passes edge and expiry
+        fails_gamma = gamma is None or gamma > gamma_max
+        near_gamma = (
+            gamma is not None
+            and gamma_max < gamma <= gamma_max + NEAR_RISKY_GAMMA_TOL
+            and (edge is not None and edge >= edge_min)
+            and (hours_remaining is not None and 0 <= hours_remaining <= expiry_hours_max)
+        )
+        # Narrowly misses expiry: just above max, passes edge and gamma
+        fails_expiry = hours_remaining is None or hours_remaining > expiry_hours_max
+        near_expiry = (
+            hours_remaining is not None
+            and expiry_hours_max < hours_remaining <= expiry_hours_max + NEAR_RISKY_EXPIRY_TOL_HOURS
+            and (edge is not None and edge >= edge_min)
+            and (gamma is not None and gamma <= gamma_max)
+        )
+
+        if near_edge:
+            p = dict(p)
+            p["near_reason"] = "edge"
+            near.append(p)
+        elif near_gamma:
+            p = dict(p)
+            p["near_reason"] = "gamma"
+            near.append(p)
+        elif near_expiry:
+            p = dict(p)
+            p["near_reason"] = "expiry"
+            near.append(p)
+    return near
+
+
+def get_risky_historical_performance(
+    data_path: str,
+    days: Optional[int] = None,
+    from_date: Optional[str] = None,
+    strategy: Optional[str] = None,
+    edge_min: Optional[float] = None,
+    gamma_max: Optional[float] = None,
+    expiry_hours_max: Optional[float] = None,
+) -> dict:
+    """
+    Historical performance of resolved alerts that would have qualified as Risky
+    (edge >= edge_min, gamma <= gamma_max, time-to-resolution <= expiry_hours_max).
+    Uses same thresholds as get_risky_criteria() when not passed.
+    Returns dict: resolved_count, wins, losses, total_pnl, total_cost, roi_pct,
+    avg_edge, avg_gamma, avg_hold_hours, categories (list of {category, count, wins, losses, total_pnl, roi_pct}).
+    """
+    criteria = get_risky_criteria()
+    edge_min = edge_min if edge_min is not None else criteria["edge_min"]
+    gamma_max = gamma_max if gamma_max is not None else criteria["gamma_max"]
+    expiry_hours_max = expiry_hours_max if expiry_hours_max is not None else criteria["expiry_hours_max"]
+
+    empty = {
+        "resolved_count": 0,
+        "wins": 0,
+        "losses": 0,
+        "total_pnl": 0.0,
+        "total_pnl_display": "$0.00",
+        "total_cost": 0.0,
+        "total_cost_display": "$0",
+        "roi_pct": None,
+        "avg_edge": None,
+        "avg_gamma": None,
+        "avg_hold_hours": None,
+        "categories": [],
+    }
+    if not data_path or not os.path.isdir(data_path):
+        return empty
+
+    csv_path = os.path.join(data_path, "alerts_log.csv")
+    if not os.path.isfile(csv_path):
+        return empty
+
+    result = _read_csv_cached(csv_path)
+    if result is None:
+        return empty
+    _, raw_rows = result
+    raw_rows = _filter_sent_rows(raw_rows)
+    if strategy and strategy.strip():
+        raw_rows = [r for r in raw_rows if (r.get("strategy_id") or "").strip() == strategy.strip()]
+
+    cutoff = None
+    if from_date and len(from_date) >= 10:
+        try:
+            cutoff = datetime.strptime(from_date[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        except ValueError:
+            pass
+    if cutoff is None and days is not None and days > 0:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
+    qualifying = []
+    try:
+        for row in raw_rows:
+            resolved_val = row.get("resolved", "")
+            actual_result = (row.get("actual_result") or "").strip().upper()
+            is_resolved = _parse_bool(resolved_val) or actual_result in ("YES", "NO")
+            if not is_resolved:
+                continue
+
+            resolved_ts = _parse_date(row.get("resolved_ts") or row.get("ts"))
+            ts_alert = _parse_date(row.get("ts"))
+            if not resolved_ts:
+                continue
+            if cutoff is not None:
+                ts_aware = resolved_ts.replace(tzinfo=timezone.utc) if resolved_ts.tzinfo is None else resolved_ts
+                if ts_aware < cutoff:
+                    continue
+
+            edge = _parse_float(row.get("edge"), default=0.0) if row.get("edge") not in (None, "") else None
+            gamma = _parse_float(row.get("gamma"), default=0.0) if row.get("gamma") not in (None, "") else None
+            hold_hours = None
+            if ts_alert and resolved_ts:
+                start = ts_alert.replace(tzinfo=timezone.utc) if ts_alert.tzinfo is None else ts_alert
+                end = resolved_ts.replace(tzinfo=timezone.utc) if resolved_ts.tzinfo is None else resolved_ts
+                delta_sec = (end - start).total_seconds()
+                if delta_sec >= 0:
+                    hold_hours = delta_sec / 3600.0
+
+            if edge is None or edge < edge_min:
+                continue
+            if gamma is None or gamma > gamma_max:
+                continue
+            if hold_hours is None or hold_hours < 0 or hold_hours > expiry_hours_max:
+                continue
+
+            pnl = _parse_float(row.get("pnl_usd"), 0.0)
+            cost = _parse_float(row.get("cost_usd") or row.get("fill_usdc"), 0.0)
+            question = (row.get("question") or "").strip()
+            cat = _categorize_question(question)
+            qualifying.append({
+                "pnl": pnl,
+                "cost": cost,
+                "edge": edge,
+                "gamma": gamma,
+                "hold_hours": hold_hours,
+                "category": cat,
+            })
+    except (IOError, csv.Error):
+        return empty
+
+    if not qualifying:
+        return empty
+
+    total_pnl = sum(r["pnl"] for r in qualifying)
+    total_cost = sum(r["cost"] for r in qualifying)
+    wins = sum(1 for r in qualifying if r["pnl"] > 0)
+    losses = sum(1 for r in qualifying if r["pnl"] < 0)
+    roi_pct = (total_pnl / total_cost * 100.0) if total_cost and total_cost > 0 else None
+    n = len(qualifying)
+    avg_edge = sum(r["edge"] for r in qualifying) / n
+    avg_gamma = sum(r["gamma"] for r in qualifying) / n
+    avg_hold_hours = sum(r["hold_hours"] for r in qualifying) / n
+
+    by_cat: dict[str, dict] = defaultdict(lambda: {"count": 0, "wins": 0, "losses": 0, "pnl": 0.0, "cost": 0.0})
+    for r in qualifying:
+        c = r["category"]
+        by_cat[c]["count"] += 1
+        if r["pnl"] > 0:
+            by_cat[c]["wins"] += 1
+        else:
+            by_cat[c]["losses"] += 1
+        by_cat[c]["pnl"] += r["pnl"]
+        by_cat[c]["cost"] += r["cost"]
+
+    categories = []
+    for cat, data in sorted(by_cat.items(), key=lambda x: -abs(x[1]["pnl"])):
+        cat_roi = (data["pnl"] / data["cost"] * 100.0) if data["cost"] and data["cost"] > 0 else None
+        categories.append({
+            "category": cat.upper(),
+            "count": data["count"],
+            "wins": data["wins"],
+            "losses": data["losses"],
+            "total_pnl": round(data["pnl"], 2),
+            "total_pnl_display": f"${data['pnl']:.2f}",
+            "roi_pct": round(cat_roi, 2) if cat_roi is not None else None,
+        })
+
+    return {
+        "resolved_count": n,
+        "wins": wins,
+        "losses": losses,
+        "total_pnl": round(total_pnl, 2),
+        "total_pnl_display": f"${total_pnl:.2f}",
+        "total_cost": round(total_cost, 2),
+        "total_cost_display": format_compact_usd(total_cost),
+        "roi_pct": round(roi_pct, 2) if roi_pct is not None else None,
+        "avg_edge": round(avg_edge, 4),
+        "avg_edge_pct": f"{avg_edge * 100:.2f}%",
+        "avg_gamma": round(avg_gamma, 4),
+        "avg_hold_hours": round(avg_hold_hours, 1),
+        "avg_hold_days": round(avg_hold_hours / 24.0, 1),
+        "categories": categories,
+    }
 
 
 def get_interesting_ids(data_path: str) -> set[str]:
@@ -840,88 +1109,6 @@ def get_run_stats_log(data_path: str, limit: int = 365) -> list[dict]:
     return rows[:limit]
 
 
-# Edge bands (as decimal): 0-0.5%, 0.5-1%, 1-2%, 2%+
-_EDGE_BANDS = [(0, 0.005, "0–0.5%"), (0.005, 0.01, "0.5–1%"), (0.01, 0.02, "1–2%"), (0.02, 1.0, "2%+")]
-# Gamma bands: 0.90-0.92, 0.92-0.94, 0.94-0.96, 0.96-0.98, 0.98-1.0
-_GAMMA_BANDS = [(0.90, 0.92), (0.92, 0.94), (0.94, 0.96), (0.96, 0.98), (0.98, 1.01)]
-
-
-def get_expectancy_by_bands(data_path: str, days: Optional[int] = None, strategy: Optional[str] = None) -> dict:
-    """
-    Compute expectancy by edge and gamma bands from resolved alerts.
-    Returns { "edge_bands": [...], "gamma_bands": [...] }.
-    strategy: if set, only include rows with strategy_id == strategy (v3).
-    """
-    if not data_path or not os.path.isdir(data_path):
-        return {"edge_bands": [], "gamma_bands": []}
-
-    csv_path = os.path.join(data_path, "alerts_log.csv")
-    if not os.path.isfile(csv_path):
-        return {"edge_bands": [], "gamma_bands": []}
-
-    valid, _ = validate_alerts_log_schema(data_path)
-    if not valid:
-        return {"edge_bands": [], "gamma_bands": []}
-
-    result = _read_csv_cached(csv_path)
-    if result is None:
-        return {"edge_bands": [], "gamma_bands": []}
-    _, raw_rows = result
-    raw_rows = _filter_sent_rows(raw_rows)
-    if strategy and strategy.strip():
-        raw_rows = [r for r in raw_rows if (r.get("strategy_id") or "").strip() == strategy.strip()]
-
-    resolved = []
-    try:
-        for row in raw_rows:
-            if not _parse_bool(row.get("resolved", "")) and (row.get("actual_result") or "").strip().upper() not in ("YES", "NO"):
-                continue
-            pnl = _parse_float(row.get("pnl_usd", 0))
-            edge = _parse_float(row.get("edge", 0))
-            gamma = _parse_float(row.get("gamma", 0))
-            resolved_ts = _parse_date(row.get("resolved_ts") or row.get("ts"))
-            resolved.append({"pnl": pnl, "edge": edge, "gamma": gamma, "resolved_ts": resolved_ts})
-    except (IOError, csv.Error):
-        return {"edge_bands": [], "gamma_bands": []}
-
-    if days and days > 0:
-        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-        resolved = [r for r in resolved if r["resolved_ts"] and (r["resolved_ts"].replace(tzinfo=timezone.utc) if r["resolved_ts"].tzinfo is None else r["resolved_ts"]) >= cutoff]
-
-    edge_result = []
-    for lo, hi, lbl in _EDGE_BANDS:
-        rows = [r for r in resolved if lo <= r["edge"] < hi]
-        n = len(rows)
-        wins = sum(1 for r in rows if r["pnl"] > 0)
-        total = sum(r["pnl"] for r in rows)
-        avg = total / n if n else 0
-        edge_result.append({"label": lbl, "count": n, "wins": wins, "win_rate": round((wins / n * 100) if n else 0, 1), "total_pnl": round(total, 2), "avg_pnl": round(avg, 2), "expectancy": round(avg, 2)})
-
-    gamma_result = []
-    for lo, hi in _GAMMA_BANDS:
-        rows = [r for r in resolved if lo <= r["gamma"] < hi]
-        n = len(rows)
-        wins = sum(1 for r in rows if r["pnl"] > 0)
-        total = sum(r["pnl"] for r in rows)
-        avg = total / n if n else 0
-        gamma_result.append({"label": f"{lo:.2f}–{hi:.2f}", "count": n, "wins": wins, "win_rate": round((wins / n * 100) if n else 0, 1), "total_pnl": round(total, 2), "avg_pnl": round(avg, 2), "expectancy": round(avg, 2)})
-
-    # Filter out empty bands (count == 0)
-    edge_filtered = [b for b in edge_result if b["count"] > 0]
-    gamma_filtered = [b for b in gamma_result if b["count"] > 0]
-
-    # Best band by expectancy (for insight line)
-    insight_edge = max(edge_filtered, key=lambda b: b["expectancy"]) if edge_filtered else None
-    insight_gamma = max(gamma_filtered, key=lambda b: b["expectancy"]) if gamma_filtered else None
-
-    return {
-        "edge_bands": edge_filtered,
-        "gamma_bands": gamma_filtered,
-        "insight_edge": insight_edge,
-        "insight_gamma": insight_gamma,
-    }
-
-
 # Keywords to categorize markets for loss breakdown (case-insensitive)
 _LOSS_CATEGORIES = {
     "politics": [
@@ -1021,6 +1208,212 @@ def get_loss_breakdown(data_path: str, days: Optional[int] = None, strategy: Opt
     return result
 
 
+def get_loss_breakdown_buckets(
+    data_path: str,
+    days: Optional[int] = None,
+    strategy: Optional[str] = None,
+) -> dict:
+    """
+    Analyze losing trades by edge, gamma, and hold/time-to-resolution buckets.
+    Returns dict with 'edge', 'gamma', 'hold', 'time_to_resolution' lists.
+    """
+    empty = {"edge": [], "gamma": [], "hold": [], "time_to_resolution": []}
+    if not data_path or not os.path.isdir(data_path):
+        return empty
+
+    csv_path = os.path.join(data_path, "alerts_log.csv")
+    if not os.path.isfile(csv_path):
+        return empty
+
+    result = _read_csv_cached(csv_path)
+    if result is None:
+        return empty
+    _, raw_rows = result
+    raw_rows = _filter_sent_rows(raw_rows)
+    if strategy and strategy.strip():
+        raw_rows = [r for r in raw_rows if (r.get("strategy_id") or "").strip() == strategy.strip()]
+
+    edge_buckets_def = [
+        ("<0.5%", lambda e: e is not None and e < 0.005),
+        ("0.5–1.0%", lambda e: e is not None and 0.005 <= e < 0.01),
+        ("1.0–1.25%", lambda e: e is not None and 0.01 <= e < 0.0125),
+        ("1.25%+", lambda e: e is not None and e >= 0.0125),
+    ]
+    gamma_buckets_def = [
+        ("<0.80", lambda g: g is not None and g < 0.80),
+        ("0.80–0.90", lambda g: g is not None and 0.80 <= g < 0.90),
+        ("0.90–0.94", lambda g: g is not None and 0.90 <= g < 0.94),
+        ("0.94+", lambda g: g is not None and g >= 0.94),
+    ]
+    hold_buckets_def = [
+        ("Same day", lambda d: d is not None and d < 1.0),
+        ("1–3d", lambda d: d is not None and 1.0 <= d < 3.0),
+        ("3–7d", lambda d: d is not None and 3.0 <= d < 7.0),
+        ("8–10d", lambda d: d is not None and 7.0 <= d < 10.0),
+        ("10+d", lambda d: d is not None and d >= 10.0),
+    ]
+
+    edge_stats = {label: {"bucket": label, "count": 0, "pnl": 0.0} for label, _ in edge_buckets_def}
+    gamma_stats = {label: {"bucket": label, "count": 0, "pnl": 0.0} for label, _ in gamma_buckets_def}
+    hold_stats = {label: {"bucket": label, "count": 0, "pnl": 0.0} for label, _ in hold_buckets_def}
+
+    try:
+        for row in raw_rows:
+            resolved_val = row.get("resolved", "")
+            actual_result = (row.get("actual_result") or "").strip().upper()
+            is_resolved = _parse_bool(resolved_val) or actual_result in ("YES", "NO")
+            if not is_resolved:
+                continue
+
+            pnl = _parse_float(row.get("pnl_usd", ""))
+            if pnl >= 0:
+                continue
+
+            resolved_ts = _parse_date(row.get("resolved_ts") or row.get("ts"))
+            if days is not None and days > 0 and resolved_ts:
+                cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+                ts_aware = resolved_ts.replace(tzinfo=timezone.utc) if resolved_ts.tzinfo is None else resolved_ts
+                if ts_aware < cutoff:
+                    continue
+
+            edge = _parse_float(row.get("edge"), default=0.0) if row.get("edge") not in (None, "") else None
+            gamma = _parse_float(row.get("gamma"), default=0.0) if row.get("gamma") not in (None, "") else None
+
+            ts_alert = _parse_date(row.get("ts"))
+            hold_days = None
+            if ts_alert and resolved_ts:
+                start = ts_alert.replace(tzinfo=timezone.utc) if ts_alert.tzinfo is None else ts_alert
+                end = resolved_ts.replace(tzinfo=timezone.utc) if resolved_ts.tzinfo is None else resolved_ts
+                delta = end - start
+                if delta.total_seconds() >= 0:
+                    hold_days = delta.total_seconds() / 86400.0
+
+            for label, matcher in edge_buckets_def:
+                if matcher(edge):
+                    edge_stats[label]["count"] += 1
+                    edge_stats[label]["pnl"] += pnl
+                    break
+
+            for label, matcher in gamma_buckets_def:
+                if matcher(gamma):
+                    gamma_stats[label]["count"] += 1
+                    gamma_stats[label]["pnl"] += pnl
+                    break
+
+            for label, matcher in hold_buckets_def:
+                if matcher(hold_days):
+                    hold_stats[label]["count"] += 1
+                    hold_stats[label]["pnl"] += pnl
+                    break
+    except (IOError, csv.Error):
+        return empty
+
+    def _finalize(stats_dict, order_def):
+        result = []
+        for label, _ in order_def:
+            data = stats_dict.get(label) or {"bucket": label, "count": 0, "pnl": 0.0}
+            pnl_val = round(data["pnl"], 2)
+            result.append({
+                "bucket": label,
+                "count": data["count"],
+                "pnl": pnl_val,
+                "pnl_display": f"${pnl_val:.2f}",
+            })
+        return result
+
+    edge_list = _finalize(edge_stats, edge_buckets_def)
+    gamma_list = _finalize(gamma_stats, gamma_buckets_def)
+    hold_list = _finalize(hold_stats, hold_buckets_def)
+
+    return {
+        "edge": edge_list,
+        "gamma": gamma_list,
+        "hold": hold_list,
+        "time_to_resolution": hold_list,
+    }
+
+
+def get_loss_trend_by_category(
+    data_path: str,
+    days: Optional[int] = None,
+    strategy: Optional[str] = None,
+) -> list[dict]:
+    """
+    Monthly net P/L trend by category for resolved alerts.
+    Returns list of dicts: month (YYYY-MM), total_pnl, total_pnl_display, categories[...].
+    Respects days window and strategy filter, uses resolved_ts (fallback ts) for month.
+    """
+    if not data_path or not os.path.isdir(data_path):
+        return []
+
+    csv_path = os.path.join(data_path, "alerts_log.csv")
+    if not os.path.isfile(csv_path):
+        return []
+
+    result = _read_csv_cached(csv_path)
+    if result is None:
+        return []
+    _, raw_rows = result
+    raw_rows = _filter_sent_rows(raw_rows)
+    if strategy and strategy.strip():
+        raw_rows = [r for r in raw_rows if (r.get("strategy_id") or "").strip() == strategy.strip()]
+
+    by_month_cat: dict[tuple[str, str], float] = defaultdict(float)
+    month_totals: dict[str, float] = defaultdict(float)
+
+    try:
+        for row in raw_rows:
+            resolved_val = row.get("resolved", "")
+            actual_result = (row.get("actual_result") or "").strip().upper()
+            is_resolved = _parse_bool(resolved_val) or actual_result in ("YES", "NO")
+            if not is_resolved:
+                continue
+
+            pnl = _parse_float(row.get("pnl_usd", ""))
+            resolved_ts = _parse_date(row.get("resolved_ts") or row.get("ts"))
+            if not resolved_ts:
+                continue
+
+            if days is not None and days > 0:
+                cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+                ts_aware = resolved_ts.replace(tzinfo=timezone.utc) if resolved_ts.tzinfo is None else resolved_ts
+                if ts_aware < cutoff:
+                    continue
+
+            month = (resolved_ts.replace(tzinfo=timezone.utc) if resolved_ts.tzinfo is None else resolved_ts).strftime("%Y-%m")
+            cat = _categorize_question((row.get("question") or "").strip())
+            by_month_cat[(month, cat)] += pnl
+            month_totals[month] += pnl
+    except (IOError, csv.Error):
+        return []
+
+    if not month_totals:
+        return []
+
+    months_sorted = sorted(month_totals.keys())
+    trend = []
+    for m in months_sorted:
+        cats = []
+        for (month, cat), val in by_month_cat.items():
+            if month != m:
+                continue
+            pnl_val = round(val, 2)
+            cats.append({
+                "category": cat,
+                "pnl": pnl_val,
+                "pnl_display": f"${pnl_val:.2f}",
+            })
+        cats.sort(key=lambda x: x["pnl"])
+        total_pnl = round(month_totals[m], 2)
+        trend.append({
+            "month": m,
+            "total_pnl": total_pnl,
+            "total_pnl_display": f"${total_pnl:.2f}",
+            "categories": cats,
+        })
+    return trend
+
+
 DEBUG_SORT_OPTIONS = (
     "date_desc",     # Newest first
     "date_asc",      # Oldest first
@@ -1029,7 +1422,12 @@ DEBUG_SORT_OPTIONS = (
     "question_asc", # Question A–Z
     "question_desc",# Question Z–A
     "status",       # ALERT first, then EFFECTIVE_OUT
+    "hrs_asc",      # Hrs left soonest first
+    "hrs_desc",     # Hrs left latest first
 )
+
+# Loop/Dev Hrs left filter presets (max hours): same idea as Open Positions expiry filter
+LOOP_HOURS_MAX_PRESETS = (6, 12, 24, 48)  # ≤6h, ≤12h, ≤24h, ≤48h
 
 
 def get_debug_candidates(
@@ -1039,15 +1437,17 @@ def get_debug_candidates(
     sort: str = "date_desc",
     from_date: Optional[str] = None,
     strategy: Optional[str] = None,
+    hours_max: Optional[float] = None,
 ) -> Optional[tuple[list[dict], int]]:
     """
     Read debug candidates CSV from polymarket-alerts. Filename from POLYMARKET_DEBUG_CSV
     (default: debug_candidates.csv). Falls back to debug_candidates_v60.csv then any debug_candidates*.csv.
     Returns (rows, total_count). Used for Loop Summary tab.
     status_filter: "all" | "alert" – when "alert", only rows with status ALERT.
-    sort: date_desc | date_asc | edge_desc | edge_asc | question_asc | question_desc | status
+    sort: date_desc | date_asc | edge_desc | edge_asc | question_asc | question_desc | status | hrs_asc | hrs_desc
     from_date: if set (YYYY-MM-DD), only include ts >= that date.
     strategy: if set, only include rows with strategy_id == strategy (v3).
+    hours_max: if set, only include rows with 0 <= hrs_left <= hours_max (filter by hours left).
     """
     if not data_path or not os.path.isdir(data_path):
         return None
@@ -1090,6 +1490,36 @@ def get_debug_candidates(
             if not link or not link.startswith("http"):
                 q_enc = urllib.parse.quote_plus(question.replace("?", "%3F")) if question else ""
                 link = f"https://polymarket.com/search?q={q_enc}" if q_enc else ""
+            # Resolution / Hrs left: recompute from event_time at display time so past events show "Expired"
+            event_time_raw = (row.get("event_time") or "").strip()
+            event_time_dt = _parse_date(event_time_raw) if event_time_raw else None
+            resolution_display = format_ts_display(event_time_dt, event_time_raw)
+            now = datetime.now(timezone.utc)
+            if event_time_dt is not None:
+                et = event_time_dt.replace(tzinfo=timezone.utc) if event_time_dt.tzinfo is None else event_time_dt
+                hrs_left_float = (et - now).total_seconds() / 3600.0
+                if hrs_left_float < 0:
+                    hrs_left_display = "Expired"
+                elif hrs_left_float >= 24:
+                    hrs_left_display = f"{int(hrs_left_float // 24)}d"
+                else:
+                    hrs_left_display = f"{hrs_left_float:.1f}h"
+            else:
+                hrs_left_val = row.get("hrs_left")
+                try:
+                    hrs_left_float = float(hrs_left_val) if hrs_left_val not in (None, "") else None
+                except (TypeError, ValueError):
+                    hrs_left_float = None
+                if hrs_left_float is not None:
+                    if hrs_left_float < 0:
+                        hrs_left_display = "Expired"
+                    elif hrs_left_float >= 24:
+                        hrs_left_display = f"{int(hrs_left_float // 24)}d"
+                    else:
+                        hrs_left_display = f"{hrs_left_float:.1f}h"
+                else:
+                    hrs_left_display = "—"
+            countdown = _format_countdown(event_time_dt)
             rows.append({
                 "ts": ts_raw,
                 "ts_dt": dt,
@@ -1107,9 +1537,17 @@ def get_debug_candidates(
                 "days": row.get("days", ""),
                 "status": (row.get("status") or "").strip(),
                 "strategy_id": (row.get("strategy_id") or "").strip(),
+                "resolution_display": resolution_display,
+                "hrs_left_display": hrs_left_display,
+                "countdown": countdown,
+                "hrs_left_float": hrs_left_float,
             })
     except (IOError, csv.Error):
         return None
+
+    # Hours left filter (show only rows with 0 <= hrs_left <= hours_max)
+    if hours_max is not None and hours_max > 0:
+        rows = [r for r in rows if r.get("hrs_left_float") is not None and 0 <= r["hrs_left_float"] <= hours_max]
 
     # Status filter
     if status_filter == "alert":
@@ -1150,6 +1588,12 @@ def get_debug_candidates(
             order = 0 if st == "ALERT" else (1 if st == "EFFECTIVE_OUT" else 2)
             return (order, -_ts_key(r).timestamp())
         rows.sort(key=_status_key)
+    elif sort == "hrs_asc":
+        # Soonest to resolve first (null/expired hrs_left last)
+        rows.sort(key=lambda r: (r.get("hrs_left_float") if r.get("hrs_left_float") is not None and r.get("hrs_left_float") >= 0 else float("inf"), -_ts_key(r).timestamp()))
+    elif sort == "hrs_desc":
+        # Latest to resolve first (null hrs_left last)
+        rows.sort(key=lambda r: (-(r.get("hrs_left_float") if r.get("hrs_left_float") is not None else float("-inf")), -_ts_key(r).timestamp()))
     else:
         rows.sort(key=_ts_key, reverse=True)
 
@@ -1275,6 +1719,19 @@ def get_lifecycle_file_age(data_path: str) -> Optional[str]:
     if not data_path or not os.path.isdir(data_path):
         return None
     path = os.path.join(data_path, "lifecycle.json")
+    if not os.path.isfile(path):
+        return None
+    try:
+        return _format_file_age(os.path.getmtime(path))
+    except OSError:
+        return None
+
+
+def get_file_age(data_path: str, filename: str) -> Optional[str]:
+    """Return human-readable age of a file under data_path, or None if missing."""
+    if not data_path or not os.path.isdir(data_path):
+        return None
+    path = os.path.join(data_path, filename)
     if not os.path.isfile(path):
         return None
     try:
