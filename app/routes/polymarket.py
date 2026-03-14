@@ -11,13 +11,16 @@ from app.utils.polymarket import (
     get_last_loop_time,
     get_run_stats_log,
     get_loss_breakdown,
+    get_loss_breakdown_buckets,
+    get_loss_trend_by_category,
     get_debug_candidates,
     get_open_positions,
     get_risky_positions,
     get_risky_criteria,
+    get_risky_historical_performance,
+    get_near_risky_positions,
     get_interesting_ids,
     toggle_interesting,
-    get_expectancy_by_bands,
     get_exposure_summary,
     validate_alerts_log_schema,
     format_compact_usd,
@@ -26,9 +29,11 @@ from app.utils.polymarket import (
     get_lifecycle_json,
     get_analytics_file_age,
     get_lifecycle_file_age,
+    get_file_age,
     get_strategy_options_for_nav,
     SORT_OPTIONS,
     DEBUG_SORT_OPTIONS,
+    LOOP_HOURS_MAX_PRESETS,
     POSITIONS_SORT_OPTIONS,
     POSITIONS_EXPIRY_FILTERS,
     STRATEGY_OPTIONS,
@@ -45,7 +50,6 @@ POLYMARKET_SECTIONS = [
     ("portfolio", "Portfolio", "polymarket.polymarket_portfolio"),
     ("positions", "Open Positions", "polymarket.polymarket_positions"),
     ("risky", "Risky", "polymarket.polymarket_risky"),
-    ("performance", "Performance", "polymarket.polymarket_performance"),
     ("loss-lab", "Loss Lab", "polymarket.polymarket_loss_lab"),
     ("analytics", "Analytics", "polymarket.polymarket_analytics"),
     ("lifecycle", "Lifecycle", "polymarket.polymarket_lifecycle"),
@@ -144,6 +148,7 @@ def polymarket_portfolio():
     stats_paginated = dict(stats) if stats else {}
     stats_paginated["resolved_list"] = resolved_page
 
+    data_freshness = get_file_age(data_path, "alerts_log.csv")
     return render_template(
         "polymarket.html",
         configured=True,
@@ -159,6 +164,7 @@ def polymarket_portfolio():
         sort_options=SORT_OPTIONS,
         last_loop=last_loop,
         run_stats=run_stats,
+        data_freshness=data_freshness,
         active_section="portfolio",
         polymarket_sections=POLYMARKET_SECTIONS,
         pagination=pagination,
@@ -227,6 +233,7 @@ def polymarket_positions():
     total_cost = sum(p["cost_usd"] for p in positions)
     total_unrealized = sum(p["unrealized_pnl"] for p in positions)
     exposure = get_exposure_summary(positions)
+    data_freshness = get_file_age(data_path, "open_positions.csv")
     return render_template(
         "polymarket_positions.html",
         configured=True,
@@ -238,6 +245,7 @@ def polymarket_positions():
         total_unrealized=total_unrealized,
         total_unrealized_display=format_compact_usd(total_unrealized) if total_unrealized != 0 else None,
         exposure=exposure,
+        data_freshness=data_freshness,
         current_days=days_val,
         current_from_date=from_date_val,
         current_category=category_val,
@@ -250,6 +258,14 @@ def polymarket_positions():
         sort_options=POSITIONS_SORT_OPTIONS,
         expiry_filters=POSITIONS_EXPIRY_FILTERS,
     )
+
+
+# Risky threshold presets (edge_min decimal, gamma_max, expiry_hours_max)
+RISKY_PRESETS = {
+    "conservative": {"edge_min": 0.0125, "gamma_max": 0.90, "expiry_hours_max": 24.0},
+    "default": {"edge_min": 0.01, "gamma_max": 0.94, "expiry_hours_max": 48.0},
+    "loose": {"edge_min": 0.005, "gamma_max": 0.97, "expiry_hours_max": 72.0},
+}
 
 
 @polymarket_bp.route("/risky")
@@ -265,18 +281,47 @@ def polymarket_risky():
     sort_val = request.args.get("sort", "cost_desc")
     if sort_val not in POSITIONS_SORT_OPTIONS:
         sort_val = "cost_desc"
+    preset_val = (request.args.get("preset") or "").strip().lower()
+    if preset_val not in RISKY_PRESETS:
+        preset_val = None
 
     criteria = get_risky_criteria()
+    if preset_val:
+        criteria = {**criteria, **RISKY_PRESETS[preset_val]}
+
     positions = get_risky_positions(
         data_path,
         days=days,
         from_date=from_date_val,
         sort=sort_val,
         strategy=strategy_val,
+        edge_min=criteria["edge_min"],
+        gamma_max=criteria["gamma_max"],
+        expiry_hours_max=criteria["expiry_hours_max"],
     )
-    total_cost = sum(p["cost_usd"] for p in positions)
-    total_unrealized = sum(p["unrealized_pnl"] for p in positions)
+    near_risky_positions = get_near_risky_positions(
+        data_path,
+        days=days,
+        from_date=from_date_val,
+        sort=sort_val,
+        strategy=strategy_val,
+        edge_min=criteria["edge_min"],
+        gamma_max=criteria["gamma_max"],
+        expiry_hours_max=criteria["expiry_hours_max"],
+    )
+    total_cost = sum(p.get("cost_usd", 0) for p in positions)
+    total_unrealized = sum(p.get("unrealized_pnl", 0) for p in positions)
     exposure = get_exposure_summary(positions)
+    risky_historical = get_risky_historical_performance(
+        data_path,
+        days=days,
+        from_date=from_date_val,
+        strategy=strategy_val,
+        edge_min=criteria["edge_min"],
+        gamma_max=criteria["gamma_max"],
+        expiry_hours_max=criteria["expiry_hours_max"],
+    )
+    data_freshness = get_file_age(data_path, "open_positions.csv")
 
     return render_template(
         "polymarket_risky.html",
@@ -284,7 +329,10 @@ def polymarket_risky():
         active_section="risky",
         polymarket_sections=POLYMARKET_SECTIONS,
         positions=positions,
+        near_risky_positions=near_risky_positions,
         risky_criteria=criteria,
+        risky_historical=risky_historical,
+        data_freshness=data_freshness,
         total_cost=total_cost,
         total_cost_display=format_compact_usd(total_cost),
         total_unrealized=total_unrealized,
@@ -294,6 +342,8 @@ def polymarket_risky():
         current_from_date=from_date_val,
         current_sort=sort_val,
         current_strategy=strategy_val,
+        current_preset=preset_val,
+        risky_presets=RISKY_PRESETS,
         strategy_options=strategy_options,
         sort_options=POSITIONS_SORT_OPTIONS,
     )
@@ -355,31 +405,6 @@ def polymarket_positions_toggle_interesting():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
-@polymarket_bp.route("/performance")
-@admin_required
-@_polymarket_configured_required("performance")
-def polymarket_performance():
-    """Performance analytics – expectancy by edge/gamma bands."""
-    data_path = _get_data_path()
-    strategy_options = get_strategy_options_for_nav(data_path)
-    strategy_val = _get_strategy(strategy_options)
-    _, days_val, days = _parse_filter_days()
-    expectancy = get_expectancy_by_bands(data_path, days=days, strategy=strategy_val)
-    return render_template(
-        "polymarket_performance.html",
-        configured=True,
-        active_section="performance",
-        polymarket_sections=POLYMARKET_SECTIONS,
-        edge_bands=expectancy.get("edge_bands", []),
-        gamma_bands=expectancy.get("gamma_bands", []),
-        insight_edge=expectancy.get("insight_edge"),
-        insight_gamma=expectancy.get("insight_gamma"),
-        current_days=days_val if days_val else "all",
-        current_strategy=strategy_val,
-        strategy_options=strategy_options,
-    )
-
-
 @polymarket_bp.route("/loss-lab")
 @admin_required
 @_polymarket_configured_required("loss-lab")
@@ -392,6 +417,9 @@ def polymarket_loss_lab():
     valid, schema_error = validate_alerts_log_schema(data_path)
     loss_breakdown = get_loss_breakdown(data_path, days=days, strategy=strategy_val) if valid else []
     total_losses = sum(item["pnl"] for item in loss_breakdown)
+    bucket_breakdowns = get_loss_breakdown_buckets(data_path, days=days, strategy=strategy_val) if valid else {"edge": [], "gamma": [], "hold": [], "time_to_resolution": []}
+    trend = get_loss_trend_by_category(data_path, days=days, strategy=strategy_val) if valid else []
+    data_freshness = get_file_age(data_path, "alerts_log.csv")
     return render_template(
         "polymarket_loss_lab.html",
         configured=True,
@@ -400,6 +428,12 @@ def polymarket_loss_lab():
         loss_breakdown=loss_breakdown,
         total_losses=total_losses,
         total_losses_display=f"${total_losses:.2f}",
+        edge_buckets=bucket_breakdowns.get("edge") or [],
+        gamma_buckets=bucket_breakdowns.get("gamma") or [],
+        hold_buckets=bucket_breakdowns.get("hold") or [],
+        ttr_buckets=bucket_breakdowns.get("time_to_resolution") or [],
+        loss_trend=trend,
+        data_freshness=data_freshness,
         current_days=days_val if days_val else "all",
         current_strategy=strategy_val,
         strategy_options=strategy_options,
@@ -417,6 +451,12 @@ def polymarket_analytics():
     strategy_val = _get_strategy(strategy_options)
     analytics = get_analytics_json(data_path)
     analytics_age = get_analytics_file_age(data_path)
+    # Normalize so template never sees non-dict for strategy_cohort, edge_quality, timing, exit_study, insights
+    if analytics is not None and isinstance(analytics, dict):
+        analytics = dict(analytics)
+        for key in ("strategy_cohort", "edge_quality", "timing", "exit_study", "insights"):
+            if analytics.get(key) is not None and not isinstance(analytics.get(key), dict):
+                analytics[key] = {}
     return render_template(
         "polymarket_analytics.html",
         configured=True,
@@ -439,7 +479,7 @@ def polymarket_analytics_refresh():
     script_path = os.path.join(data_path, "analytics_export.py")
     if not os.path.isfile(script_path):
         flash("analytics_export.py not found in polymarket-alerts directory.", "error")
-        return redirect(url_for("polymarket.polymarket_analytics"))
+        return redirect(url_for("polymarket.polymarket_analytics", strategy=request.form.get("strategy") or None))
     python_exe = os.path.join(data_path, "venv", "bin", "python") if os.path.isfile(os.path.join(data_path, "venv", "bin", "python")) else "python3"
     try:
         result = subprocess.run(
@@ -458,7 +498,7 @@ def polymarket_analytics_refresh():
         flash("Refresh timed out (2 min). Try running manually.", "error")
     except Exception as e:
         flash(f"Refresh failed: {e}", "error")
-    return redirect(url_for("polymarket.polymarket_analytics"))
+    return redirect(url_for("polymarket.polymarket_analytics", strategy=request.form.get("strategy") or None))
 
 
 @polymarket_bp.route("/lifecycle")
@@ -493,7 +533,7 @@ def polymarket_lifecycle_refresh():
     script_path = os.path.join(data_path, "evaluate_strategy_lifecycle.py")
     if not os.path.isfile(script_path):
         flash("evaluate_strategy_lifecycle.py not found in polymarket-alerts directory.", "error")
-        return redirect(url_for("polymarket.polymarket_lifecycle"))
+        return redirect(url_for("polymarket.polymarket_lifecycle", strategy=request.form.get("strategy") or None))
     python_exe = os.path.join(data_path, "venv", "bin", "python") if os.path.isfile(os.path.join(data_path, "venv", "bin", "python")) else "python3"
     try:
         result = subprocess.run(
@@ -512,7 +552,7 @@ def polymarket_lifecycle_refresh():
         flash("Refresh timed out (1 min). Try running manually.", "error")
     except Exception as e:
         flash(f"Refresh failed: {e}", "error")
-    return redirect(url_for("polymarket.polymarket_lifecycle"))
+    return redirect(url_for("polymarket.polymarket_lifecycle", strategy=request.form.get("strategy") or None))
 
 
 @polymarket_bp.route("/loop")
@@ -541,7 +581,14 @@ def polymarket_loop():
                 from_date_val = cutoff.strftime("%Y-%m-%d")
         except ValueError:
             pass
-    debug_result = get_debug_candidates(data_path, status_filter=debug_status, sort=debug_sort, from_date=from_date_val, strategy=strategy_val)
+    hours_max_val = None
+    try:
+        hm = (request.args.get("hours_max") or "").strip()
+        if hm:
+            hours_max_val = float(hm)
+    except ValueError:
+        pass
+    debug_result = get_debug_candidates(data_path, status_filter=debug_status, sort=debug_sort, from_date=from_date_val, strategy=strategy_val, hours_max=hours_max_val)
     debug_candidates = []
     debug_total = 0
     debug_page = max(1, int(request.args.get("debug_page", 1) or 1))
@@ -552,10 +599,16 @@ def polymarket_loop():
         debug_candidates = debug_all[start : start + DEBUG_PER_PAGE]
     else:
         pagination = build_pagination(0, 1, DEBUG_PER_PAGE)
+    # Base query params for Loop links (preserve filter when changing sort/page)
+    loop_query = {"debug_status": debug_status, "debug_sort": debug_sort, "days": days_val or "all", "from_date": from_date_val or ""}
+    if hours_max_val is not None:
+        loop_query["hours_max"] = hours_max_val
+    data_freshness = get_file_age(data_path, "debug_candidates.csv")
     return render_template(
         "polymarket_loop.html",
         configured=True,
         last_loop=last_loop,
+        data_freshness=data_freshness,
         debug_candidates=debug_candidates,
         debug_total=debug_total,
         debug_pagination=pagination,
@@ -563,6 +616,9 @@ def polymarket_loop():
         debug_sort=debug_sort,
         current_days=days_val or "all",
         current_from_date=from_date_val,
+        current_hours_max=hours_max_val,
+        loop_hours_presets=LOOP_HOURS_MAX_PRESETS,
+        loop_query=loop_query,
         current_strategy=strategy_val,
         strategy_options=strategy_options,
         active_section="loop",

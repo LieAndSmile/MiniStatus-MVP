@@ -5,19 +5,24 @@
 {% block content %}
 {% include "polymarket_nav.html" %}
 
+<div class="mb-4 p-4 rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card">
+  <p class="text-sm text-light-text dark:text-dark-text">
+    <strong>Lifecycle</strong> evaluates shadow and active strategies using resolved results. Shadow strategies can be <strong>promoted</strong> after enough evidence; weak strategies can be flagged for <strong>kill/demotion</strong>. Verdicts and thresholds below come from <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">lifecycle.json</code>.
+    {% if current_strategy %}<span class="font-medium">Strategy filter: {{ current_strategy }}</span> (verdicts table shows this strategy only).{% endif %}
+  </p>
+</div>
+
 <div class="mb-6 flex flex-wrap items-center gap-4 justify-between">
   <div>
-    <p class="text-sm text-light-muted dark:text-dark-muted">
-      Promotion and kill verdicts per strategy. Data from <code>lifecycle.json</code>.
-    </p>
     {% if lifecycle_age %}
-    <p class="text-xs text-light-muted dark:text-dark-muted mt-1">Last updated: {{ lifecycle_age }}</p>
+    <p class="text-xs text-light-muted dark:text-dark-muted">Last updated: {{ lifecycle_age }}</p>
     {% elif lifecycle and lifecycle.get('generated_at') %}
-    <p class="text-xs text-light-muted dark:text-dark-muted mt-1">Generated: {{ lifecycle.generated_at }}</p>
+    <p class="text-xs text-light-muted dark:text-dark-muted">Generated: {{ lifecycle.generated_at }}</p>
     {% endif %}
   </div>
   <form method="post" action="{{ url_for('polymarket.polymarket_lifecycle_refresh') }}" class="inline">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <input type="hidden" name="strategy" value="{{ current_strategy or '' }}"/>
     <button type="submit" class="px-4 py-2 text-sm font-medium rounded border border-light-border dark:border-dark-border bg-light-hover dark:bg-dark-hover text-light-text dark:text-dark-text hover:opacity-90">Refresh lifecycle</button>
   </form>
 </div>
@@ -29,12 +34,16 @@
 {% else %}
 
 {% set thresholds = lifecycle.get('thresholds_used') or {} %}
+{% set kill_min = thresholds.get('kill_min_resolved') %}
+{% set promo_min = thresholds.get('promotion_min_resolved') %}
+{% set kill_roi = thresholds.get('kill_max_roi_pct') %}
+{% set promo_roi = thresholds.get('promotion_min_roi_pct') %}
 {% if thresholds %}
 <div class="mb-4 p-4 rounded-lg bg-light-hover dark:bg-dark-hover border border-light-border dark:border-dark-border">
   <h3 class="text-sm font-medium text-light-text dark:text-dark-text mb-2">Thresholds</h3>
   <p class="text-xs text-light-muted dark:text-dark-muted">
-    Promotion: min {{ thresholds.get('promotion_min_resolved', '—') }} resolved, ROI ≥ {{ thresholds.get('promotion_min_roi_pct', '—') }}% ·
-    Kill: min {{ thresholds.get('kill_min_resolved', '—') }} resolved, ROI ≤ {{ thresholds.get('kill_max_roi_pct', '—') }}%
+    Promotion: min {{ promo_min or '—' }} resolved, ROI ≥ {{ promo_roi or '—' }}% ·
+    Kill: min {{ kill_min or '—' }} resolved, ROI ≤ {{ kill_roi or '—' }}%
   </p>
 </div>
 {% endif %}
@@ -42,7 +51,8 @@
 <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
   <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-4">Strategy verdicts</h2>
   {% set strategies = lifecycle.get('strategies') or {} %}
-  {% if strategies %}
+  {% if current_strategy %}{% set strategies_items = [(current_strategy, strategies.get(current_strategy))] if strategies.get(current_strategy) else [] %}{% else %}{% set strategies_items = strategies.items() %}{% endif %}
+  {% if strategies_items %}
   <div class="overflow-x-auto">
     <table class="min-w-full divide-y divide-light-border dark:divide-dark-border">
       <thead class="bg-light-hover dark:bg-dark-hover">
@@ -51,16 +61,23 @@
           <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Mode</th>
           <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Verdict</th>
           <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Resolved</th>
-          <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">ROI %</th>
-          <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Total P/L</th>
+          <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Progress</th>
+          <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase" title="Return on investment (%). (Total P/L ÷ total cost) × 100.">ROI %</th>
+          <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase" title="Sum of profit/loss in USD for this strategy.">Total P/L</th>
           <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Reasons</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-light-border dark:divide-dark-border">
-        {% for sid, s in strategies.items() %}
+        {% for sid, s in strategies_items %}
         {% set verdict = s.get('verdict') or '—' %}
+        {% set resolved = s.get('resolved_count') or 0 %}
+        {% set roi = s.get('roi_pct') or 0 %}
+        {% set need_kill = (kill_min - resolved) if (kill_min is not none and resolved < kill_min) else none %}
+        {% set need_promo = (promo_min - resolved) if (promo_min is not none and resolved < promo_min) else none %}
         <tr class="hover:bg-light-hover dark:hover:bg-dark-hover">
-          <td class="px-4 py-2 text-sm font-medium text-light-text dark:text-dark-text">{{ sid }}</td>
+          <td class="px-4 py-2 text-sm font-medium text-light-text dark:text-dark-text">
+            <a href="{{ url_for('polymarket.polymarket_analytics', strategy=sid) }}" class="text-light-primary dark:text-dark-primary hover:underline" title="View this strategy in Analytics">{{ sid }}</a>
+          </td>
           <td class="px-4 py-2 text-sm text-light-muted dark:text-dark-muted">{{ s.get('mode', '—') }}</td>
           <td class="px-4 py-2">
             <span class="text-sm font-medium
@@ -71,8 +88,22 @@
               {{ verdict }}
             </span>
           </td>
-          <td class="px-4 py-2 text-right text-sm">{{ s.get('resolved_count', 0) }}</td>
-          <td class="px-4 py-2 text-right text-sm">{{ "%.2f"|format(s.get('roi_pct') or 0) }}%</td>
+          <td class="px-4 py-2 text-right text-sm">{{ resolved }}</td>
+          <td class="px-4 py-2 text-sm text-light-muted dark:text-dark-muted">
+            <span class="text-xs">{{ resolved }} / {{ kill_min or '—' }} (kill), {{ resolved }} / {{ promo_min or '—' }} (promo)</span>
+            {% if verdict == 'INSUFFICIENT_DATA' and need_kill is not none %}
+            <div class="text-xs text-amber-600 dark:text-amber-400 mt-0.5">Need {{ need_kill }} more resolved to reach kill threshold.</div>
+            {% elif verdict == 'HOLD' %}
+            <div class="text-xs text-light-muted dark:text-dark-muted mt-0.5">
+              {% if s.get('mode') == 'shadow' %}
+                {% if need_promo is not none %}{{ need_promo }} more resolved for promotion. {% endif %}{% if promo_roi is not none %}ROI ≥ {{ promo_roi }}% to promote.{% endif %}
+              {% else %}
+                {% if kill_roi is not none %}ROI above {{ kill_roi }}% to avoid kill.{% endif %}
+              {% endif %}
+            </div>
+            {% endif %}
+          </td>
+          <td class="px-4 py-2 text-right text-sm">{{ "%.2f"|format(roi) }}%</td>
           <td class="px-4 py-2 text-right text-sm {% if (s.get('total_pnl') or 0) > 0 %}text-status-up-light dark:text-status-up-dark{% elif (s.get('total_pnl') or 0) < 0 %}text-status-down-light dark:text-status-down-dark{% else %}text-light-muted dark:text-dark-muted{% endif %}">${{ "%.2f"|format(s.get('total_pnl') or 0) }}</td>
           <td class="px-4 py-2 text-sm text-light-muted dark:text-dark-muted max-w-xs">
             {% for r in (s.get('reasons') or []) %}
@@ -85,9 +116,35 @@
       </tbody>
     </table>
   </div>
+  {% elif current_strategy and not strategies.get(current_strategy) %}
+  <p class="text-sm text-light-muted dark:text-dark-muted py-4">No verdict for strategy <strong>{{ current_strategy }}</strong> in lifecycle.json.</p>
   {% else %}
   <p class="text-sm text-light-muted dark:text-dark-muted py-4">No strategy data in lifecycle.json.</p>
   {% endif %}
+</div>
+
+<div class="mt-6 bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
+  <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-4">Lifecycle event log</h2>
+  <p class="text-sm text-light-muted dark:text-dark-muted mb-4">Promotion and kill events (when verdicts are applied). Empty until <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">apply_lifecycle_verdicts.py</code> or manual overrides are recorded.</p>
+  <div class="overflow-x-auto rounded border border-light-border dark:border-dark-border">
+    <table class="min-w-full divide-y divide-light-border dark:divide-dark-border">
+      <thead class="bg-light-hover dark:bg-dark-hover">
+        <tr>
+          <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Date</th>
+          <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Strategy</th>
+          <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Previous</th>
+          <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">New status</th>
+          <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Reason</th>
+          <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Source</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-light-border dark:divide-dark-border">
+        <tr>
+          <td colspan="6" class="px-4 py-8 text-center text-sm text-light-muted dark:text-dark-muted">No events yet. Run apply_lifecycle_verdicts (or record manual overrides) to populate.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 </div>
 
 {% endif %}

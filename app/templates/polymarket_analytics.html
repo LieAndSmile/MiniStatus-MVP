@@ -8,7 +8,8 @@
 <div class="mb-6 flex flex-wrap items-center gap-4 justify-between">
   <div>
     <p class="text-sm text-light-muted dark:text-dark-muted">
-      Edge Quality, Timing, Strategy Cohort (with drawdown), and MTM/Exit Study. Data from <code>analytics.json</code>.
+      Edge Quality, Timing, Strategy Cohort (with drawdown), and Post-Alert Midpoint Drift. Data from <code>analytics.json</code>.
+      {% if current_strategy %}<span class="font-medium text-light-text dark:text-dark-text">Strategy filter: {{ current_strategy }}</span> (Cohort and Drift show this strategy only).{% endif %}
     </p>
     {% if analytics_age %}
     <p class="text-xs text-light-muted dark:text-dark-muted mt-1">Last updated: {{ analytics_age }}</p>
@@ -18,6 +19,7 @@
   </div>
   <form method="post" action="{{ url_for('polymarket.polymarket_analytics_refresh') }}" class="inline">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <input type="hidden" name="strategy" value="{{ current_strategy or '' }}"/>
     <button type="submit" class="px-4 py-2 text-sm font-medium rounded border border-light-border dark:border-dark-border bg-light-hover dark:bg-dark-hover text-light-text dark:text-dark-text hover:opacity-90">Refresh analytics</button>
   </form>
 </div>
@@ -28,6 +30,19 @@
 </div>
 {% else %}
 
+{% set insights = analytics.get('insights') or {} %}
+{% if insights and (insights.get('suggested_edge_threshold') or insights.get('best_timing_windows') or insights.get('top_strategy_by_roi') or insights.get('drift_status')) %}
+<div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4 mb-6">
+  <h2 class="text-sm font-semibold text-light-muted dark:text-dark-muted uppercase tracking-wide mb-3">Analytics Insights</h2>
+  <ul class="flex flex-wrap gap-x-6 gap-y-1 text-sm text-light-text dark:text-dark-text list-none">
+    <li><span class="text-light-muted dark:text-dark-muted">Suggested min edge:</span> {{ insights.get('suggested_edge_threshold', '—') }}</li>
+    <li><span class="text-light-muted dark:text-dark-muted">Best timing:</span> {{ insights.get('best_timing_windows', '—') }}</li>
+    <li><span class="text-light-muted dark:text-dark-muted">Top strategy (ROI):</span> {{ insights.get('top_strategy_by_roi', '—') }}</li>
+    <li><span class="text-light-muted dark:text-dark-muted">Drift:</span> {{ insights.get('drift_status', '—') }}</li>
+  </ul>
+</div>
+{% endif %}
+
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
   <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
     <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-4">Edge Quality</h2>
@@ -37,12 +52,15 @@
       <table class="min-w-full divide-y divide-light-border dark:divide-dark-border">
         <thead class="bg-light-hover dark:bg-dark-hover sticky top-0 z-10">
           <tr>
-            <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Edge bucket</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase" title="Edge: Estimated advantage at entry (e.g. 1% = market mispriced by 1%).">Edge bucket</th>
             <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Count</th>
             <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">W/L</th>
-            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Total P/L</th>
-            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">ROI %</th>
-            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Avg P/L per trade</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Win rate %</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase" title="Total P/L: Sum of profit/loss in USD across the segment.">Total P/L</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase" title="ROI: Return on investment (%). (Total P/L ÷ total cost) × 100.">ROI %</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Avg P/L</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase" title="Median P/L: Middle value of P/L per trade; less affected by outliers than average.">Median P/L</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase" title="Confidence: Statistical strength (Low/Medium/High) based on sample size and variance.">Confidence</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-light-border dark:divide-dark-border">
@@ -51,14 +69,18 @@
             <td class="px-4 py-2 text-sm text-light-text dark:text-dark-text">{{ bucket }}</td>
             <td class="px-4 py-2 text-right text-sm">{{ s.get('resolved_count', 0) }}</td>
             <td class="px-4 py-2 text-right text-sm">{{ s.get('wins', 0) }}/{{ s.get('losses', 0) }}</td>
+            <td class="px-4 py-2 text-right text-sm">{% if s.get('win_rate_pct') is not none %}{{ "%.1f"|format(s.win_rate_pct) }}%{% else %}—{% endif %}</td>
             <td class="px-4 py-2 text-right text-sm {% if (s.get('total_pnl') or 0) > 0 %}text-status-up-light dark:text-status-up-dark{% elif (s.get('total_pnl') or 0) < 0 %}text-status-down-light dark:text-status-down-dark{% else %}text-light-muted dark:text-dark-muted{% endif %}">${{ "%.2f"|format(s.get('total_pnl') or 0) }}</td>
             <td class="px-4 py-2 text-right text-sm">{{ "%.1f"|format(s.get('roi_pct') or 0) }}%</td>
             <td class="px-4 py-2 text-right text-sm">${{ "%.2f"|format(s.get('avg_pnl_per_trade') or 0) }}</td>
+            <td class="px-4 py-2 text-right text-sm">{% if s.get('median_pl_per_trade') is not none %}${{ "%.2f"|format(s.median_pl_per_trade) }}{% else %}—{% endif %}</td>
+            <td class="px-4 py-2 text-right"><span class="text-xs px-1.5 py-0.5 rounded text-light-muted dark:text-dark-muted bg-light-hover dark:bg-dark-hover">{{ s.get('confidence_label') or '—' }}</span></td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
+    <p class="text-xs text-light-muted dark:text-dark-muted mt-2">Suggested minimum edge threshold: <strong>{{ insights.get('suggested_edge_threshold', '—') }}</strong></p>
     {% else %}
     <p class="text-sm text-light-muted dark:text-dark-muted py-4">No edge quality data.</p>
     {% endif %}
@@ -72,12 +94,15 @@
       <table class="min-w-full divide-y divide-light-border dark:divide-dark-border">
         <thead class="bg-light-hover dark:bg-dark-hover sticky top-0 z-10">
           <tr>
-            <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Window</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase" title="Time from alert to resolution (hold window).">Window</th>
             <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Count</th>
             <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">W/L</th>
-            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Total P/L</th>
-            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">ROI %</th>
-            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Avg P/L per trade</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Win rate %</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase" title="Total P/L: Sum of profit/loss in USD.">Total P/L</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase" title="ROI: Return on investment (%). (Total P/L ÷ total cost) × 100.">ROI %</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Avg P/L</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase" title="Median P/L: Middle value of P/L per trade.">Median P/L</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase" title="Confidence: Statistical strength (Low/Medium/High).">Confidence</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-light-border dark:divide-dark-border">
@@ -86,14 +111,18 @@
             <td class="px-4 py-2 text-sm text-light-text dark:text-dark-text">{{ bucket }}</td>
             <td class="px-4 py-2 text-right text-sm">{{ s.get('resolved_count', 0) }}</td>
             <td class="px-4 py-2 text-right text-sm">{{ s.get('wins', 0) }}/{{ s.get('losses', 0) }}</td>
+            <td class="px-4 py-2 text-right text-sm">{% if s.get('win_rate_pct') is not none %}{{ "%.1f"|format(s.win_rate_pct) }}%{% else %}—{% endif %}</td>
             <td class="px-4 py-2 text-right text-sm {% if (s.get('total_pnl') or 0) > 0 %}text-status-up-light dark:text-status-up-dark{% elif (s.get('total_pnl') or 0) < 0 %}text-status-down-light dark:text-status-down-dark{% else %}text-light-muted dark:text-dark-muted{% endif %}">${{ "%.2f"|format(s.get('total_pnl') or 0) }}</td>
             <td class="px-4 py-2 text-right text-sm">{{ "%.1f"|format(s.get('roi_pct') or 0) }}%</td>
             <td class="px-4 py-2 text-right text-sm">${{ "%.2f"|format(s.get('avg_pnl_per_trade') or 0) }}</td>
+            <td class="px-4 py-2 text-right text-sm">{% if s.get('median_pl_per_trade') is not none %}${{ "%.2f"|format(s.median_pl_per_trade) }}{% else %}—{% endif %}</td>
+            <td class="px-4 py-2 text-right"><span class="text-xs px-1.5 py-0.5 rounded text-light-muted dark:text-dark-muted bg-light-hover dark:bg-dark-hover">{{ s.get('confidence_label') or '—' }}</span></td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
+    <p class="text-xs text-light-muted dark:text-dark-muted mt-2">Best recent hold windows: <strong>{{ insights.get('best_timing_windows') or '—' }}</strong></p>
     {% else %}
     <p class="text-sm text-light-muted dark:text-dark-muted py-4">No timing data.</p>
     {% endif %}
@@ -104,7 +133,8 @@
   <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
     <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-4">Strategy Cohort (with drawdown)</h2>
     {% set sc = analytics.get('strategy_cohort') or {} %}
-    {% if sc %}
+    {% if current_strategy %}{% set sc_items = [(current_strategy, sc.get(current_strategy))] if sc.get(current_strategy) else [] %}{% else %}{% set sc_items = sc.items() %}{% endif %}
+    {% if sc_items %}
     <div class="overflow-x-auto">
       <table class="min-w-full divide-y divide-light-border dark:divide-dark-border">
         <thead class="bg-light-hover dark:bg-dark-hover">
@@ -115,73 +145,110 @@
             <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Resolved</th>
             <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Open</th>
             <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">W/L</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Win rate %</th>
             <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Total P/L</th>
             <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">ROI %</th>
-            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Avg hold (d)</th>
-            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Drawdown %</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Median P/L</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Confidence</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Status</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase" title="Avg hold: Average days from alert to resolution for resolved trades.">Avg hold (d)</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase" title="Drawdown: Peak-to-trough decline. Current = from latest peak; Max = largest historical drop.">Drawdown %</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-light-border dark:divide-dark-border">
-          {% for sid, s in sc.items() %}
+          {% for sid, s in sc_items %}
+          {% if s %}
           <tr class="hover:bg-light-hover dark:hover:bg-dark-hover">
-            <td class="px-4 py-2 text-sm font-medium text-light-text dark:text-dark-text">{{ sid }}</td>
+            <td class="px-4 py-2 text-sm font-medium text-light-text dark:text-dark-text">
+              <a href="{{ url_for('polymarket.polymarket_lifecycle', strategy=sid) }}" class="text-light-primary dark:text-dark-primary hover:underline" title="View this strategy in Lifecycle">{{ sid }}</a>
+            </td>
             <td class="px-4 py-2 text-right text-sm">{{ s.get('alerts_sent', 0) }}</td>
             <td class="px-4 py-2 text-right text-sm">{{ s.get('alerts_shadow', 0) }}</td>
             <td class="px-4 py-2 text-right text-sm">{{ s.get('resolved_count', 0) }}</td>
             <td class="px-4 py-2 text-right text-sm">{{ s.get('open_count', 0) }}</td>
             <td class="px-4 py-2 text-right text-sm">{{ s.get('wins', 0) }}/{{ s.get('losses', 0) }}</td>
+            <td class="px-4 py-2 text-right text-sm">{% if s.get('win_rate_pct') is not none %}{{ "%.1f"|format(s.win_rate_pct) }}%{% else %}—{% endif %}</td>
             <td class="px-4 py-2 text-right text-sm {% if (s.get('total_pnl') or 0) > 0 %}text-status-up-light dark:text-status-up-dark{% elif (s.get('total_pnl') or 0) < 0 %}text-status-down-light dark:text-status-down-dark{% else %}text-light-muted dark:text-dark-muted{% endif %}">${{ "%.2f"|format(s.get('total_pnl') or 0) }}</td>
             <td class="px-4 py-2 text-right text-sm">{{ "%.1f"|format(s.get('roi_pct') or 0) }}%</td>
+            <td class="px-4 py-2 text-right text-sm">{% if s.get('median_pl_per_trade') is not none %}${{ "%.2f"|format(s.median_pl_per_trade) }}{% else %}—{% endif %}</td>
+            <td class="px-4 py-2 text-right"><span class="text-xs px-1.5 py-0.5 rounded text-light-muted dark:text-dark-muted bg-light-hover dark:bg-dark-hover">{{ s.get('confidence_label') or '—' }}</span></td>
+            <td class="px-4 py-2 text-right">{% set status_lbl = s.get('status_label') or '—' %}{% if status_lbl == 'Weak' %}<a href="{{ url_for('polymarket.polymarket_loss_lab', strategy=sid) }}" class="text-red-700 dark:text-red-400 hover:underline" title="View losses for this strategy in Loss Lab"><span class="text-xs px-1.5 py-0.5 rounded bg-red-500/20">{{ status_lbl }}</span></a>{% elif status_lbl == 'Promising' %}<span class="text-xs px-1.5 py-0.5 rounded bg-green-500/20 text-green-700 dark:text-green-400">{{ status_lbl }}</span>{% else %}<span class="text-xs px-1.5 py-0.5 rounded text-light-muted dark:text-dark-muted bg-light-hover dark:bg-dark-hover">{{ status_lbl }}</span>{% endif %}</td>
             <td class="px-4 py-2 text-right text-sm">{{ s.get('avg_hold_days') if s.get('avg_hold_days') is not none else '—' }}</td>
             <td class="px-4 py-2 text-right text-sm">cur {{ s.get('current_drawdown_pct') | default('—') }}% / max {{ s.get('max_drawdown_pct') | default('—') }}%</td>
           </tr>
+          {% endif %}
           {% endfor %}
         </tbody>
       </table>
     </div>
+    {% elif current_strategy and not sc.get(current_strategy) %}
+    <p class="text-sm text-light-muted dark:text-dark-muted py-4">No cohort data for strategy <strong>{{ current_strategy }}</strong>.</p>
     {% else %}
     <p class="text-sm text-light-muted dark:text-dark-muted py-4">No strategy cohort data.</p>
     {% endif %}
   </div>
 
   <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
-    <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-4">MTM / Exit Study (avg price move)</h2>
+    <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-2">Post-Alert Midpoint Drift (Drift Study)</h2>
+    {% set ds = analytics.get('drift_summary') or {} %}
     {% set ex = analytics.get('exit_study') or {} %}
+    <p class="text-xs text-light-muted dark:text-dark-muted mb-3">Approximate midpoint drift after alert. Values = (mid at horizon) − mid_at_alert. <strong>1m / 5m</strong> are approximate (backfill uses current mid when the script runs in that window). <strong>2h / 1d</strong> are more meaningful and should be treated as stronger signals.</p>
+    <p class="text-xs text-light-muted dark:text-dark-muted mb-2" title="Avg = mean midpoint drift after alert. Median = typical drift. Positive % = share of rows where drift was favorable.">Per cell: <strong>avg drift</strong> (price units), <strong>positive %</strong>, <strong>n</strong> = sample count.</p>
+    {% if ds.get('last_backfill_run') %}
+    <p class="text-xs text-light-muted dark:text-dark-muted mb-2">Last backfill run: <strong>{{ ds.last_backfill_run }}</strong></p>
+    {% endif %}
+    <p class="text-xs text-light-muted dark:text-dark-muted mb-3">Execution log: <strong>{{ ds.get('total_execution_rows', 0) }}</strong> rows total. Rows with drift data: 1m → {{ ds.get('rows_with_1m', 0) }}, 5m → {{ ds.get('rows_with_5m', 0) }}, 30m → {{ ds.get('rows_with_30m', 0) }}, 2h → {{ ds.get('rows_with_2h', 0) }}, 1d → {{ ds.get('rows_with_1d', 0) }}.</p>
+    {% if (ds.get('total_execution_rows') or 0) > 0 and (ds.get('rows_with_1m') or 0) == 0 and (ds.get('rows_with_5m') or 0) == 0 %}
+    <p class="text-xs text-amber-600 dark:text-amber-400 mb-2"><strong>Why 0 drift?</strong> Drift is filled only when <code>backfill_drift.py</code> runs <em>while</em> an alert is in a time window (e.g. 1–6 min old for 1m, 5–20 min for 5m). If all execution rows are from past alerts, no row is ever in those windows. <strong>New alerts</strong> will get drift data once the timer runs in the 1m, 5m, 30m, 2h, 1d windows.</p>
+    {% endif %}
     {% if ex %}
+    {% set ex_items = [(current_strategy, ex.get(current_strategy))] if current_strategy and ex.get(current_strategy) else (ex.items() if not current_strategy else []) %}
+    {% if ex_items %}
     <div class="overflow-x-auto">
       <table class="min-w-full divide-y divide-light-border dark:divide-dark-border">
         <thead class="bg-light-hover dark:bg-dark-hover">
           <tr>
             <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Strategy</th>
-            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">1m (n)</th>
-            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">5m (n)</th>
-            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">30m (n)</th>
-            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">2h (n)</th>
-            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">1d (n)</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">1m</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">5m</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">30m</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">2h</th>
+            <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">1d</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-light-border dark:divide-dark-border">
-          {% for sid, horizons in ex.items() %}
+          {% for sid, horizons in ex_items %}
+          {% if horizons %}
           <tr class="hover:bg-light-hover dark:hover:bg-dark-hover">
             <td class="px-4 py-2 text-sm font-medium text-light-text dark:text-dark-text">{{ sid }}</td>
             {% for key in ['1m', '5m', '30m', '2h', '1d'] %}
             {% set h = horizons.get(key) or {} %}
             {% set avg = h.get('avg_move') %}
-            <td class="px-4 py-2 text-right text-sm">{% if avg is not none %}{{ "%.4f"|format(avg) }}{% else %}—{% endif %} ({{ h.get('count', 0) }})</td>
+            {% set pos_pct = h.get('positive_rate_pct') %}
+            {% set cnt = h.get('count', 0) %}
+            <td class="px-4 py-2 text-right text-sm" title="Median: {{ h.get('median_drift') if h.get('median_drift') is not none else '—' }}. Positive % = share where drift &gt; 0.">
+              {% if avg is not none or cnt %}
+              <span>{% if avg is not none %}{{ "%+.4f"|format(avg) }}{% else %}—{% endif %} {% if pos_pct is not none %}| {{ "%.0f"|format(pos_pct) }}%{% endif %} | n={{ cnt }}</span>
+              {% else %}—{% endif %}
+            </td>
             {% endfor %}
           </tr>
+          {% endif %}
           {% endfor %}
         </tbody>
       </table>
     </div>
-    <p class="text-xs text-light-muted dark:text-dark-muted mt-2">Avg move = price_after − mid_at_alert. (n) = sample count. Fill with backfill_drift.</p>
+    <p class="text-xs text-light-muted dark:text-dark-muted mt-2">Avg = mean midpoint drift. Positive % = share of rows where drift was favorable. Enable <code>polymarket-backfill-drift.timer</code> and run Refresh analytics to update.</p>
+    {% elif current_strategy and not ex.get(current_strategy) %}
+    <p class="text-sm text-light-muted dark:text-dark-muted py-4">No drift data for strategy <strong>{{ current_strategy }}</strong>.</p>
     {% else %}
-    <p class="text-sm text-light-muted dark:text-dark-muted py-4">No exit study data. Run backfill_drift to populate execution_log price snapshots.</p>
+    <p class="text-sm text-light-muted dark:text-dark-muted py-4">No drift data yet. Run <code>backfill_drift.py</code> (or enable <code>polymarket-backfill-drift.timer</code>) to populate execution_log, then Refresh analytics.</p>
+    {% endif %}
     {% endif %}
   </div>
 </div>
 
-{% if analytics.get('totals') %}
+{% if analytics and analytics.get('totals') %}
 <div class="text-sm text-light-muted dark:text-dark-muted">
   Totals: {{ analytics.totals.get('alerts_resolved', 0) }} resolved, {{ analytics.totals.get('alerts_open', 0) }} open, {{ analytics.totals.get('alerts_total', 0) }} total alerts.
 </div>

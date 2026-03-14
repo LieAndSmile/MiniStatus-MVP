@@ -2,7 +2,78 @@
 
 All notable changes to MiniStatus are documented in this file.
 
+## [1.4.0] - 2026-03-14
+
+Polymarket Dashboard Improvement Plan (EPICs 1–4): Loss Lab v2 (breakdowns, monthly trend, examples UX), Risky v2 (historical performance, presets, Near Risky, qualified reasons, unrealized P/L messaging), Lifecycle v2 (purpose banner, progress column, HOLD actionable text, event log, strategy filter), cross-tab freshness (all tabs show last updated), strategy filter on Analytics/Lifecycle, normalized terminology, drill-down links, metric tooltips (inlined). Fixes: Analytics and Risky 500 (tooltips partial removed, analytics dict normalization, Risky datetime/empty-historical, Analytics template nesting). See [Unreleased] below for full item list.
+
+---
+
 ## [Unreleased]
+
+### Added
+
+- **Analytics tab v2 (decision-oriented)** — **Insights block** at top: suggested min edge, best timing windows, top strategy by ROI, drift status. **Edge Quality:** Win rate %, Median P/L per trade, Confidence (Low/Medium/High), suggested edge threshold note. **Timing:** same columns + best hold windows note. **Strategy Cohort:** Win rate %, Median P/L, Confidence, Status (Promising / Weak / Too Early / Neutral) with muted badges. **Drift Study:** per cell shows avg drift, positive %, n; tooltip for median and positive % meaning. All new fields show "—" when missing; no layout or breakage on old analytics.json.
+
+- **Analytics: "Why 0 drift?" note** — When execution log has rows but no drift data (1m/5m/… all 0), the Post-Alert Midpoint Drift section now shows a short in-UI explanation: drift is filled only when backfill runs while an alert is in the time window (e.g. 1–6 min for 1m); old alerts never enter those windows, so new alerts are needed for drift to populate.
+
+- **Loss Lab: breakdowns by edge, gamma, and timing buckets** — Loss Lab now includes four additional sections showing how realized losses cluster by edge buckets (<0.5%, 0.5–1.0%, 1.0–1.25%, 1.25%+), gamma buckets (<0.80, 0.80–0.90, 0.90–0.94, 0.94+), hold-duration buckets (Same day, 1–3d, 3–7d, 8–10d, 10+d), and time-to-resolution buckets (same as Analytics timing). All breakdowns are computed from resolved losing alerts in `alerts_log.csv`, respect the Loss Lab time window and strategy filters, and are purely additive to the existing category cards.
+
+- **Loss Lab: monthly trend view** — Added a Monthly Trend section showing net P/L per month, broken down by category, using resolved alerts from `alerts_log.csv`. The trend respects the Loss Lab time window and strategy filters and highlights both negative and positive months, making it easy to see whether losses are getting better or worse over time.
+
+- **Loss Lab: examples UX** — For the worst-loss category card, examples are now expanded by default with a small “Examples (worst losses)” section. Other categories keep a compact “Show examples (N)” toggle. This keeps the page uncluttered while surfacing the most important loss examples without extra clicks.
+
+- **Risky: historical performance section** — Risky tab now shows **Risky historical performance**: resolved alerts that would have qualified as Risky (same edge/gamma/expiry thresholds), with qualifying count, win rate, realized P/L, ROI, avg edge, avg gamma, avg hold duration, and a by-category table. Uses `alerts_log.csv`; respects the tab's time window and strategy filter.
+
+- **Risky: classification reasons per row** — Each risky position row now has a **Qualified** column with a "Why?" hint; hover shows the three rules that admitted the row: edge ≥ threshold, gamma ≤ threshold, expiry ≤ threshold (with actual values).
+
+- **Risky: threshold presets** — Preset buttons **Env**, **Conservative**, **Default**, **Loose** on the Risky tab. Conservative: edge ≥ 1.25%, gamma ≤ 0.90, expiry ≤ 24h. Default: 1%, 0.94, 48h. Loose: 0.5%, 0.97, 72h. Env uses `RISKY_*` env vars. Switching preset updates the position list and historical performance section; preset is preserved in time-window, sort, and filter links.
+
+- **Risky: Near Risky section** — A **Near Risky** table lists open positions that narrowly miss one threshold (edge within 0.25%, gamma within 0.02, expiry within 12h). Each row shows which threshold was missed (edge / gamma / expiry). Helps distinguish an empty tab because nothing is close from one where many positions barely miss.
+
+- **Risky: unrealized P/L fallback messaging** — When Unrealized P/L shows "—", the KPI card now shows: "Live unrealized P/L unavailable. Run Open Positions → Refresh with live pricing to populate." When a value is shown, a short note explains: "From last refresh; use Open Positions → Refresh for current prices." So users can tell missing live data from a bug.
+
+- **Lifecycle v2 (governance)** — **3.1** Plain-language purpose banner: explains that Lifecycle evaluates shadow/active strategies and that shadow can be promoted and weak strategies flagged for kill. **3.2** Threshold progress: new Progress column shows resolved X / kill threshold, X / promotion threshold; for INSUFFICIENT_DATA shows "Need N more resolved to reach kill threshold." **3.3** HOLD actionable: for HOLD, shadow strategies see "N more resolved for promotion" and "ROI ≥ X% to promote"; active see "ROI above Y% to avoid kill." **3.4** Lifecycle event log: table structure (Date, Strategy, Previous, New status, Reason, Source) with empty state until apply_lifecycle_verdicts or overrides are recorded.
+
+- **EPIC 4.1 — Freshness on every tab** — Portfolio shows alerts_log last updated; Open Positions and Risky show open_positions.csv last updated; Loss Lab shows alerts_log; Loop shows debug_candidates.csv. Analytics and Lifecycle already showed analytics.json and lifecycle.json age. New helper `get_file_age(data_path, filename)` in polymarket utils. Users can tell stale data from broken logic.
+
+- **EPIC 4.2 — Strategy filter meaningful on every tab** — Strategy dropdown now filters data on Analytics and Lifecycle. **Analytics:** Strategy Cohort and Post-Alert Midpoint Drift tables show only the selected strategy when a strategy is chosen; Edge Quality and Timing remain global with a note that Cohort/Drift are filtered. **Lifecycle:** Verdicts table shows only the selected strategy when chosen. Empty states show “No cohort/drift/verdict for strategy X” when filtered and missing. Refresh forms on Analytics and Lifecycle pass strategy as hidden input so redirect preserves the selected strategy after refresh.
+
+- **EPIC 4.3 — Normalized terminology** — Time window labels are consistent across tabs: "All time", "Last 30 days", "Last 90 days", "Last 180 days" (via shared `polymarket_time_filter.html`). Edge/gamma/hold bucket names come from a single backend definition in polymarket utils; same vocabulary on Analytics, Loss Lab, and Risky.
+
+- **EPIC 4.4 — Drill-down links** — **Lifecycle → Analytics:** Strategy name in verdicts table links to Analytics filtered to that strategy. **Analytics → Lifecycle:** Strategy name in Strategy Cohort links to Lifecycle filtered to that strategy. **Analytics → Loss Lab:** "Weak" status badge in Strategy Cohort links to Loss Lab filtered to that strategy. **Risky → Portfolio:** Category in Risky historical performance table links to Portfolio (filter=losses, same category/days/strategy). Loss Lab category cards already linked to Portfolio (View in Portfolio).
+
+- **EPIC 4.5 — Metric tooltips** — New shared partial `polymarket_tooltips.html` with definitions for Edge, Gamma, Drawdown, Confidence, ROI, Median P/L, Avg hold, Total P/L. Table headers on Analytics (Edge Quality, Timing, Strategy Cohort, Drift), Loss Lab (edge/gamma/hold/ttr buckets), Lifecycle (ROI %, Total P/L), and Risky (Gamma, Edge) show tooltips on hover so non-experts can understand the UI faster.
+
+### Fixed
+
+- **Risky tab 500** — Defensive template and data fixes: (1) Qualified column title uses `(p.edge or 0)` and `(p.gamma if p.gamma is not none else 0)` so None values do not raise. (2) Empty `risky_historical` dict from `get_risky_historical_performance()` now includes `total_pnl_display` and `total_cost_display` so template never sees missing keys. (3) Added `tests/test_polymarket_risky.py` to verify Risky template renders with minimal context (run with Flask env: `pytest tests/test_polymarket_risky.py -v`).
+
+- **Analytics and Risky 500 (missing tooltips partial)** — Removed dependency on `polymarket_tooltips.html` from Analytics, Risky, and Loss Lab templates. Tooltip text is inlined in each template so the tabs work even when the partial is missing (e.g. after partial deploy). Guarded Analytics totals block with `analytics and analytics.get('totals')` to avoid errors when analytics is empty.
+
+- **Risky tab 500 (AttributeError: datetime has no attribute strip)** — In `get_near_risky_positions()`, position dicts from `get_open_positions()` can have `alert_ts` as a `datetime` object. Building the risky-set key with `(p.get("alert_ts") or "").strip()` raised when `alert_ts` was a datetime. Fixed by normalizing with a small helper `_key_ts(v)` that returns `str(v).strip()` for strings and `str(v)` for other types (e.g. datetime), so keys are always strings. Removed temporary debug try/except that showed tracebacks in the browser.
+
+- **Analytics tab 500 (strategy_cohort / exit_study not dict)** — If `analytics.json` had `strategy_cohort` or `exit_study` as non-dict (e.g. list or null from an old export), the template or `get_strategy_options_for_nav()` could raise (e.g. `.keys()` or `.items()` on non-dict). Fixed: (1) `get_strategy_options_for_nav()` now treats non-dict `strategy_cohort` as `{}`. (2) Analytics route normalizes `analytics` so `strategy_cohort`, `edge_quality`, `timing`, `exit_study`, and `insights` are always dicts (replaced with `{}` if present but not a dict) before passing to the template.
+
+- **Analytics tab 500 (TemplateSyntaxError: nesting mistake)** — In `polymarket_analytics.html`, the Drift Study block used `{% if ex %}` and inside it `{% if ex_items %} … {% elif %} … {% else %} … {% endif %}` but the outer `{% if ex %}` was never closed, so Jinja expected `{% endif %}` and hit `{% endblock %}`. Fixed by adding the missing `{% endif %}` after the drift block so the template parses correctly.
+
+### Changed
+
+- **Analytics: Post-Alert Midpoint Drift (Drift Study)** — Renamed from "MTM / Exit Study". Added interpretation: 1m/5m approximate (backfill uses current mid in window); 2h/1d more meaningful. UI now shows last backfill run (from `drift_summary.last_backfill_run`), execution row counts (total + per-horizon rows with drift data). Empty results easier to diagnose.
+
+### Fixed
+
+- **Loop/Dev: Hrs left for past events** — "Hrs left" was showing the value stored in the CSV at the time the main loop ran, so already-finished events still showed positive hours (e.g. 4.9h). Hrs left is now **recomputed from event_time at display time**. Past events show "Expired" and are excluded from the "Hrs left" filters (e.g. &lt;6h) so only future resolutions appear there.
+
+- **Strategy preserved on filter/sort** – Portfolio, Open Positions, Risky, and Loss Lab now preserve the selected Strategy when changing time window, sort, category, or other filters (same fix previously applied to Loop/Dev).
+
+### Removed
+
+- **Polymarket Performance tab** – Removed in favor of **Analytics**. Analytics provides Edge Quality (edge buckets with ROI), Timing (time-to-resolution), Strategy Cohort (with drawdown), and MTM/Exit Study; Performance only added Expectancy by Gamma bands. Sidebar and tab nav no longer show Performance.
+
+### Fixed
+
+- **Loop/Dev tab: Resolution and Hrs left columns not visible**  
+  The debug candidates CSV already contained `event_time` and `hrs_left` (written by polymarket-alerts main loop), but the Loop/Dev table did not display them. **Cause:** MiniStatus never read those columns or added table headers/cells for them. **Change:** In `get_debug_candidates()` we now read `event_time` and `hrs_left`, compute `resolution_display` (YYYY-MM-DD HH:MM) and `hrs_left_display` (e.g. `8.9h`, `2d`, or "Expired"), and in `polymarket_loop.html` we added **Resolution** and **Hrs left** columns after Question (same as Open Positions). Restart MiniStatus to pick up the change.
 
 ### Added
 

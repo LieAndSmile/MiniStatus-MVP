@@ -1,0 +1,20 @@
+{# Shared metric tooltips for Polymarket dashboard (EPIC 4.5). Use: title="{{ polymarket_tooltip('edge') }}" #}
+{% macro polymarket_tooltip(name) %}
+{%- if name == 'edge' -%}
+Edge: Estimated advantage at entry (e.g. 1% = market mispriced by 1%). Higher edge with good win rate suggests quality.
+{%- elif name == 'gamma' -%}
+Gamma: Probability implied by market price (0–1). Lower gamma = market more confident against our position; often used with edge for risk.
+{%- elif name == 'drawdown' -%}
+Drawdown: Peak-to-trough decline. Current = from latest peak; Max = largest historical drop for this strategy.
+{%- elif name == 'confidence' -%}
+Confidence: Statistical strength of the estimate (Low/Medium/High) based on sample size and variance.
+{%- elif name == 'roi' -%}
+ROI: Return on investment (%). (Total P/L ÷ total cost) × 100.
+{%- elif name == 'median_pl' -%}
+Median P/L: Middle value of P/L per trade; less affected by outliers than average.
+{%- elif name == 'avg_hold' -%}
+Avg hold: Average number of days from alert to resolution for resolved trades.
+{%- elif name == 'total_pl' -%}
+Total P/L: Sum of profit/loss in USD across the segment.
+{%- endif -%}
+{% endmacro %}

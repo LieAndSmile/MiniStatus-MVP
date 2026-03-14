@@ -13,6 +13,7 @@
         <p class="text-sm text-light-muted dark:text-dark-muted">
           Candidates from the debug candidates CSV (default <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">debug_candidates.csv</code>; same as "Full data" in Telegram loop summary).
           {% if last_loop %}<span class="ml-2">Last run: <strong class="text-light-text dark:text-dark-text">{{ last_loop }}</strong></span>{% endif %}
+          {% if data_freshness %}<span class="ml-2">Data: <strong>{{ data_freshness }}</strong></span>{% endif %}
         </p>
       </div>
       <div class="flex items-center gap-3">
@@ -37,34 +38,46 @@
     </div>
     <div class="flex flex-wrap items-center gap-4" data-polymarket-filters>
       {% from "polymarket_time_filter.html" import render as polymarket_time_filter %}
-      {% set loop_extra = {'debug_status': debug_status, 'debug_sort': debug_sort} %}
+      {% set loop_extra = {'debug_status': debug_status, 'debug_sort': debug_sort, 'strategy': current_strategy} %}
+      {% if current_hours_max is not none %}{% set _ = loop_extra.update({'hours_max': current_hours_max}) %}{% endif %}
       {{ polymarket_time_filter('polymarket.polymarket_loop', current_days or 'all', loop_extra) }}
       <div class="flex items-center gap-2">
         <span class="text-sm font-medium text-light-muted dark:text-dark-muted">Status:</span>
-        <a href="{{ url_for('polymarket.polymarket_loop', debug_status='all', debug_sort=debug_sort, debug_page=1, days=current_days, from_date=current_from_date) }}"
+        <a href="{{ url_for('polymarket.polymarket_loop', debug_status='all', debug_sort=debug_sort, debug_page=1, days=current_days, from_date=current_from_date, hours_max=current_hours_max, strategy=current_strategy) }}"
            class="px-3 py-1.5 rounded-md text-sm {% if debug_status == 'all' %}bg-light-primary dark:bg-dark-primary text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">
           All
         </a>
-        <a href="{{ url_for('polymarket.polymarket_loop', debug_status='alert', debug_sort=debug_sort, debug_page=1, days=current_days, from_date=current_from_date) }}"
+        <a href="{{ url_for('polymarket.polymarket_loop', debug_status='alert', debug_sort=debug_sort, debug_page=1, days=current_days, from_date=current_from_date, hours_max=current_hours_max, strategy=current_strategy) }}"
            class="px-3 py-1.5 rounded-md text-sm {% if debug_status == 'alert' %}bg-status-up-light dark:bg-status-up-dark text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">
           ALERT only
         </a>
       </div>
       <div class="flex items-center gap-2">
+        <span class="text-sm font-medium text-light-muted dark:text-dark-muted">Hrs left:</span>
+        <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort=debug_sort, debug_page=1, days=current_days, from_date=current_from_date, strategy=current_strategy) }}"
+           class="px-3 py-1.5 rounded-md text-sm {% if not current_hours_max %}bg-light-primary dark:bg-dark-primary text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">All</a>
+        {% for h in loop_hours_presets %}
+        <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort=debug_sort, debug_page=1, days=current_days, from_date=current_from_date, hours_max=h, strategy=current_strategy) }}"
+           class="px-3 py-1.5 rounded-md text-sm {% if current_hours_max == h %}bg-light-primary dark:bg-dark-primary text-white{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover{% endif %} transition-colors">≤{{ h }}h</a>
+        {% endfor %}
+      </div>
+      <div class="flex items-center gap-2">
         <span class="text-sm font-medium text-light-muted dark:text-dark-muted">Sort:</span>
         <select id="loop-sort" data-polymarket-nav onchange="window.location.href=this.value;"
                 class="px-3 py-1.5 rounded-md text-sm border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary">
-          <option value="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort='date_desc', debug_page=1, days=current_days, from_date=current_from_date) }}" {% if debug_sort == 'date_desc' %}selected{% endif %}>Newest first</option>
-          <option value="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort='date_asc', debug_page=1, days=current_days, from_date=current_from_date) }}" {% if debug_sort == 'date_asc' %}selected{% endif %}>Oldest first</option>
-          <option value="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort='edge_desc', debug_page=1, days=current_days, from_date=current_from_date) }}" {% if debug_sort == 'edge_desc' %}selected{% endif %}>Edge highest first</option>
-          <option value="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort='edge_asc', debug_page=1, days=current_days, from_date=current_from_date) }}" {% if debug_sort == 'edge_asc' %}selected{% endif %}>Edge lowest first</option>
-          <option value="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort='question_asc', debug_page=1, days=current_days, from_date=current_from_date) }}" {% if debug_sort == 'question_asc' %}selected{% endif %}>Question A–Z</option>
-          <option value="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort='question_desc', debug_page=1, days=current_days, from_date=current_from_date) }}" {% if debug_sort == 'question_desc' %}selected{% endif %}>Question Z–A</option>
-          <option value="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort='status', debug_page=1, days=current_days, from_date=current_from_date) }}" {% if debug_sort == 'status' %}selected{% endif %}>ALERT first</option>
+          <option value="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort='date_desc', debug_page=1, days=current_days, from_date=current_from_date, hours_max=current_hours_max, strategy=current_strategy) }}" {% if debug_sort == 'date_desc' %}selected{% endif %}>Newest first</option>
+          <option value="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort='date_asc', debug_page=1, days=current_days, from_date=current_from_date, hours_max=current_hours_max, strategy=current_strategy) }}" {% if debug_sort == 'date_asc' %}selected{% endif %}>Oldest first</option>
+          <option value="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort='edge_desc', debug_page=1, days=current_days, from_date=current_from_date, hours_max=current_hours_max, strategy=current_strategy) }}" {% if debug_sort == 'edge_desc' %}selected{% endif %}>Edge highest first</option>
+          <option value="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort='edge_asc', debug_page=1, days=current_days, from_date=current_from_date, hours_max=current_hours_max, strategy=current_strategy) }}" {% if debug_sort == 'edge_asc' %}selected{% endif %}>Edge lowest first</option>
+          <option value="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort='question_asc', debug_page=1, days=current_days, from_date=current_from_date, hours_max=current_hours_max, strategy=current_strategy) }}" {% if debug_sort == 'question_asc' %}selected{% endif %}>Question A–Z</option>
+          <option value="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort='question_desc', debug_page=1, days=current_days, from_date=current_from_date, hours_max=current_hours_max, strategy=current_strategy) }}" {% if debug_sort == 'question_desc' %}selected{% endif %}>Question Z–A</option>
+          <option value="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort='status', debug_page=1, days=current_days, from_date=current_from_date, hours_max=current_hours_max, strategy=current_strategy) }}" {% if debug_sort == 'status' %}selected{% endif %}>ALERT first</option>
+          <option value="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort='hrs_asc', debug_page=1, days=current_days, from_date=current_from_date, hours_max=current_hours_max, strategy=current_strategy) }}" {% if debug_sort == 'hrs_asc' %}selected{% endif %}>Hrs left soonest</option>
+          <option value="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort='hrs_desc', debug_page=1, days=current_days, from_date=current_from_date, hours_max=current_hours_max, strategy=current_strategy) }}" {% if debug_sort == 'hrs_desc' %}selected{% endif %}>Hrs left latest</option>
         </select>
       </div>
       {% if current_from_date %}
-      <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort=debug_sort, debug_page=1, days=current_days) }}"
+      <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort=debug_sort, debug_page=1, days=current_days, hours_max=current_hours_max, strategy=current_strategy) }}"
          class="px-3 py-1.5 rounded-md text-sm bg-light-hover dark:bg-dark-hover text-light-muted dark:text-dark-muted hover:bg-light-border dark:hover:bg-dark-border transition-colors">
         Clear from-date ({{ current_from_date }})
       </a>
@@ -77,20 +90,33 @@
       <thead class="bg-light-hover dark:bg-dark-hover sticky top-0 z-10">
         <tr>
           <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">
-            <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort=('date_asc' if debug_sort == 'date_desc' else 'date_desc'), debug_page=1, from_date=current_from_date) }}" class="hover:underline {% if debug_sort in ('date_desc','date_asc') %}text-light-primary dark:text-dark-primary{% endif %}">Time</a>
+            <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort=('date_asc' if debug_sort == 'date_desc' else 'date_desc'), debug_page=1, days=current_days, from_date=current_from_date, hours_max=current_hours_max, strategy=current_strategy) }}" class="hover:underline {% if debug_sort in ('date_desc','date_asc') %}text-light-primary dark:text-dark-primary{% endif %}">Time</a>
           </th>
           <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">
-            <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort=('question_desc' if debug_sort == 'question_asc' else 'question_asc'), debug_page=1, days=current_days, from_date=current_from_date) }}" class="hover:underline {% if debug_sort in ('question_asc','question_desc') %}text-light-primary dark:text-dark-primary{% endif %}">Question</a>
+            <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort=('question_desc' if debug_sort == 'question_asc' else 'question_asc'), debug_page=1, days=current_days, from_date=current_from_date, hours_max=current_hours_max, strategy=current_strategy) }}" class="hover:underline {% if debug_sort in ('question_asc','question_desc') %}text-light-primary dark:text-dark-primary{% endif %}">Question</a>
+          </th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider whitespace-nowrap">Resolution</th>
+          <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider whitespace-nowrap">
+            {% set next_hm = 24 if not current_hours_max else (12 if current_hours_max == 24 else (6 if current_hours_max == 12 else none)) %}
+            {% if next_hm is not none %}
+            <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort=debug_sort, debug_page=1, days=current_days, from_date=current_from_date, hours_max=next_hm, strategy=current_strategy) }}"
+               class="hover:underline {% if current_hours_max %}text-light-primary dark:text-dark-primary{% endif %}"
+               title="Click to filter by hours left: ≤{{ next_hm }}h">Hrs left</a>
+            {% else %}
+            <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort=debug_sort, debug_page=1, days=current_days, from_date=current_from_date, strategy=current_strategy) }}"
+               class="hover:underline {% if current_hours_max %}text-light-primary dark:text-dark-primary{% endif %}"
+               title="Click to show all (clear hrs filter)">Hrs left</a>
+            {% endif %}
           </th>
           <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Gamma</th>
           <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Best Ask</th>
           <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">
-            <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort=('edge_asc' if debug_sort == 'edge_desc' else 'edge_desc'), debug_page=1, days=current_days, from_date=current_from_date) }}" class="hover:underline {% if debug_sort in ('edge_desc','edge_asc') %}text-light-primary dark:text-dark-primary{% endif %}">Edge</a>
+            <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort=('edge_asc' if debug_sort == 'edge_desc' else 'edge_desc'), debug_page=1, days=current_days, from_date=current_from_date, hours_max=current_hours_max, strategy=current_strategy) }}" class="hover:underline {% if debug_sort in ('edge_desc','edge_asc') %}text-light-primary dark:text-dark-primary{% endif %}">Edge</a>
           </th>
           <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Effective</th>
           <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Fill %</th>
           <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">
-            <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort='status', debug_page=1, days=current_days, from_date=current_from_date) }}" class="hover:underline {% if debug_sort == 'status' %}text-light-primary dark:text-dark-primary{% endif %}">Status</a>
+            <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort='status', debug_page=1, days=current_days, from_date=current_from_date, hours_max=current_hours_max, strategy=current_strategy) }}" class="hover:underline {% if debug_sort == 'status' %}text-light-primary dark:text-dark-primary{% endif %}">Status</a>
           </th>
           <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Link</th>
         </tr>
@@ -100,12 +126,14 @@
         <tr class="loop-row hover:bg-light-hover dark:hover:bg-dark-hover transition-colors" data-search="{{ (row.question or '')|lower|e }}">
           <td class="px-4 py-3 text-sm whitespace-nowrap">
             {% if row.ts_date_param %}
-            <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort=debug_sort, debug_page=1, from_date=row.ts_date_param) }}" class="text-light-primary dark:text-dark-primary hover:underline" title="Filter from this date">{{ row.ts_display }}</a>
+            <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort=debug_sort, debug_page=1, days=current_days, from_date=row.ts_date_param, hours_max=current_hours_max, strategy=current_strategy) }}" class="text-light-primary dark:text-dark-primary hover:underline" title="Filter from this date">{{ row.ts_display }}</a>
             {% else %}
             <span class="text-light-muted dark:text-dark-muted">{{ row.ts_display }}</span>
             {% endif %}
           </td>
           <td class="px-4 py-3 text-sm text-light-text dark:text-dark-text max-w-md truncate" title="{{ row.question }}">{{ row.question }}</td>
+          <td class="px-4 py-3 text-sm whitespace-nowrap text-light-text dark:text-dark-text">{{ row.resolution_display }}</td>
+          <td class="px-4 py-3 text-right text-sm text-light-text dark:text-dark-text">{{ row.hrs_left_display }}</td>
           <td class="px-4 py-3 text-right text-sm text-light-text dark:text-dark-text">{{ "%.4f"|format(row.gamma) if row.gamma else "—" }}</td>
           <td class="px-4 py-3 text-right text-sm text-light-text dark:text-dark-text">{{ "%.4f"|format(row.best_ask) if row.best_ask else "—" }}</td>
           <td class="px-4 py-3 text-right text-sm font-medium {% if row.edge and row.edge > 0 %}text-status-up-light dark:text-status-up-dark{% elif row.edge and row.edge < 0 %}text-status-down-light dark:text-status-down-dark{% else %}text-light-muted dark:text-dark-muted{% endif %}">{{ row.edge_pct }}</td>
@@ -135,7 +163,7 @@
     </p>
     <nav class="flex items-center gap-2 flex-wrap" aria-label="Pagination">
       {% if debug_pagination.has_prev %}
-      <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort=debug_sort, debug_page=debug_pagination.page - 1, days=current_days, from_date=current_from_date) }}"
+      <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort=debug_sort, debug_page=debug_pagination.page - 1, days=current_days, from_date=current_from_date, hours_max=current_hours_max, strategy=current_strategy) }}"
          class="px-3 py-1.5 rounded-md text-sm text-light-text dark:text-dark-text hover:bg-light-hover dark:hover:bg-dark-hover transition-colors">Previous</a>
       {% else %}
       <span class="px-3 py-1.5 rounded-md text-sm text-light-muted dark:text-dark-muted cursor-not-allowed">Previous</span>
@@ -145,7 +173,7 @@
           {% if p == debug_pagination.page %}
           <span class="px-2.5 py-1 rounded-md text-sm font-medium bg-light-primary dark:bg-dark-primary text-white">{{ p }}</span>
           {% elif p == 1 or p == debug_pagination.total_pages or (p >= debug_pagination.page - 2 and p <= debug_pagination.page + 2) %}
-          <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort=debug_sort, debug_page=p, days=current_days, from_date=current_from_date) }}"
+          <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort=debug_sort, debug_page=p, days=current_days, from_date=current_from_date, hours_max=current_hours_max, strategy=current_strategy) }}"
              class="px-2.5 py-1 rounded-md text-sm text-light-text dark:text-dark-text hover:bg-light-hover dark:hover:bg-dark-hover transition-colors">{{ p }}</a>
           {% elif p == debug_pagination.page - 3 or p == debug_pagination.page + 3 %}
           <span class="px-1 text-light-muted dark:text-dark-muted" aria-hidden="true">…</span>
@@ -153,7 +181,7 @@
         {% endfor %}
       </span>
       {% if debug_pagination.has_next %}
-      <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort=debug_sort, debug_page=debug_pagination.page + 1, days=current_days, from_date=current_from_date) }}"
+      <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort=debug_sort, debug_page=debug_pagination.page + 1, days=current_days, from_date=current_from_date, hours_max=current_hours_max, strategy=current_strategy) }}"
          class="px-3 py-1.5 rounded-md text-sm text-light-text dark:text-dark-text hover:bg-light-hover dark:hover:bg-dark-hover transition-colors">Next</a>
       {% else %}
       <span class="px-3 py-1.5 rounded-md text-sm text-light-muted dark:text-dark-muted cursor-not-allowed">Next</span>
