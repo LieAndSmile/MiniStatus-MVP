@@ -198,6 +198,7 @@
     <p class="text-sm text-light-muted dark:text-dark-muted">
       {{ pagination.total_count }} resolved
       {% if current_filter != 'all' %}({{ current_filter }}){% endif %}
+      {% if current_category %} · category: <strong>{{ current_category }}</strong>{% endif %}
       {% if current_days != 'all' %}(last {{ current_days }} days){% endif %}
       {% if current_sort == 'pnl_asc' %}— losses first{% elif current_sort == 'pnl_desc' %}— wins first{% elif current_sort == 'date_desc' %}— newest first{% elif current_sort == 'date_asc' %}— oldest first{% elif current_sort == 'question_asc' %}— A–Z{% elif current_sort == 'question_desc' %}— Z–A{% elif current_sort == 'result_yes' %}— YES first{% elif current_sort == 'result_no' %}— NO first{% endif %}
     </p>
