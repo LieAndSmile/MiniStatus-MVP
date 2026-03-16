@@ -38,6 +38,7 @@ from app.utils.polymarket import (
     POSITIONS_EXPIRY_FILTERS,
     STRATEGY_OPTIONS,
 )
+from app.utils.polymarket_health import get_polymarket_health, get_polymarket_freshness
 from app.utils.decorators import admin_required
 
 polymarket_bp = Blueprint("polymarket", __name__, url_prefix="/polymarket")
@@ -111,6 +112,46 @@ def _get_strategy(allowed=None):
     if s in options:
         return s
     return "safe" if "safe" in options else (options[0] if options else "safe")
+
+
+@polymarket_bp.route("/health")
+@admin_required
+def polymarket_health():
+    """
+    JSON health endpoint for Polymarket integration.
+
+    Intended for external monitoring and quick diagnostics:
+    - 200 OK with current health snapshot (even when misconfigured)
+    - low-cardinality, human-readable fields only
+    """
+    health = get_polymarket_health()
+    return jsonify(health.to_dict())
+
+
+@polymarket_bp.route("/freshness")
+@admin_required
+def polymarket_freshness():
+    """
+    JSON freshness endpoint with last-updated ages for key files.
+
+    Useful for probes that only care about staleness thresholds, e.g.:
+    - alerts_log.csv older than N minutes
+    - open_positions.csv older than N minutes
+    """
+    freshness = get_polymarket_freshness()
+    return jsonify(
+        {
+            "configured": is_polymarket_configured(),
+            "freshness": {
+                "alerts_log_age": freshness.alerts_log_age,
+                "open_positions_age": freshness.open_positions_age,
+                "debug_candidates_age": freshness.debug_candidates_age,
+                "analytics_age": freshness.analytics_age,
+                "lifecycle_age": freshness.lifecycle_age,
+                "last_loop_run": freshness.last_loop_run,
+            },
+        }
+    )
 
 
 @polymarket_bp.route("")

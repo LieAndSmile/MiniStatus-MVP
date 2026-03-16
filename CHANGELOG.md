@@ -56,6 +56,12 @@ Polymarket Dashboard Improvement Plan (EPICs 1–4): Loss Lab v2 (breakdowns, mo
 
 - **Analytics tab 500 (TemplateSyntaxError: nesting mistake)** — In `polymarket_analytics.html`, the Drift Study block used `{% if ex %}` and inside it `{% if ex_items %} … {% elif %} … {% else %} … {% endif %}` but the outer `{% if ex %}` was never closed, so Jinja expected `{% endif %}` and hit `{% endblock %}`. Fixed by adding the missing `{% endif %}` after the drift block so the template parses correctly.
 
+- **Risky → Portfolio category links** — Category names (e.g. SPORTS, OTHER) in Risky historical performance now link to Portfolio with `#resolved-alerts` so the page scrolls to the filtered resolved list instead of opening at the top. Portfolio Resolved Alerts subtitle shows “category: X” when a category filter is applied.
+
+- **Risky “Why?” tooltip** — Qualified column tooltip text clarified (e.g. “Hover: …”) and formatted on one line so the native browser tooltip shows reliably.
+
+- **Loop/Dev: Hrs left column header** — The “Hrs left” table column header now **sorts** by hours left (click toggles soonest first ↔ latest first) instead of cycling the “Hrs left” filter. Filtering by range (All, ≤6h, ≤12h, etc.) remains in the bar above the table.
+
 ### Changed
 
 - **Analytics: Post-Alert Midpoint Drift (Drift Study)** — Renamed from "MTM / Exit Study". Added interpretation: 1m/5m approximate (backfill uses current mid in window); 2h/1d more meaningful. UI now shows last backfill run (from `drift_summary.last_backfill_run`), execution row counts (total + per-horizon rows with drift data). Empty results easier to diagnose.

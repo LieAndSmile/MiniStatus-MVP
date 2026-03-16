@@ -97,16 +97,9 @@
           </th>
           <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider whitespace-nowrap">Resolution</th>
           <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider whitespace-nowrap">
-            {% set next_hm = 24 if not current_hours_max else (12 if current_hours_max == 24 else (6 if current_hours_max == 12 else none)) %}
-            {% if next_hm is not none %}
-            <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort=debug_sort, debug_page=1, days=current_days, from_date=current_from_date, hours_max=next_hm, strategy=current_strategy) }}"
-               class="hover:underline {% if current_hours_max %}text-light-primary dark:text-dark-primary{% endif %}"
-               title="Click to filter by hours left: ≤{{ next_hm }}h">Hrs left</a>
-            {% else %}
-            <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort=debug_sort, debug_page=1, days=current_days, from_date=current_from_date, strategy=current_strategy) }}"
-               class="hover:underline {% if current_hours_max %}text-light-primary dark:text-dark-primary{% endif %}"
-               title="Click to show all (clear hrs filter)">Hrs left</a>
-            {% endif %}
+            <a href="{{ url_for('polymarket.polymarket_loop', debug_status=debug_status, debug_sort=('hrs_desc' if debug_sort == 'hrs_asc' else 'hrs_asc'), debug_page=1, days=current_days, from_date=current_from_date, hours_max=current_hours_max, strategy=current_strategy) }}"
+               class="hover:underline {% if debug_sort in ('hrs_asc','hrs_desc') %}text-light-primary dark:text-dark-primary{% endif %}"
+               title="Click to sort by hours left (soonest first or latest first)">Hrs left</a>
           </th>
           <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Gamma</th>
           <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Best Ask</th>
