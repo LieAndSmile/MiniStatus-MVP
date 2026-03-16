@@ -20,7 +20,7 @@ Built with Flask and SQLite. No Prometheus. No Grafana. Just clean uptime visibi
 - **Rate Limiting** - Protection against brute force attacks
 - **Dark/Light Theme** - Automatic theme support
 - **REST API** - Programmatic status reporting
-- **Polymarket Integration** - Admin-only dashboard for polymarket-alerts (Portfolio, Open Positions, Risky, Performance, Loss Lab, Loop/Dev; filters, search, charts, export, track interesting positions, mtime caching)
+- **Polymarket Integration** - Admin-only dashboard for polymarket-alerts (Portfolio, Open Positions, Risky, Loss Lab, Analytics, Lifecycle, Loop/Dev; filters, search, charts, export, track interesting positions, mtime caching)
 
 ## Quick Start
 
@@ -92,6 +92,12 @@ PUBLIC_ENVIRONMENT=Production  # Environment badge (Production/Staging/Developme
 # Polymarket Alerts integration (optional)
 POLYMARKET_DATA_PATH=/path/to/polymarket-alerts  # Path to polymarket-alerts dir (alerts_log.csv, open_positions.csv, run_stats.csv, etc.)
 ```
+
+For the full producer-side data contract that MiniStatus consumes, see:
+- `polymarket-alerts/docs/INTEGRATION_CONTRACT.md`
+- `polymarket-alerts/docs/CONTRACT_VERSION.md`
+
+If the Polymarket pages show “CSV schema mismatch” or “No data” unexpectedly, first verify that `POLYMARKET_DATA_PATH` points at a live polymarket-alerts directory and that its CSV/JSON files conform to the current integration contract.
 
 ### Security Features
 
