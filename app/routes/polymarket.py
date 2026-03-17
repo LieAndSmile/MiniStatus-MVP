@@ -39,6 +39,7 @@ from app.utils.polymarket import (
     STRATEGY_OPTIONS,
 )
 from app.utils.polymarket_health import get_polymarket_health, get_polymarket_freshness
+from app.utils.data_quality import get_data_quality_flags
 from app.utils.decorators import admin_required
 
 polymarket_bp = Blueprint("polymarket", __name__, url_prefix="/polymarket")
@@ -206,6 +207,7 @@ def polymarket_portfolio():
         last_loop=last_loop,
         run_stats=run_stats,
         data_freshness=data_freshness,
+        data_quality_flags=get_data_quality_flags(data_path),
         active_section="portfolio",
         polymarket_sections=POLYMARKET_SECTIONS,
         pagination=pagination,
@@ -287,6 +289,7 @@ def polymarket_positions():
         total_unrealized_display=format_compact_usd(total_unrealized) if total_unrealized != 0 else None,
         exposure=exposure,
         data_freshness=data_freshness,
+        data_quality_flags=get_data_quality_flags(data_path),
         current_days=days_val,
         current_from_date=from_date_val,
         current_category=category_val,
@@ -374,6 +377,7 @@ def polymarket_risky():
         risky_criteria=criteria,
         risky_historical=risky_historical,
         data_freshness=data_freshness,
+        data_quality_flags=get_data_quality_flags(data_path),
         total_cost=total_cost,
         total_cost_display=format_compact_usd(total_cost),
         total_unrealized=total_unrealized,
@@ -407,9 +411,13 @@ def polymarket_positions_refresh():
         v = request.form.get(k) or request.args.get(k)
         if v:
             redirect_kw[k] = v
+    live_pricing = request.form.get("live_pricing") == "1"
+    cmd = ["python3", "update_open_positions.py"]
+    if not live_pricing:
+        cmd.append("--no-live")
     try:
         result = subprocess.run(
-            ["python3", "update_open_positions.py", "--no-live"],
+            cmd,
             cwd=data_path,
             capture_output=True,
             text=True,
@@ -475,6 +483,7 @@ def polymarket_loss_lab():
         ttr_buckets=bucket_breakdowns.get("time_to_resolution") or [],
         loss_trend=trend,
         data_freshness=data_freshness,
+        data_quality_flags=get_data_quality_flags(data_path),
         current_days=days_val if days_val else "all",
         current_strategy=strategy_val,
         strategy_options=strategy_options,
@@ -505,6 +514,7 @@ def polymarket_analytics():
         polymarket_sections=POLYMARKET_SECTIONS,
         analytics=analytics,
         analytics_age=analytics_age,
+        data_quality_flags=get_data_quality_flags(data_path),
         current_strategy=strategy_val,
         strategy_options=strategy_options,
     )
@@ -559,6 +569,7 @@ def polymarket_lifecycle():
         polymarket_sections=POLYMARKET_SECTIONS,
         lifecycle=lifecycle,
         lifecycle_age=lifecycle_age,
+        data_quality_flags=get_data_quality_flags(data_path),
         current_strategy=strategy_val,
         strategy_options=strategy_options,
     )
@@ -650,6 +661,7 @@ def polymarket_loop():
         configured=True,
         last_loop=last_loop,
         data_freshness=data_freshness,
+        data_quality_flags=get_data_quality_flags(data_path),
         debug_candidates=debug_candidates,
         debug_total=debug_total,
         debug_pagination=pagination,

@@ -91,6 +91,11 @@ API_KEY=supersecret
     db.init_app(app)
     csrf.init_app(app)
     limiter.init_app(app)
+
+    # Polymarket strategy labels and mode (for templates)
+    from app.utils.polymarket import STRATEGY_LABELS, STRATEGY_MODE
+    app.jinja_env.globals["STRATEGY_LABELS"] = STRATEGY_LABELS
+    app.jinja_env.globals["STRATEGY_MODE"] = STRATEGY_MODE
     
     # Custom error handler for rate limit exceeded
     @app.errorhandler(429)
