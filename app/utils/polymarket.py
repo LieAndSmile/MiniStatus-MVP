@@ -136,9 +136,12 @@ def _format_countdown(event_time: Optional[datetime]) -> str:
 ALERTS_LOG_REQUIRED = ("question", "pnl_usd", "resolved", "actual_result")
 ALERTS_LOG_NEEDS_ONE_OF = ("ts", "resolved_ts")
 
-# v3: strategy filter options (match strategies.yaml; extended for Phase 1–3 probes)
+# v3: strategy filter options (match strategies.yaml; extended for Phase 1–3 probes and strategy rework)
 STRATEGY_OPTIONS = (
     "safe",
+    "safe_fast",
+    "safe_premium",
+    "safe_swing_low_gamma",
     "safe_v2",
     "same_day_probe",
     "hold_3to7d_probe",
