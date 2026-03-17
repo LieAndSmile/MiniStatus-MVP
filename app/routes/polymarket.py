@@ -403,12 +403,12 @@ def polymarket_risky():
 @admin_required
 @_polymarket_configured_required("positions")
 def polymarket_positions_refresh():
-    """Run update_open_positions.py to refresh open_positions.csv."""
+    """Run jobs/update_open_positions.py to refresh open_positions.csv."""
     import subprocess
     data_path = _get_data_path()
-    script_path = os.path.join(data_path, "update_open_positions.py")
+    script_path = os.path.join(data_path, "jobs", "update_open_positions.py")
     if not os.path.isfile(script_path):
-        flash("update_open_positions.py not found in polymarket-alerts directory.", "error")
+        flash("jobs/update_open_positions.py not found in polymarket-alerts directory.", "error")
         return redirect(url_for("polymarket.polymarket_positions"))
     # Preserve current filters in redirect (from form hidden fields)
     redirect_kw = {}
@@ -417,7 +417,8 @@ def polymarket_positions_refresh():
         if v:
             redirect_kw[k] = v
     live_pricing = request.form.get("live_pricing") == "1"
-    cmd = ["python3", "update_open_positions.py"]
+    python_exe = os.path.join(data_path, "venv", "bin", "python") if os.path.isfile(os.path.join(data_path, "venv", "bin", "python")) else "python3"
+    cmd = [python_exe, "jobs/update_open_positions.py"]
     if not live_pricing:
         cmd.append("--no-live")
     try:
@@ -531,17 +532,17 @@ def polymarket_analytics():
 @admin_required
 @_polymarket_configured_required("analytics")
 def polymarket_analytics_refresh():
-    """Run analytics_export.py to regenerate analytics.json."""
+    """Run analytics/analytics_export.py to regenerate analytics.json."""
     import subprocess
     data_path = _get_data_path()
-    script_path = os.path.join(data_path, "analytics_export.py")
+    script_path = os.path.join(data_path, "analytics", "analytics_export.py")
     if not os.path.isfile(script_path):
-        flash("analytics_export.py not found in polymarket-alerts directory.", "error")
+        flash("analytics/analytics_export.py not found in polymarket-alerts directory.", "error")
         return redirect(url_for("polymarket.polymarket_analytics", strategy=request.form.get("strategy") or None))
     python_exe = os.path.join(data_path, "venv", "bin", "python") if os.path.isfile(os.path.join(data_path, "venv", "bin", "python")) else "python3"
     try:
         result = subprocess.run(
-            [python_exe, "analytics_export.py", "--data-dir", data_path, "--out", "analytics.json"],
+            [python_exe, "analytics/analytics_export.py", "--data-dir", data_path, "--out", "analytics.json"],
             cwd=data_path,
             capture_output=True,
             text=True,
@@ -587,17 +588,17 @@ def polymarket_lifecycle():
 @admin_required
 @_polymarket_configured_required("lifecycle")
 def polymarket_lifecycle_refresh():
-    """Run evaluate_strategy_lifecycle.py to regenerate lifecycle.json."""
+    """Run analytics/evaluate_strategy_lifecycle.py to regenerate lifecycle.json."""
     import subprocess
     data_path = _get_data_path()
-    script_path = os.path.join(data_path, "evaluate_strategy_lifecycle.py")
+    script_path = os.path.join(data_path, "analytics", "evaluate_strategy_lifecycle.py")
     if not os.path.isfile(script_path):
-        flash("evaluate_strategy_lifecycle.py not found in polymarket-alerts directory.", "error")
+        flash("analytics/evaluate_strategy_lifecycle.py not found in polymarket-alerts directory.", "error")
         return redirect(url_for("polymarket.polymarket_lifecycle", strategy=request.form.get("strategy") or None))
     python_exe = os.path.join(data_path, "venv", "bin", "python") if os.path.isfile(os.path.join(data_path, "venv", "bin", "python")) else "python3"
     try:
         result = subprocess.run(
-            [python_exe, "evaluate_strategy_lifecycle.py", "--data-dir", data_path, "--out", "lifecycle.json"],
+            [python_exe, "analytics/evaluate_strategy_lifecycle.py", "--data-dir", data_path, "--out", "lifecycle.json"],
             cwd=data_path,
             capture_output=True,
             text=True,
