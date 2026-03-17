@@ -153,6 +153,38 @@ STRATEGY_OPTIONS = (
     "resolution_sprint",
 )
 
+STRATEGY_LABELS: dict[str, str] = {
+    "safe": "Safe (legacy)",
+    "safe_fast": "Safe fast",
+    "safe_premium": "Safe premium",
+    "safe_swing_low_gamma": "Safe swing / low γ",
+    "safe_v2": "Safe v2",
+    "same_day_probe": "Same-day probe",
+    "hold_3to7d_probe": "Hold 3–7d probe",
+    "hold_8to10d_probe": "Hold 8–10d probe",
+    "gamma_84_86_probe": "Gamma 84–86 probe",
+    "gamma_86_92_probe": "Gamma 86–92 probe",
+    "gamma_92_96_probe": "Gamma 92–96 probe",
+    "mid_gamma": "Mid gamma",
+    "resolution_sprint": "Resolution sprint",
+}
+
+STRATEGY_MODE: dict[str, str] = {
+    "safe": "disabled",
+    "safe_fast": "active",
+    "safe_premium": "active",
+    "safe_swing_low_gamma": "shadow",
+    "safe_v2": "shadow",
+    "same_day_probe": "shadow",
+    "hold_3to7d_probe": "shadow",
+    "hold_8to10d_probe": "shadow",
+    "gamma_84_86_probe": "shadow",
+    "gamma_86_92_probe": "shadow",
+    "gamma_92_96_probe": "shadow",
+    "mid_gamma": "shadow",
+    "resolution_sprint": "shadow",
+}
+
 
 def get_strategy_options_for_nav(data_path: str) -> tuple[str, ...]:
     """

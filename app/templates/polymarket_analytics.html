@@ -129,6 +129,102 @@
   </div>
 </div>
 
+{% set fq = analytics.get('fill_quality') or {} %}
+{% if fq %}
+<div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4 mb-6">
+  <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-2">Fill quality</h2>
+  <p class="text-xs text-light-muted dark:text-dark-muted mb-4">{{ fq.get('note', '') }}</p>
+  {% if fq.get('avg_fill_gap') is not none %}
+  <p class="text-sm text-light-text dark:text-dark-text mb-4">
+    Average fill gap across all <strong>{{ fq.get('total_rows', 0) }}</strong> execution rows:
+    <strong>{{ "%.4f"|format(fq.avg_fill_gap) }}</strong>
+    ({{ "%.2f"|format(fq.avg_fill_gap * 100) }}%).
+  </p>
+  {% endif %}
+  {% set bsb = fq.get('by_spread_bucket') or {} %}
+  {% if bsb %}
+  <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-light-border dark:divide-dark-border">
+      <thead class="bg-light-hover dark:bg-dark-hover">
+        <tr>
+          <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Spread bucket</th>
+          <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Rows</th>
+          <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Avg gap</th>
+          <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Avg gap %</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-light-border dark:divide-dark-border">
+        {% for key in ['tight', 'narrow', 'medium', 'wide'] %}
+        {% set b = bsb.get(key) or {} %}
+        <tr class="hover:bg-light-hover dark:hover:bg-dark-hover">
+          <td class="px-4 py-2 text-sm text-light-text dark:text-dark-text">{{ b.get('label', key) }}</td>
+          <td class="px-4 py-2 text-right text-sm">{{ b.get('n', 0) }}</td>
+          <td class="px-4 py-2 text-right text-sm">
+            {% if b.get('avg_gap') is not none %}{{ "%.4f"|format(b.avg_gap) }}{% else %}—{% endif %}
+          </td>
+          <td class="px-4 py-2 text-right text-sm">
+            {% if b.get('avg_gap_pct') is not none %}{{ "%.2f"|format(b.avg_gap_pct) }}%{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{% set cm = analytics.get('cohort_matrix') or {} %}
+{% if cm %}
+<div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4 mb-6">
+  <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-2">Cohort performance — gamma × resolution window</h2>
+  <p class="text-xs text-light-muted dark:text-dark-muted mb-4">
+    Resolved trades only. Faded cells have fewer than 10 trades (low confidence).
+    Click a cell to filter Loss Lab to that cohort.
+  </p>
+  <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-light-border dark:divide-dark-border">
+      <thead class="bg-light-hover dark:bg-dark-hover">
+        <tr>
+          <th class="px-4 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Gamma band</th>
+          {% for d_label in ['0d', '1-2d', '3-7d', '>7d'] %}
+          <th class="px-4 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">{{ d_label }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-light-border dark:divide-dark-border">
+        {% for g_label in ['0.84-0.87', '0.87-0.90', '0.90-0.93', '0.93+'] %}
+        <tr>
+          <td class="px-4 py-2 text-sm font-medium text-light-text dark:text-dark-text">{{ g_label }}</td>
+          {% for d_label in ['0d', '1-2d', '3-7d', '>7d'] %}
+          {% set cell = (cm.get(g_label) or {}).get(d_label) %}
+          <td class="px-4 py-2 text-right text-sm
+            {% if cell %}
+              {% if cell.low_data %}opacity-50{% endif %}
+              {% if cell.total_pnl > 0 %}
+                bg-green-500/10 text-green-700 dark:text-green-400
+              {% elif cell.total_pnl < 0 %}
+                bg-red-500/10 text-red-700 dark:text-red-400
+              {% else %}
+                text-light-muted dark:text-dark-muted
+              {% endif %}
+            {% else %}
+              text-light-muted dark:text-dark-muted
+            {% endif %}">
+            {% if cell %}
+              <div class="font-medium">{{ ("+" if cell.total_pnl >= 0 else "") }}${{ "%.0f"|format(cell.total_pnl) }}</div>
+              <div class="text-xs opacity-70">{{ "%.0f"|format(cell.win_rate * 100) }}% · n={{ cell.count }}</div>
+            {% else %}—{% endif %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
 <div class="grid grid-cols-1 gap-6 mb-6">
   <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
     <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-4">Strategy Cohort (with drawdown)</h2>

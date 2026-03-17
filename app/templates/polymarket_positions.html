@@ -5,26 +5,11 @@
 {% block content %}
 {% include "polymarket_nav.html" %}
 
-<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+<div class="mb-4">
   <p class="text-sm text-light-muted dark:text-dark-muted">
     Open positions from <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">open_positions.csv</code>.
-    Run <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">update_open_positions.py</code> in polymarket-alerts to refresh.
     {% if data_freshness %}<span class="ml-1">Last updated: <strong>{{ data_freshness }}</strong>.</span>{% endif %}
   </p>
-  <form method="post" action="{{ url_for('polymarket.polymarket_positions_refresh') }}" class="inline">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="hidden" name="days" value="{{ current_days or 'all' }}">
-    <input type="hidden" name="sort" value="{{ current_sort or 'cost_desc' }}">
-    <input type="hidden" name="strategy" value="{{ current_strategy or 'safe' }}">
-    {% if current_category %}<input type="hidden" name="category" value="{{ current_category }}">{% endif %}
-    {% if current_from_date %}<input type="hidden" name="from_date" value="{{ current_from_date }}">{% endif %}
-    {% if current_expiry %}<input type="hidden" name="expiry" value="{{ current_expiry }}">{% endif %}
-    {% if current_hours_max %}<input type="hidden" name="hours_max" value="{{ current_hours_max }}">{% endif %}
-    {% if current_interesting %}<input type="hidden" name="interesting" value="only">{% endif %}
-    <button type="submit" class="px-4 py-2 rounded-md text-sm font-medium bg-light-primary dark:bg-dark-primary text-white hover:opacity-90 transition-opacity">
-      Refresh positions
-    </button>
-  </form>
 </div>
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
@@ -139,6 +124,27 @@
       <option value="{{ url_for('polymarket.polymarket_positions', **sp) }}" {% if current_sort == 'interesting_first' %}selected{% endif %}>Interesting first</option>
     </select>
   </div>
+  <div class="flex items-center gap-2 flex-wrap">
+    <span class="text-sm font-medium text-light-muted dark:text-dark-muted">Refresh:</span>
+    <form method="post" action="{{ url_for('polymarket.polymarket_positions_refresh') }}" class="inline flex items-center gap-2 flex-wrap">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="days" value="{{ current_days or 'all' }}">
+      <input type="hidden" name="sort" value="{{ current_sort or 'cost_desc' }}">
+      <input type="hidden" name="strategy" value="{{ current_strategy or 'safe' }}">
+      {% if current_category %}<input type="hidden" name="category" value="{{ current_category }}">{% endif %}
+      {% if current_from_date %}<input type="hidden" name="from_date" value="{{ current_from_date }}">{% endif %}
+      {% if current_expiry %}<input type="hidden" name="expiry" value="{{ current_expiry }}">{% endif %}
+      {% if current_hours_max %}<input type="hidden" name="hours_max" value="{{ current_hours_max }}">{% endif %}
+      {% if current_interesting %}<input type="hidden" name="interesting" value="only">{% endif %}
+      <label class="flex items-center gap-1.5 text-sm text-light-muted dark:text-dark-muted cursor-pointer">
+        <input type="checkbox" name="live_pricing" value="1" class="rounded border-light-border dark:border-dark-border">
+        Live prices
+      </label>
+      <button type="submit" class="px-3 py-1.5 rounded-md text-sm font-medium bg-light-primary dark:bg-dark-primary text-white hover:opacity-90 transition-opacity">
+        Refresh positions
+      </button>
+    </form>
+  </div>
   {% if current_from_date %}
   <a href="{{ url_for('polymarket.polymarket_positions', days=current_days, category=current_category or none, sort=current_sort, strategy=current_strategy) }}"
      class="px-3 py-1.5 rounded-md text-sm bg-light-hover dark:bg-dark-hover text-light-muted dark:text-dark-muted hover:bg-light-border dark:hover:bg-dark-border transition-colors">
@@ -159,7 +165,19 @@
       {% if total_unrealized_display %}{{ total_unrealized_display }}{% else %}—{% endif %}
     </div>
     {% if not total_unrealized_display and positions %}
-    <p class="text-xs text-light-muted dark:text-dark-muted mt-1">Run <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">update_open_positions.py</code> without <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">--no-live</code> to fetch current prices.</p>
+    <p class="text-xs text-light-muted dark:text-dark-muted mt-1">
+      Run <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">update_open_positions.py</code> without
+      <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">--no-live</code>
+      to fetch current prices, or use the refresh button above with
+      "Fetch live prices" checked.
+    </p>
+    {% elif positions %}
+    {% set price_ts = positions[0].get('last_price_refresh_ts') or '' %}
+    {% if price_ts %}
+    <p class="text-xs text-light-muted dark:text-dark-muted mt-1">
+      Prices as of: <strong>{{ price_ts[:16].replace('T', ' ') }}</strong>
+    </p>
+    {% endif %}
     {% endif %}
   </div>
 </div>
@@ -244,6 +262,7 @@
           <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">
             <a href="{{ url_for('polymarket.polymarket_positions', days=current_days, category=current_category or none, sort=('edge_asc' if current_sort == 'edge_desc' else 'edge_desc'), from_date=current_from_date, expiry=current_expiry, hours_max=current_hours_max, strategy=current_strategy) }}" class="hover:underline {% if current_sort in ('edge_desc','edge_asc') %}text-light-primary dark:text-dark-primary{% endif %}" title="Click to sort by edge">Edge</a>
           </th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Mode</th>
           <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Cost</th>
           <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Unrealized P/L</th>
           <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Link</th>
@@ -274,6 +293,16 @@
           <td class="px-4 py-3 text-right text-sm font-medium {% if p.countdown == 'Expired' %}text-status-down-light dark:text-status-down-dark{% elif p.countdown and p.countdown != '—' %}text-light-text dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted{% endif %}">{{ p.countdown }}</td>
           <td class="px-4 py-3 text-right text-sm text-light-text dark:text-dark-text">{{ p.gamma_display }}</td>
           <td class="px-4 py-3 text-right text-sm font-medium {% if p.edge and p.edge > 0 %}text-status-up-light dark:text-status-up-dark{% elif p.edge and p.edge < 0 %}text-status-down-light dark:text-status-down-dark{% else %}text-light-muted dark:text-dark-muted{% endif %}">{{ p.edge_pct }}</td>
+          <td class="px-4 py-3 text-sm">
+            {% set s_mode = STRATEGY_MODE.get(p.strategy_id or '', '') %}
+            {% if s_mode == 'active' %}
+            <span class="text-xs px-1.5 py-0.5 rounded bg-green-500/20 text-green-700 dark:text-green-400">active</span>
+            {% elif s_mode == 'shadow' %}
+            <span class="text-xs px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover text-light-muted dark:text-dark-muted">shadow</span>
+            {% elif s_mode == 'disabled' %}
+            <span class="text-xs px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover text-light-muted dark:text-dark-muted line-through">legacy</span>
+            {% endif %}
+          </td>
           <td class="px-4 py-3 text-right text-sm text-light-text dark:text-dark-text">{{ p.cost_display }}</td>
           <td class="px-4 py-3 text-right text-sm font-medium {% if p.unrealized_pnl > 0 %}text-status-up-light dark:text-status-up-dark{% elif p.unrealized_pnl < 0 %}text-status-down-light dark:text-status-down-dark{% else %}text-light-muted dark:text-dark-muted{% endif %}">
             {{ p.unrealized_display }}

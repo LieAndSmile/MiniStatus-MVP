@@ -2,6 +2,24 @@
 
 All notable changes to MiniStatus are documented in this file.
 
+## [1.5.0] - 2026-03-17
+
+### Added
+
+- **Polymarket: strategy labels and mode** — `STRATEGY_LABELS` and `STRATEGY_MODE` in `app/utils/polymarket.py`; exposed as Jinja globals so templates show human-readable strategy names (e.g. "Safe fast") and mode badges (active / shadow / legacy) in the dropdown, Portfolio table, and Open Positions table.
+- **Polymarket: data quality banners** — `app/utils/data_quality.py` checks unrealized P/L (all zero → live pricing hint) and drift data sparsity; banners rendered below the Polymarket nav on all Polymarket tabs.
+- **Polymarket Analytics: fill quality card** — New card from `analytics.json` `fill_quality`: note, avg fill gap, and table by spread bucket (tight/narrow/medium/wide).
+- **Polymarket Analytics: cohort matrix** — Gamma × resolution-window heatmap from `analytics.json` `cohort_matrix`; cells show total P/L, win rate, n; green/red by sign; low-data cells faded.
+- **Polymarket Open Positions: live pricing on refresh** — Refresh form includes "Live prices" checkbox; when checked, refresh runs `update_open_positions.py` without `--no-live` so unrealized P/L is updated from the API.
+- **Polymarket Open Positions: price staleness** — Unrealized P/L card shows "Prices as of: YYYY-MM-DD HH:MM" when `last_price_refresh_ts` is present; hint text updated for refresh + "Fetch live prices".
+- **PROJECT_STRUCTURE.md** — Compact directory tree and Polymarket data sources at repo root.
+
+### Changed
+
+- **Polymarket Open Positions: refresh control placement** — "Refresh positions" and "Live prices" checkbox moved from the top-right (next to Strategy dropdown) into the filter bar with Time window, Category, Track, Hrs left, and Sort, labeled "Refresh:" for clearer context.
+
+---
+
 ## [1.4.0] - 2026-03-14
 
 Polymarket Dashboard Improvement Plan (EPICs 1–4): Loss Lab v2 (breakdowns, monthly trend, examples UX), Risky v2 (historical performance, presets, Near Risky, qualified reasons, unrealized P/L messaging), Lifecycle v2 (purpose banner, progress column, HOLD actionable text, event log, strategy filter), cross-tab freshness (all tabs show last updated), strategy filter on Analytics/Lifecycle, normalized terminology, drill-down links, metric tooltips (inlined). Fixes: Analytics and Risky 500 (tooltips partial removed, analytics dict normalization, Risky datetime/empty-historical, Analytics template nesting). See [Unreleased] below for full item list.

@@ -236,6 +236,14 @@
             <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium {% if item.actual_result == 'YES' %}bg-status-up-light/20 dark:bg-status-up-dark/20 text-status-up-light dark:text-status-up-dark{% elif item.actual_result == 'NO' %}bg-status-down-light/20 dark:bg-status-down-dark/20 text-status-down-light dark:text-status-down-dark{% else %}bg-light-hover dark:bg-dark-hover text-light-muted dark:text-dark-muted{% endif %}">
               {{ item.actual_result }}
             </span>
+            {% set s_mode = STRATEGY_MODE.get(item.strategy_id or '', '') %}
+            {% if s_mode == 'active' %}
+            <span class="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-green-500/20 text-green-700 dark:text-green-400">active</span>
+            {% elif s_mode == 'shadow' %}
+            <span class="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover text-light-muted dark:text-dark-muted">shadow</span>
+            {% elif s_mode == 'disabled' %}
+            <span class="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover text-light-muted dark:text-dark-muted line-through">legacy</span>
+            {% endif %}
           </td>
           <td class="px-4 py-3 text-sm whitespace-nowrap">
             {% if item.resolved_date_param %}
