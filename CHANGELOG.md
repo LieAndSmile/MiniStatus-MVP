@@ -17,6 +17,7 @@ All notable changes to MiniStatus are documented in this file.
 ### Changed
 
 - **Polymarket Open Positions: refresh control placement** — "Refresh positions" and "Live prices" checkbox moved from the top-right (next to Strategy dropdown) into the filter bar with Time window, Category, Track, Hrs left, and Sort, labeled "Refresh:" for clearer context.
+- **Polymarket routes: section comments** — Added section dividers in `app/routes/polymarket.py` (Health, Portfolio, Positions, Risky, Loss Lab, Analytics, Lifecycle, Loop, Export) for easier navigation.
 
 ---
 
