@@ -115,6 +115,7 @@ def _get_strategy(allowed=None):
     return "safe" if "safe" in options else (options[0] if options else "safe")
 
 
+# ── Health & freshness (admin) ─────────────────────────────────────────────────
 @polymarket_bp.route("/health")
 @admin_required
 def polymarket_health():
@@ -155,6 +156,7 @@ def polymarket_freshness():
     )
 
 
+# ── Index & portfolio ─────────────────────────────────────────────────────────
 @polymarket_bp.route("")
 @polymarket_bp.route("/")
 @admin_required
@@ -163,6 +165,7 @@ def polymarket_index():
     return redirect(url_for("polymarket.polymarket_portfolio"))
 
 
+# ── Portfolio ─────────────────────────────────────────────────────────────────
 @polymarket_bp.route("/portfolio")
 @admin_required
 @_polymarket_configured_required("portfolio")
@@ -228,6 +231,7 @@ def _parse_positions_days():
     return days_val or "all", days
 
 
+# ── Open positions ───────────────────────────────────────────────────────────
 @polymarket_bp.route("/positions")
 @admin_required
 @_polymarket_configured_required("positions")
@@ -312,6 +316,7 @@ RISKY_PRESETS = {
 }
 
 
+# ── Risky ────────────────────────────────────────────────────────────────────
 @polymarket_bp.route("/risky")
 @admin_required
 @_polymarket_configured_required("risky")
@@ -454,6 +459,7 @@ def polymarket_positions_toggle_interesting():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+# ── Loss Lab ──────────────────────────────────────────────────────────────────
 @polymarket_bp.route("/loss-lab")
 @admin_required
 @_polymarket_configured_required("loss-lab")
@@ -491,6 +497,7 @@ def polymarket_loss_lab():
     )
 
 
+# ── Analytics ─────────────────────────────────────────────────────────────────
 @polymarket_bp.route("/analytics")
 @admin_required
 @_polymarket_configured_required("analytics")
@@ -552,6 +559,7 @@ def polymarket_analytics_refresh():
     return redirect(url_for("polymarket.polymarket_analytics", strategy=request.form.get("strategy") or None))
 
 
+# ── Lifecycle ─────────────────────────────────────────────────────────────────
 @polymarket_bp.route("/lifecycle")
 @admin_required
 @_polymarket_configured_required("lifecycle")
@@ -607,6 +615,7 @@ def polymarket_lifecycle_refresh():
     return redirect(url_for("polymarket.polymarket_lifecycle", strategy=request.form.get("strategy") or None))
 
 
+# ── Loop / Dev ───────────────────────────────────────────────────────────────
 @polymarket_bp.route("/loop")
 @admin_required
 @_polymarket_configured_required("loop")
@@ -679,6 +688,7 @@ def polymarket_loop():
     )
 
 
+# ── Export ───────────────────────────────────────────────────────────────────
 @polymarket_bp.route("/export")
 @admin_required
 def polymarket_export():
