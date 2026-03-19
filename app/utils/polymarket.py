@@ -551,6 +551,71 @@ def get_alerts_status_summary(data_path: str) -> dict:
     )[:3]
     return summary
 
+
+def get_recent_decisions(
+    data_path: str,
+    limit: int = 30,
+) -> list[dict]:
+    """
+    Read alerts_log.csv and return recent decision rows (sent/shadow/blocked) with
+    bet_size_usd + conviction_score + primary_block_reason for UI inspection.
+    """
+    if not data_path or not os.path.isdir(data_path):
+        return []
+    csv_path = os.path.join(data_path, "alerts_log.csv")
+    if not os.path.isfile(csv_path):
+        return []
+
+    result = _read_csv_cached(csv_path)
+    if result is None:
+        return []
+    _, rows = result
+    if not rows:
+        return []
+
+    decisions: list[dict] = []
+    try:
+        for row in rows:
+            ts_dt = _parse_date(row.get("ts") or row.get("resolved_ts") or row.get("resolved_ts"))
+            ts_display = format_ts_display(ts_dt, (row.get("ts") or "").strip())
+            status = (row.get("status") or "").strip().lower()
+            strategy_id = (row.get("strategy_id") or "").strip()
+            question_raw = row.get("question") or ""
+            question = _get_display_label(question_raw)
+
+            bet_size = _parse_float(row.get("bet_size_usd"), default=0.0)
+            conviction_score = int(_parse_float(row.get("conviction_score"), default=0.0))
+
+            primary_reason = (row.get("primary_block_reason") or "").strip()
+            link = (row.get("link") or "").strip()
+
+            decisions.append({
+                "ts_dt": ts_dt,
+                "ts_display": ts_display,
+                "status": status,
+                "strategy_id": strategy_id,
+                "question": question,
+                "bet_size_usd": bet_size,
+                "bet_size_display": format_compact_usd(bet_size),
+                "conviction_score": conviction_score,
+                "primary_block_reason": primary_reason,
+                "link": link if link.startswith("http") else "",
+            })
+    except (IOError, csv.Error):
+        return []
+
+    # Sort newest first by parsed ts; keep stable behavior if ts missing.
+    def _ts_key(d):
+        dt = d.get("ts_dt")
+        try:
+            return dt.timestamp() if dt else 0.0
+        except Exception:
+            return 0.0
+
+    decisions_sorted = sorted(decisions, key=_ts_key, reverse=True)
+    # Keep only newest N visible rows (dict order not used after sorting).
+    return decisions_sorted[: max(1, int(limit))] if decisions_sorted else []
+
 # Empty stats structure for error/fallback responses
 _STATS_EMPTY = {
     "alerts_total": 0,
