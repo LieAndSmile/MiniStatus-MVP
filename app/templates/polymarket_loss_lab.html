@@ -9,7 +9,7 @@
 <div class="mb-6 rounded-lg border border-status-down-light dark:border-status-down-dark bg-status-down-light/10 dark:bg-status-down-dark/10 p-4">
   <h3 class="text-sm font-semibold text-status-down-light dark:text-status-down-dark mb-1">CSV schema mismatch</h3>
   <p class="text-sm text-light-text dark:text-dark-text">{{ csv_schema_error }}</p>
-  <p class="text-xs text-light-muted dark:text-dark-muted mt-2">Fix <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">alerts_log.csv</code> in the polymarket-alerts directory. Required columns: question, pnl_usd, resolved, actual_result, and ts or resolved_ts.</p>
+  <p class="text-xs text-light-muted dark:text-dark-muted mt-2">Fix <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">alerts_log.csv</code> in the polymarket-alerts directory. Required columns: question, pnl_usd, resolved, actual_result, and ts or resolved_ts. Ensure POLYMARKET_DATA_PATH is correct and run <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">python scripts/validate_alerts_log.py --csv alerts_log.csv</code> in polymarket-alerts to validate or repair.</p>
 </div>
 {% endif %}
 

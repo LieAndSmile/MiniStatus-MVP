@@ -13,10 +13,15 @@ from typing import Optional, Literal
 _CSV_CACHE: dict[str, tuple[float, list[str], list[dict]]] = {}
 
 
-def _read_csv_cached(filepath: str) -> Optional[tuple[list[str], list[dict]]]:
+def _read_csv_cached(
+    filepath: str,
+    required_columns: Optional[tuple[str, ...]] = None,
+) -> Optional[tuple[list[str], list[dict]]]:
     """
     Read CSV with mtime caching. Returns (fieldnames, rows) or None.
     Cache invalidates automatically when file mtime changes.
+    If required_columns is set and the default comma read is missing any of them,
+    tries csv.Sniffer to detect delimiter (e.g. semicolon) and re-reads.
     """
     if not filepath or not os.path.isfile(filepath):
         return None
@@ -29,10 +34,33 @@ def _read_csv_cached(filepath: str) -> Optional[tuple[list[str], list[dict]]]:
         if cached_mtime == mtime:
             return (cached_fieldnames, cached_rows)
     try:
-        with open(filepath, "r", encoding="utf-8", errors="replace") as f:
+        with open(filepath, "r", encoding="utf-8-sig", errors="replace") as f:
             reader = csv.DictReader(f)
             fieldnames = list(reader.fieldnames or [])
             rows = list(reader)
+        # If caller expects certain columns and we don't have them, try sniffing delimiter
+        if required_columns and fieldnames:
+            headers_lower = [h.strip().lower() for h in fieldnames if h]
+            missing = [c for c in required_columns if c.lower() not in headers_lower]
+            if missing:
+                try:
+                    with open(filepath, "r", encoding="utf-8-sig", errors="replace") as f2:
+                        sample = f2.read(4096)
+                    if sample and "\n" in sample:
+                        try:
+                            sniffer = csv.Sniffer()
+                            dialect = sniffer.sniff(sample, delimiters=",;\t")
+                            with open(filepath, "r", encoding="utf-8-sig", errors="replace") as f3:
+                                reader2 = csv.DictReader(f3, dialect=dialect)
+                                fn2 = list(reader2.fieldnames or [])
+                                rows2 = list(reader2)
+                            fn2_lower = [h.strip().lower() for h in fn2 if h]
+                            if all(c.lower() in fn2_lower for c in required_columns):
+                                fieldnames, rows = fn2, rows2
+                        except (csv.Error, Exception):
+                            pass
+                except (IOError, OSError):
+                    pass
         _CSV_CACHE[filepath] = (mtime, fieldnames, rows)
         return (fieldnames, rows)
     except (IOError, csv.Error):
@@ -208,6 +236,56 @@ def _filter_sent_rows(rows: list[dict]) -> list[dict]:
         return rows
     return [r for r in rows if (r.get("status") or "").strip().lower() == "sent"]
 
+
+def get_alerts_status_summary(data_path: str) -> dict:
+    """
+    Return high-level status and block-reason counts from alerts_log.csv.
+    Includes all rows (not only sent) so UI can reflect current operating mode.
+    """
+    summary = {
+        "logged": 0,
+        "sent": 0,
+        "shadow": 0,
+        "blocked": 0,
+        "blocked_inactive_strategy": 0,
+        "top_block_reasons": [],
+    }
+    if not data_path or not os.path.isdir(data_path):
+        return summary
+
+    csv_path = os.path.join(data_path, "alerts_log.csv")
+    result = _read_csv_cached(csv_path)
+    if result is None:
+        return summary
+    _, rows = result
+    if not rows:
+        return summary
+
+    block_reasons: dict[str, int] = defaultdict(int)
+    for row in rows:
+        summary["logged"] += 1
+        status = (row.get("status") or "").strip().lower()
+        if status == "sent":
+            summary["sent"] += 1
+        elif status == "shadow":
+            summary["shadow"] += 1
+        elif status == "blocked_inactive_strategy":
+            summary["blocked"] += 1
+            summary["blocked_inactive_strategy"] += 1
+            block_reasons["blocked_inactive_strategy"] += 1
+        elif status.startswith("blocked"):
+            summary["blocked"] += 1
+            reason = (row.get("primary_block_reason") or "").strip()
+            if reason:
+                block_reasons[reason] += 1
+
+    summary["top_block_reasons"] = sorted(
+        [{"reason": k, "count": v} for k, v in block_reasons.items()],
+        key=lambda x: x["count"],
+        reverse=True,
+    )[:3]
+    return summary
+
 # Empty stats structure for error/fallback responses
 _STATS_EMPTY = {
     "alerts_total": 0,
@@ -255,7 +333,10 @@ def validate_alerts_log_schema(data_path: str) -> tuple[bool, Optional[str]]:
         return True, None  # No file yet = OK
 
     try:
-        result = _read_csv_cached(csv_path)
+        result = _read_csv_cached(
+            csv_path,
+            required_columns=ALERTS_LOG_REQUIRED + ALERTS_LOG_NEEDS_ONE_OF,
+        )
         if result is None:
             return False, "Could not read CSV"
         fieldnames, rows = result
@@ -265,12 +346,14 @@ def validate_alerts_log_schema(data_path: str) -> tuple[bool, Optional[str]]:
         # Check required columns
         missing = [c for c in ALERTS_LOG_REQUIRED if c.lower() not in headers_lower]
         if missing:
-            return False, f"Missing required columns: {', '.join(missing)}"
+            headers_preview = ", ".join(headers[:20]) + (" ..." if len(headers) > 20 else "")
+            return False, f"Missing required columns: {', '.join(missing)}. Headers in file ({len(headers)}): {headers_preview}"
 
         # Need at least one timestamp column
         has_ts = any(c.lower() in headers_lower for c in ALERTS_LOG_NEEDS_ONE_OF)
         if not has_ts:
-            return False, "Missing timestamp column (need 'ts' or 'resolved_ts')"
+            headers_preview = ", ".join(headers[:20]) + (" ..." if len(headers) > 20 else "")
+            return False, f"Missing timestamp column (need 'ts' or 'resolved_ts'). Headers in file ({len(headers)}): {headers_preview}"
 
         # Sample first 50 rows: pnl_usd must parse where present
         pnl_failures = 0

@@ -18,6 +18,7 @@ All notable changes to MiniStatus are documented in this file.
 
 - **Polymarket Open Positions: refresh control placement** — "Refresh positions" and "Live prices" checkbox moved from the top-right (next to Strategy dropdown) into the filter bar with Time window, Category, Track, Hrs left, and Sort, labeled "Refresh:" for clearer context.
 - **Polymarket routes: section comments** — Added section dividers in `app/routes/polymarket.py` (Health, Portfolio, Positions, Risky, Loss Lab, Analytics, Lifecycle, Loop, Export) for easier navigation.
+- **Polymarket CSV schema mismatch** — `alerts_log.csv` is now read with `utf-8-sig` (strip BOM) and, when required columns are missing, CSV delimiter is auto-detected (e.g. semicolon) so Excel-exported or locale-different files are accepted. Portfolio and Loss Lab error messages now suggest checking `POLYMARKET_DATA_PATH` and running `python scripts/validate_alerts_log.py --csv alerts_log.csv` in polymarket-alerts to validate or repair.
 
 ---
 
@@ -30,6 +31,8 @@ Polymarket Dashboard Improvement Plan (EPICs 1–4): Loss Lab v2 (breakdowns, mo
 ## [Unreleased]
 
 ### Added
+
+- **Polymarket status-mix panel (backend v6.5 sync)** — Portfolio now shows a compact "Live status mix" panel sourced from `alerts_log.csv`: Logged, Sent, Shadow, Blocked, explicit `blocked_inactive_strategy` count, and top block reasons from `primary_block_reason`. This keeps MiniStatus aligned with polymarket-alerts dynamic sizing/risk telemetry and makes capacity/policy bottlenecks visible without reading Telegram logs.
 
 - **Analytics tab v2 (decision-oriented)** — **Insights block** at top: suggested min edge, best timing windows, top strategy by ROI, drift status. **Edge Quality:** Win rate %, Median P/L per trade, Confidence (Low/Medium/High), suggested edge threshold note. **Timing:** same columns + best hold windows note. **Strategy Cohort:** Win rate %, Median P/L, Confidence, Status (Promising / Weak / Too Early / Neutral) with muted badges. **Drift Study:** per cell shows avg drift, positive %, n; tooltip for median and positive % meaning. All new fields show "—" when missing; no layout or breakage on old analytics.json.
 
