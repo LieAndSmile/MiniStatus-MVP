@@ -379,6 +379,8 @@
             <a href="{{ url_for('polymarket.polymarket_portfolio', filter=current_filter, days=current_days, sort=('date_asc' if current_sort == 'date_desc' else 'date_desc'), page=1, category=current_category if current_category else none, from_date=current_from_date, strategy=current_strategy) }}#resolved-alerts" class="polymarket-preserve-scroll hover:underline {% if current_sort in ('date_desc','date_asc') %}text-light-primary dark:text-dark-primary{% endif %}" title="Click to sort {{ 'oldest first' if current_sort == 'date_desc' else 'newest first' }}">Date</a>
           </th>
           <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">P/L</th>
+          <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider" title="Dynamic bet size used for this sent alert (bet_size_usd)">Bet size</th>
+          <th class="px-4 py-3 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider" title="Conviction score used for dynamic sizing (0–4)">Conv.</th>
           <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Link</th>
           <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Rationale</th>
         </tr>
@@ -409,6 +411,12 @@
           </td>
           <td class="px-4 py-3 text-right text-sm font-medium {% if item.pnl_usd >= 0 %}text-status-up-light dark:text-status-up-dark{% else %}text-status-down-light dark:text-status-down-dark{% endif %}">
             {{ item.pnl_display }}
+          </td>
+          <td class="px-4 py-3 text-right text-sm font-medium text-light-text dark:text-dark-text">
+            {{ item.bet_size_display }}
+          </td>
+          <td class="px-4 py-3 text-right text-sm font-medium text-light-text dark:text-dark-text">
+            {{ item.conviction_score }}
           </td>
           <td class="px-4 py-3">
             {% if item.link %}
