@@ -33,26 +33,102 @@
   {% endif %}
 </div>
 {% elif stats %}
+{% if bankroll_status %}
+<div class="mb-4 rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-4">
+  <p class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase tracking-wider">SANDBOX BANKROLL</p>
+  <div class="mt-2 text-sm text-light-muted dark:text-dark-muted">
+    Total:
+    <strong class="text-light-text dark:text-dark-text">
+      {% if bankroll_status.total is not none %}{{ "$" ~ (bankroll_status.total|round(0)|int) }}{% else %}—{% endif %}
+    </strong>
+    Deployed:
+    <strong class="text-light-text dark:text-dark-text">
+      {% if bankroll_status.deployed is not none %}{{ "$" ~ (bankroll_status.deployed|round(0)|int) }}{% else %}—{% endif %}
+    </strong>
+    ({% if bankroll_status.deployed_pct is not none %}{{ bankroll_status.deployed_pct|round(0)|int }}%{% else %}—{% endif %})
+    · Available:
+    <strong class="text-light-text dark:text-dark-text">
+      {% if bankroll_status.available is not none %}{{ "$" ~ (bankroll_status.available|round(0)|int) }}{% else %}—{% endif %}
+    </strong>
+  </div>
+
+  {% set deployed_pct = (bankroll_status.deployed_pct if bankroll_status.deployed_pct is not none else 0) %}
+  <div class="mt-3">
+    <div class="w-full h-3 rounded bg-light-hover dark:bg-dark-hover overflow-hidden border border-light-border/60 dark:border-dark-border/60">
+      <div class="h-full bg-light-primary dark:bg-dark-primary"
+           style="width: {{ deployed_pct|round(0)|int }}%"></div>
+    </div>
+    <div class="mt-2 text-xs text-light-muted dark:text-dark-muted flex items-center justify-between gap-3">
+      <span>{{ deployed_pct|round(0)|int }}% deployed · {{ bankroll_status.open_positions_count }} open positions</span>
+      <span>{% if bankroll_status.last_updated_display %}Last updated: {{ bankroll_status.last_updated_display }}{% endif %}</span>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if strategy_overview_groups %}
+<details class="mb-4 rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-4">
+  <summary class="cursor-pointer text-sm font-semibold text-light-text dark:text-dark-text">
+    Strategy Overview
+  </summary>
+  <div class="mt-3 space-y-3">
+    {% for group in strategy_overview_groups %}
+      {% if group['items'] and group['items']|length > 0 %}
+      <div>
+        <div class="text-sm font-semibold text-light-muted dark:text-dark-muted">{{ group.label }} ({{ group.count }})</div>
+        <ul class="mt-2 text-xs text-light-muted dark:text-dark-muted list-disc ml-5 space-y-1">
+          {% for s in group['items'] %}
+          <li>
+            <span class="text-light-text dark:text-dark-text font-medium">{{ s.label }}</span>
+            {% if s.gamma_edge_res_parts %}· {{ s.gamma_edge_res_parts }}{% endif %}
+            · size {{ s.size_multiplier|round(2) }}×
+            {% if s.size_multiplier|float == 0 %} <span class="text-amber-700 dark:text-amber-300">(inactive)</span>{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+</details>
+{% endif %}
+
 {% if status_summary %}
 <div class="mb-4 bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
-  <h3 class="text-sm font-semibold text-light-text dark:text-dark-text mb-2">Live status mix</h3>
-  <div class="flex flex-wrap gap-2 text-xs">
-    <span class="px-2 py-1 rounded bg-light-hover dark:bg-dark-hover text-light-text dark:text-dark-text">Logged: {{ status_summary.logged }}</span>
-    <span class="px-2 py-1 rounded bg-status-up-light/20 dark:bg-status-up-dark/20 text-status-up-light dark:text-status-up-dark">Sent: {{ status_summary.sent }}</span>
-    <span class="px-2 py-1 rounded bg-light-hover dark:bg-dark-hover text-light-text dark:text-dark-text">Shadow: {{ status_summary.shadow }}</span>
-    <span class="px-2 py-1 rounded bg-status-down-light/20 dark:bg-status-down-dark/20 text-status-down-light dark:text-status-down-dark">Blocked: {{ status_summary.blocked }}</span>
-    {% if status_summary.blocked_inactive_strategy > 0 %}
-    <span class="px-2 py-1 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200">Inactive strategy: {{ status_summary.blocked_inactive_strategy }}</span>
-    {% endif %}
-  </div>
+  <h3 class="text-sm font-semibold text-light-text dark:text-dark-text mb-1">Pipeline activity (all time)</h3>
+  <p class="text-sm text-light-muted dark:text-dark-muted">
+    {{ status_summary.logged }} candidates logged · {{ status_summary.sent }} placed · {{ status_summary.shadow }} observing (shadow) · {{ status_summary.blocked }} blocked
+  </p>
+
+  {% if status_summary.top_block_reasons and status_summary.top_block_reasons|length > 0 %}
+  {% set top_reason = status_summary.top_block_reasons[0] %}
+  <p class="mt-2 text-xs text-light-muted dark:text-dark-muted">
+    Why blocked:
+    <span title="{{ top_reason.reason }}">
+      {{ BLOCK_REASON_LABELS.get(top_reason.reason, top_reason.reason) }} ({{ top_reason.count }})
+    </span>
+  </p>
+  {% endif %}
+
+  {% if status_summary.blocked_inactive_strategy > 0 %}
+  <p class="mt-1 text-xs text-amber-700 dark:text-amber-300">
+    Strategy inactive blocks (size_multiplier = 0.0): {{ status_summary.blocked_inactive_strategy }}
+  </p>
+  {% endif %}
+
   {% if status_summary.top_block_reasons %}
   <p class="mt-2 text-xs text-light-muted dark:text-dark-muted">
     Top block reasons:
     {% for r in status_summary.top_block_reasons %}
-      {% if not loop.first %} · {% endif %}{{ r.reason }} ({{ r.count }})
+      {% if not loop.first %} · {% endif %}
+      <span title="{{ r.reason }}">{{ BLOCK_REASON_LABELS.get(r.reason, r.reason) }} ({{ r.count }})</span>
     {% endfor %}
   </p>
   {% endif %}
+
+  <p class="mt-2 text-xs text-light-muted dark:text-dark-muted">
+    Blocked = valid setup, portfolio policy said no
+  </p>
 </div>
 {% endif %}
 <!-- Health & actions -->
@@ -252,19 +328,19 @@
       </thead>
       <tbody class="divide-y divide-light-border dark:divide-dark-border">
         {% for item in stats.resolved_list %}
-        <tr class="polymarket-row hover:bg-light-hover dark:hover:bg-dark-hover transition-colors" data-search="{{ item.question|lower|e }}">
+        {% set s_mode = STRATEGY_MODE.get(item.strategy_id or '', '') %}
+        <tr class="polymarket-row hover:bg-light-hover dark:hover:bg-dark-hover transition-colors {% if s_mode == 'shadow' %}bg-light-hover/5 dark:bg-dark-hover/10{% endif %}" data-search="{{ item.question|lower|e }}">
           <td class="px-4 py-3 text-sm text-light-text dark:text-dark-text max-w-md truncate" title="{{ item.question }}">{{ item.question }}</td>
           <td class="px-4 py-3">
             <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium {% if item.actual_result == 'YES' %}bg-status-up-light/20 dark:bg-status-up-dark/20 text-status-up-light dark:text-status-up-dark{% elif item.actual_result == 'NO' %}bg-status-down-light/20 dark:bg-status-down-dark/20 text-status-down-light dark:text-status-down-dark{% else %}bg-light-hover dark:bg-dark-hover text-light-muted dark:text-dark-muted{% endif %}">
               {{ item.actual_result }}
             </span>
-            {% set s_mode = STRATEGY_MODE.get(item.strategy_id or '', '') %}
             {% if s_mode == 'active' %}
-            <span class="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-green-500/20 text-green-700 dark:text-green-400">active</span>
+            <span class="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-green-500/20 text-green-700 dark:text-green-400" title="This strategy places real bets">active</span>
             {% elif s_mode == 'shadow' %}
-            <span class="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover text-light-muted dark:text-dark-muted">shadow</span>
+            <span class="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover text-light-muted dark:text-dark-muted" title="This strategy observes only — no bet placed">shadow</span>
             {% elif s_mode == 'disabled' %}
-            <span class="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover text-light-muted dark:text-dark-muted line-through">legacy</span>
+            <span class="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover text-light-muted dark:text-dark-muted line-through" title="Disabled strategy — historical data only">legacy</span>
             {% endif %}
           </td>
           <td class="px-4 py-3 text-sm whitespace-nowrap">

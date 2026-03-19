@@ -93,9 +93,10 @@ API_KEY=supersecret
     limiter.init_app(app)
 
     # Polymarket strategy labels and mode (for templates)
-    from app.utils.polymarket import STRATEGY_LABELS, STRATEGY_MODE
+    from app.utils.polymarket import STRATEGY_LABELS, STRATEGY_MODE, BLOCK_REASON_LABELS
     app.jinja_env.globals["STRATEGY_LABELS"] = STRATEGY_LABELS
     app.jinja_env.globals["STRATEGY_MODE"] = STRATEGY_MODE
+    app.jinja_env.globals["BLOCK_REASON_LABELS"] = BLOCK_REASON_LABELS
     
     # Custom error handler for rate limit exceeded
     @app.errorhandler(429)
