@@ -5,6 +5,41 @@
 {% block content %}
 {% include "polymarket_nav.html" %}
 
+{% if bankroll_status %}
+<div class="mb-4 rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-4">
+  <p class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase tracking-wider">SANDBOX BANKROLL</p>
+  <div class="mt-2 text-sm text-light-muted dark:text-dark-muted">
+    Total:
+    <strong class="text-light-text dark:text-dark-text">
+      {% if bankroll_status.total is not none %}{{ "$" ~ (bankroll_status.total|round(0)|int) }}{% else %}—{% endif %}
+    </strong>
+    Deployed:
+    <strong class="text-light-text dark:text-dark-text">
+      {% if bankroll_status.deployed is not none %}{{ "$" ~ (bankroll_status.deployed|round(0)|int) }}{% else %}—{% endif %}
+    </strong>
+    (
+    {% if bankroll_status.deployed_pct is not none %}{{ bankroll_status.deployed_pct|round(0)|int }}%{% else %}—{% endif %}
+    )
+    Available:
+    <strong class="text-light-text dark:text-dark-text">
+      {% if bankroll_status.available is not none %}{{ "$" ~ (bankroll_status.available|round(0)|int) }}{% else %}—{% endif %}
+    </strong>
+  </div>
+
+  {% set deployed_pct = (bankroll_status.deployed_pct if bankroll_status.deployed_pct is not none else 0) %}
+  <div class="mt-3">
+    <div class="w-full h-3 rounded bg-light-hover dark:bg-dark-hover overflow-hidden border border-light-border/60 dark:border-dark-border/60">
+      <div class="h-full bg-light-primary dark:bg-dark-primary"
+           style="width: {{ deployed_pct|round(0)|int }}%"></div>
+    </div>
+    <div class="mt-2 text-xs text-light-muted dark:text-dark-muted flex items-center justify-between gap-3">
+      <span>{{ deployed_pct|round(0)|int }}% deployed · {{ bankroll_status.open_positions_count }} open positions</span>
+      <span>{% if bankroll_status.last_updated_display %}Last updated: {{ bankroll_status.last_updated_display }}{% endif %}</span>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <div class="mb-4">
   <p class="text-sm text-light-muted dark:text-dark-muted">
     Open positions from <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">open_positions.csv</code>.
@@ -185,7 +220,9 @@
 {% if exposure and exposure|length > 0 %}
 <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4 mb-6">
   <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-4">Cluster Exposure Summary</h2>
-  <p class="text-sm text-light-muted dark:text-dark-muted mb-4">Concentration risk by category. Top 5 biggest exposures.</p>
+  <p class="text-sm text-light-muted dark:text-dark-muted mb-4">
+    Concentration risk by category (capacity policy in polymarket-alerts config). Top 5 biggest exposures.
+  </p>
   <div class="h-40 mb-4">
     <canvas id="exposure-chart"></canvas>
   </div>

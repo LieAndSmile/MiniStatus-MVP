@@ -31,13 +31,17 @@ from app.utils.polymarket import (
     get_lifecycle_file_age,
     get_file_age,
     get_strategy_options_for_nav,
+    get_strategy_options_grouped,
     get_alerts_status_summary,
+    get_bankroll_status,
+    get_strategy_summary,
     SORT_OPTIONS,
     DEBUG_SORT_OPTIONS,
     LOOP_HOURS_MAX_PRESETS,
     POSITIONS_SORT_OPTIONS,
     POSITIONS_EXPIRY_FILTERS,
     STRATEGY_OPTIONS,
+    STRATEGY_MODE,
 )
 from app.utils.polymarket_health import get_polymarket_health, get_polymarket_freshness
 from app.utils.data_quality import get_data_quality_flags
@@ -108,12 +112,18 @@ def _pagination_params():
 
 
 def _get_strategy(allowed=None):
-    """Return strategy from request (v3). Default 'safe'; must be in allowed set or STRATEGY_OPTIONS."""
-    s = (request.args.get("strategy") or "safe").strip()
+    """Return strategy from request (v3).
+
+    If request doesn't specify a strategy (or specifies an unknown one), default to the first active strategy.
+    """
+    s = (request.args.get("strategy") or "").strip()
     options = allowed if allowed is not None else STRATEGY_OPTIONS
     if s in options:
         return s
-    return "safe" if "safe" in options else (options[0] if options else "safe")
+    for opt in options:
+        if STRATEGY_MODE.get(opt) == "active":
+            return opt
+    return options[0] if options else "safe"
 
 
 # ── Health & freshness (admin) ─────────────────────────────────────────────────
@@ -174,6 +184,7 @@ def polymarket_portfolio():
     """Display Polymarket Alerts stats from local CSV data."""
     data_path = _get_data_path()
     strategy_options = get_strategy_options_for_nav(data_path)
+    strategy_options_grouped = get_strategy_options_grouped(strategy_options)
     strategy_val = _get_strategy(strategy_options)
     filter_val, days_val, days = _parse_filter_days()
     from_date_val = (request.args.get("from_date") or "").strip() or None
@@ -187,6 +198,8 @@ def polymarket_portfolio():
     last_loop = get_last_loop_time(data_path)
     run_stats = get_run_stats_log(data_path)
     status_summary = get_alerts_status_summary(data_path)
+    bankroll_status = get_bankroll_status(data_path)
+    strategy_overview_groups = get_strategy_summary(data_path)
 
     total_count = len(stats.get("resolved_list", [])) if stats else 0
     pagination = build_pagination(total_count, page, PER_PAGE)
@@ -212,11 +225,14 @@ def polymarket_portfolio():
         last_loop=last_loop,
         run_stats=run_stats,
         status_summary=status_summary,
+        bankroll_status=bankroll_status,
+        strategy_overview_groups=strategy_overview_groups,
         data_freshness=data_freshness,
         data_quality_flags=get_data_quality_flags(data_path),
         active_section="portfolio",
         polymarket_sections=POLYMARKET_SECTIONS,
         pagination=pagination,
+        strategy_options_grouped=strategy_options_grouped,
     )
 
 
@@ -242,6 +258,7 @@ def polymarket_positions():
     """Open positions from open_positions.csv. Supports marking positions as interesting and filter/sort by them."""
     data_path = _get_data_path()
     strategy_options = get_strategy_options_for_nav(data_path)
+    strategy_options_grouped = get_strategy_options_grouped(strategy_options)
     strategy_val = _get_strategy(strategy_options)
     days_val, days = _parse_positions_days()
     from_date_val = (request.args.get("from_date") or "").strip() or None
@@ -284,6 +301,7 @@ def polymarket_positions():
     total_unrealized = sum(p["unrealized_pnl"] for p in positions)
     exposure = get_exposure_summary(positions)
     data_freshness = get_file_age(data_path, "open_positions.csv")
+    bankroll_status = get_bankroll_status(data_path)
     return render_template(
         "polymarket_positions.html",
         configured=True,
@@ -306,6 +324,8 @@ def polymarket_positions():
         current_hours_max=hours_max_val,
         current_strategy=strategy_val,
         strategy_options=strategy_options,
+        strategy_options_grouped=strategy_options_grouped,
+        bankroll_status=bankroll_status,
         sort_options=POSITIONS_SORT_OPTIONS,
         expiry_filters=POSITIONS_EXPIRY_FILTERS,
     )
@@ -327,6 +347,7 @@ def polymarket_risky():
     """Risky strategy tab: positions matching high edge, low gamma, short expiry."""
     data_path = _get_data_path()
     strategy_options = get_strategy_options_for_nav(data_path)
+    strategy_options_grouped = get_strategy_options_grouped(strategy_options)
     strategy_val = _get_strategy(strategy_options)
     days_val, days = _parse_positions_days()
     from_date_val = (request.args.get("from_date") or "").strip() or None
@@ -398,6 +419,7 @@ def polymarket_risky():
         current_preset=preset_val,
         risky_presets=RISKY_PRESETS,
         strategy_options=strategy_options,
+        strategy_options_grouped=strategy_options_grouped,
         sort_options=POSITIONS_SORT_OPTIONS,
     )
 
@@ -471,6 +493,7 @@ def polymarket_loss_lab():
     """Loss Lab – breakdown of losses by category."""
     data_path = _get_data_path()
     strategy_options = get_strategy_options_for_nav(data_path)
+    strategy_options_grouped = get_strategy_options_grouped(strategy_options)
     strategy_val = _get_strategy(strategy_options)
     _, days_val, days = _parse_filter_days()
     valid, schema_error = validate_alerts_log_schema(data_path)
@@ -497,6 +520,7 @@ def polymarket_loss_lab():
         current_days=days_val if days_val else "all",
         current_strategy=strategy_val,
         strategy_options=strategy_options,
+        strategy_options_grouped=strategy_options_grouped,
         csv_schema_error=schema_error if not valid else None,
     )
 
@@ -509,6 +533,7 @@ def polymarket_analytics():
     """Analytics dashboard: Edge Quality, Timing, Strategy Cohort (with drawdown), Exit Study (MTM). Data from analytics.json."""
     data_path = _get_data_path()
     strategy_options = get_strategy_options_for_nav(data_path)
+    strategy_options_grouped = get_strategy_options_grouped(strategy_options)
     strategy_val = _get_strategy(strategy_options)
     analytics = get_analytics_json(data_path)
     analytics_age = get_analytics_file_age(data_path)
@@ -528,6 +553,7 @@ def polymarket_analytics():
         data_quality_flags=get_data_quality_flags(data_path),
         current_strategy=strategy_val,
         strategy_options=strategy_options,
+        strategy_options_grouped=strategy_options_grouped,
     )
 
 
@@ -571,6 +597,7 @@ def polymarket_lifecycle():
     """Strategy lifecycle: promote/kill verdicts from lifecycle.json."""
     data_path = _get_data_path()
     strategy_options = get_strategy_options_for_nav(data_path)
+    strategy_options_grouped = get_strategy_options_grouped(strategy_options)
     strategy_val = _get_strategy(strategy_options)
     lifecycle = get_lifecycle_json(data_path)
     lifecycle_age = get_lifecycle_file_age(data_path)
@@ -584,6 +611,7 @@ def polymarket_lifecycle():
         data_quality_flags=get_data_quality_flags(data_path),
         current_strategy=strategy_val,
         strategy_options=strategy_options,
+        strategy_options_grouped=strategy_options_grouped,
     )
 
 
@@ -627,6 +655,7 @@ def polymarket_loop():
     """Loop / Dev – debug candidates from debug_candidates.csv."""
     data_path = _get_data_path()
     strategy_options = get_strategy_options_for_nav(data_path)
+    strategy_options_grouped = get_strategy_options_grouped(strategy_options)
     strategy_val = _get_strategy(strategy_options)
     last_loop = get_last_loop_time(data_path)
     debug_status = request.args.get("debug_status", "all")
@@ -687,6 +716,7 @@ def polymarket_loop():
         loop_query=loop_query,
         current_strategy=strategy_val,
         strategy_options=strategy_options,
+        strategy_options_grouped=strategy_options_grouped,
         active_section="loop",
         polymarket_sections=POLYMARKET_SECTIONS,
     )

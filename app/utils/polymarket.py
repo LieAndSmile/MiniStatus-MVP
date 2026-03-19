@@ -214,6 +214,271 @@ STRATEGY_MODE: dict[str, str] = {
 }
 
 
+BLOCK_REASON_LABELS: dict[str, str] = {
+    "MAX_TOTAL_RISK_USD": "Portfolio cap reached",
+    "MAX_OPEN_POSITIONS": "Max positions open",
+    "MAX_CATEGORY_EXPOSURE_USD": "Category limit reached",
+    "MAX_STRATEGY_EXPOSURE_USD": "Strategy limit reached",
+    "blocked_inactive_strategy": "Strategy inactive",
+}
+
+
+def get_strategy_options_grouped(strategy_options: tuple[str, ...]) -> list[dict]:
+    """
+    Group strategy options by mode for the nav dropdown.
+
+    Note: we treat *_probe strategies as "Probes" (separate group) even though STRATEGY_MODE marks them as "shadow".
+    This matches strategies.yaml naming and avoids extra IO on every request.
+    """
+    active: list[str] = []
+    shadow: list[str] = []
+    probes: list[str] = []
+    disabled: list[str] = []
+
+    for opt in strategy_options or ():
+        mode = STRATEGY_MODE.get(opt, "")
+        if opt.endswith("_probe"):
+            probes.append(opt)
+        elif mode == "active":
+            active.append(opt)
+        elif mode == "shadow":
+            shadow.append(opt)
+        else:
+            disabled.append(opt)
+
+    def _sorted(xs: list[str]) -> list[str]:
+        return sorted(xs, key=lambda x: (x or "").lower())
+
+    return [
+        {"group": "active", "label": "● Active", "options": _sorted(active)},
+        {"group": "shadow", "label": "◎ Shadow (observing)", "options": _sorted(shadow)},
+        {"group": "probes", "label": "◎ Probes", "options": _sorted(probes)},
+        {"group": "disabled", "label": "— Disabled", "options": _sorted(disabled)},
+    ]
+
+
+def _parse_iso_datetime(val: str) -> Optional[datetime]:
+    """Parse ISO datetime string with or without timezone; return tz-aware UTC if possible."""
+    if not val or not isinstance(val, str):
+        return None
+    s = val.strip()
+    if not s:
+        return None
+    try:
+        # Handle trailing Z
+        if s.endswith("Z"):
+            s = s[:-1] + "+00:00"
+        dt = datetime.fromisoformat(s)
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    except (ValueError, TypeError):
+        return None
+
+
+def _format_time_ago(dt: Optional[datetime]) -> str:
+    """Human-readable "X min ago" from a tz-aware datetime."""
+    if not dt:
+        return "—"
+    now = datetime.now(timezone.utc)
+    delta_sec = (now - dt).total_seconds()
+    if delta_sec < 60:
+        return "just now"
+    if delta_sec < 3600:
+        mins = int(delta_sec // 60)
+        return f"{mins} min ago"
+    if delta_sec < 86400:
+        hours = int(delta_sec // 3600)
+        return f"{hours} hour{'s' if hours != 1 else ''} ago"
+    days = int(delta_sec // 86400)
+    return f"{days} day{'s' if days != 1 else ''} ago"
+
+
+def _is_resolved_row(row: dict) -> bool:
+    """Infer resolved status from CSV row (works for older and newer rows)."""
+    resolved_val = row.get("resolved", "")
+    actual_result = (row.get("actual_result") or "").strip().upper()
+    return _parse_bool(resolved_val) or actual_result in ("YES", "NO")
+
+
+def get_bankroll_status(data_path: str) -> dict:
+    """
+    Read bankroll.json and return display-ready status for UI.
+
+    open_positions_count is derived from alerts_log.csv: count of status='sent' rows that are not resolved yet.
+    """
+    status = {
+        "total": None,
+        "deployed": None,
+        "available": None,
+        "deployed_pct": None,
+        "last_updated_display": "—",
+        "open_positions_count": 0,
+    }
+
+    if not data_path or not os.path.isdir(data_path):
+        return status
+
+    # Open positions count
+    csv_path = os.path.join(data_path, "alerts_log.csv")
+    result = _read_csv_cached(csv_path) if os.path.isfile(csv_path) else None
+    if result is not None:
+        _, rows = result
+        if rows:
+            # Only count rows that the simulation would have "placed" (sent), but not resolved yet.
+            open_cnt = 0
+            for row in rows:
+                st = (row.get("status") or "").strip().lower()
+                if st != "sent":
+                    continue
+                if not _is_resolved_row(row):
+                    open_cnt += 1
+            status["open_positions_count"] = open_cnt
+
+    # Bankroll file
+    bankroll_path = os.path.join(data_path, "bankroll.json")
+    try:
+        if os.path.isfile(bankroll_path):
+            import json
+            with open(bankroll_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            total = data.get("total")
+            deployed = data.get("deployed")
+            available = data.get("available")
+            status["total"] = float(total) if total is not None and str(total) != "" else None
+            status["deployed"] = float(deployed) if deployed is not None and str(deployed) != "" else None
+            status["available"] = float(available) if available is not None and str(available) != "" else None
+            if status["total"] is not None and status["deployed"] is not None and status["total"] > 0:
+                status["deployed_pct"] = (status["deployed"] / status["total"]) * 100.0
+
+            last_updated = data.get("last_updated") or ""
+            dt = _parse_iso_datetime(last_updated)
+            if dt:
+                status["last_updated_display"] = _format_time_ago(dt)
+            else:
+                # fallback: file mtime
+                status["last_updated_display"] = _format_time_ago(datetime.fromtimestamp(os.path.getmtime(bankroll_path), tz=timezone.utc))
+    except Exception:
+        # Keep UI resilient: show open_positions_count even if bankroll.json is broken.
+        pass
+
+    return status
+
+
+def get_strategy_summary(data_path: str) -> list[dict]:
+    """
+    Build strategy overview rows for the Portfolio "Command Center" panel.
+    Source: polymarket-alerts `strategies.yaml`.
+    """
+    empty = [
+        {"group": "active", "label": "● ACTIVE", "items": [], "count": 0},
+        {"group": "shadow", "label": "◎ SHADOW — observing, not betting", "items": [], "count": 0},
+        {"group": "probes", "label": "◎ PROBES — observing cohorts", "items": [], "count": 0},
+        {"group": "disabled", "label": "— DISABLED (legacy)", "items": [], "count": 0},
+    ]
+    if not data_path or not os.path.isdir(data_path):
+        return empty
+
+    yaml_path = os.path.join(data_path, "strategies.yaml")
+    if not os.path.isfile(yaml_path):
+        return empty
+
+    try:
+        import yaml
+        with open(yaml_path, "r", encoding="utf-8") as f:
+            raw = yaml.safe_load(f) or {}
+    except Exception:
+        return empty
+
+    if not isinstance(raw, dict):
+        return empty
+
+    def _float_or_none(v):
+        if v is None or v == "":
+            return None
+        try:
+            return float(v)
+        except (ValueError, TypeError):
+            return None
+
+    grouped: dict[str, list[dict]] = {"active": [], "shadow": [], "probes": [], "disabled": []}
+    for sid, entry in raw.items():
+        if not isinstance(entry, dict):
+            continue
+        # Prefer strategies.yaml, but fall back to STRATEGY_MODE.
+        mode = entry.get("mode") or STRATEGY_MODE.get(sid, "disabled")
+        family = entry.get("strategy_family") or ""
+        is_probe = family == "probe" or (sid or "").endswith("_probe")
+
+        gamma_min = _float_or_none(entry.get("gamma_min"))
+        gamma_max = _float_or_none(entry.get("gamma_max"))
+        edge_min = _float_or_none(entry.get("edge_min"))
+        res_min = entry.get("resolution_days_min")
+        res_max = entry.get("resolution_days_max")
+        size_multiplier = entry.get("size_multiplier")
+        if size_multiplier is None:
+            # Mirror backend behavior: unspecified => 1.0 sizing multiplier.
+            size_multiplier = 1.0
+        try:
+            size_multiplier = float(size_multiplier)
+        except (ValueError, TypeError):
+            size_multiplier = 1.0
+
+        def _fmt_gamma():
+            if gamma_min is None and gamma_max is None:
+                return ""
+            if gamma_min is not None and gamma_max is None:
+                return f"γ ≥ {gamma_min:.2f}"
+            if gamma_min is not None and gamma_max is not None:
+                return f"γ {gamma_min:.2f}–{gamma_max:.2f}"
+            return ""
+
+        def _fmt_edge():
+            if edge_min is None:
+                return ""
+            return f"edge ≥ {edge_min * 100:.0f}%"
+
+        def _fmt_res():
+            if res_min is None and res_max is None:
+                return ""
+            try:
+                a = int(res_min) if res_min is not None else int(res_max)
+                b = int(res_max) if res_max is not None else a
+                if a == b:
+                    return f"resolves {a}d"
+                return f"resolves {a}–{b}d"
+            except (ValueError, TypeError):
+                return ""
+
+        item = {
+            "id": sid,
+            "label": STRATEGY_LABELS.get(sid, sid),
+            "mode": mode,
+            "gamma_edge_res_parts": " · ".join([p for p in [_fmt_gamma(), _fmt_edge(), _fmt_res()] if p]),
+            "size_multiplier": size_multiplier,
+        }
+
+        if is_probe:
+            grouped["probes"].append(item)
+        elif mode == "active":
+            grouped["active"].append(item)
+        elif mode == "shadow":
+            grouped["shadow"].append(item)
+        else:
+            grouped["disabled"].append(item)
+
+    # Order: stable (alphabetical by label)
+    for k in grouped:
+        grouped[k] = sorted(grouped[k], key=lambda x: (x.get("label") or "").lower())
+
+    result = empty
+    mapping = {"active": 0, "shadow": 1, "probes": 2, "disabled": 3}
+    for group_name, idx in mapping.items():
+        result[idx]["items"] = grouped[group_name]
+        result[idx]["count"] = len(grouped[group_name])
+    return result
+
+
 def get_strategy_options_for_nav(data_path: str) -> tuple[str, ...]:
     """
     Return strategy list for nav dropdown. If analytics.json exists, merge its strategy_cohort

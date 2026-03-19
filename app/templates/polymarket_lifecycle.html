@@ -5,6 +5,21 @@
 {% block content %}
 {% include "polymarket_nav.html" %}
 
+<details class="mb-4 p-4 rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card">
+  <summary class="cursor-pointer text-sm font-semibold text-light-text dark:text-dark-text">
+    What does this tab do?
+  </summary>
+  <div class="mt-2 text-sm text-light-muted dark:text-dark-muted space-y-2">
+    <p>
+      The Lifecycle tab evaluates <strong>shadow</strong> and <strong>active</strong> strategies using resolved results.
+      It decides whether strategies are building enough evidence to trust (promote) or should be retired (kill).
+    </p>
+    <p class="text-xs">
+      If you don’t see data yet, generate it from the polymarket-alerts repo: run the lifecycle export and refresh the page.
+    </p>
+  </div>
+</details>
+
 <div class="mb-4 p-4 rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card">
   <p class="text-sm text-light-text dark:text-dark-text">
     <strong>Lifecycle</strong> evaluates shadow and active strategies using resolved results. Shadow strategies can be <strong>promoted</strong> after enough evidence; weak strategies can be flagged for <strong>kill/demotion</strong>. Verdicts and thresholds below come from <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">lifecycle.json</code>.
@@ -29,7 +44,17 @@
 
 {% if not lifecycle %}
 <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-6">
-  <p class="text-light-muted dark:text-dark-muted">No <code>lifecycle.json</code> found. In polymarket-alerts run: <code>./venv/bin/python evaluate_strategy_lifecycle.py --data-dir . --out lifecycle.json</code></p>
+  <p class="text-light-muted dark:text-dark-muted">
+    <strong>No lifecycle data yet.</strong><br />
+    The Lifecycle tab shows strategy performance verdicts — whether each strategy is building enough evidence to trust, or should be retired.
+  </p>
+  <p class="text-sm text-light-muted dark:text-dark-muted mt-3">
+    To generate: in your polymarket-alerts directory, run:
+    <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">python analytics/evaluate_strategy_lifecycle.py --data-dir . --out lifecycle.json</code>
+  </p>
+  <p class="text-sm text-light-muted dark:text-dark-muted mt-2">
+    Once generated, it updates automatically on the next refresh.
+  </p>
 </div>
 {% else %}
 

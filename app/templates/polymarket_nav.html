@@ -20,9 +20,21 @@
       <label for="polymarket-strategy" class="text-sm text-light-muted dark:text-dark-muted whitespace-nowrap">Strategy</label>
       <select id="polymarket-strategy" name="strategy" data-polymarket-nav
               class="text-sm rounded border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text px-2 py-1.5 focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary">
-        {% for opt in strategy_options %}
-        <option value="{{ opt }}" {% if current_strategy is defined and current_strategy == opt %}selected{% endif %}>{{ STRATEGY_LABELS.get(opt, opt) }}</option>
-        {% endfor %}
+        {% if strategy_options_grouped is defined and strategy_options_grouped %}
+          {% for group in strategy_options_grouped %}
+          <optgroup label="{{ group.label }}">
+            {% for opt in group.options %}
+            <option value="{{ opt }}" {% if current_strategy is defined and current_strategy == opt %}selected{% endif %}>
+              {{ STRATEGY_LABELS.get(opt, opt) }}
+            </option>
+            {% endfor %}
+          </optgroup>
+          {% endfor %}
+        {% else %}
+          {% for opt in strategy_options %}
+          <option value="{{ opt }}" {% if current_strategy is defined and current_strategy == opt %}selected{% endif %}>{{ STRATEGY_LABELS.get(opt, opt) }}</option>
+          {% endfor %}
+        {% endif %}
       </select>
     </div>
     {% endif %}
