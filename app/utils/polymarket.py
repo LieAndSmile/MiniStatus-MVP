@@ -789,6 +789,9 @@ def get_polymarket_stats(
                     "category": cat,
                     "actual_result": actual_result or "—",
                     "pnl_usd": pnl,
+                    # For status=sent rows, these fields are present for dynamic sizing.
+                    "bet_size_usd": _parse_float(row.get("bet_size_usd") or row.get("cost_usd") or row.get("fill_usdc") or 0.0),
+                    "conviction_score": int(_parse_float(row.get("conviction_score"), default=0.0)),
                     "link": link if link.startswith("http") else "",
                     "resolved_ts": resolved_ts,
                     "rationale": {
@@ -868,6 +871,12 @@ def get_polymarket_stats(
 
     for r in sorted_rows:
         r["pnl_display"] = f"${r['pnl_usd']:.2f}"
+        # These may be missing on legacy rows; ensure template always has the fields.
+        if "bet_size_usd" not in r:
+            r["bet_size_usd"] = 0.0
+        if "conviction_score" not in r:
+            r["conviction_score"] = 0
+        r["bet_size_display"] = format_compact_usd(r["bet_size_usd"] or 0.0)
         r["resolved_ts_display"] = format_ts_display(r.get("resolved_ts"))
         r["resolved_date_param"] = r["resolved_ts"].strftime("%Y-%m-%d") if r.get("resolved_ts") else ""
     cumulative = 0.0
