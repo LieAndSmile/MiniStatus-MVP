@@ -33,6 +33,7 @@ from app.utils.polymarket import (
     get_strategy_options_for_nav,
     get_strategy_options_grouped,
     get_alerts_status_summary,
+    get_recent_decisions,
     get_bankroll_status,
     get_strategy_summary,
     SORT_OPTIONS,
@@ -200,6 +201,7 @@ def polymarket_portfolio():
     status_summary = get_alerts_status_summary(data_path)
     bankroll_status = get_bankroll_status(data_path)
     strategy_overview_groups = get_strategy_summary(data_path)
+    recent_decisions = get_recent_decisions(data_path, limit=30)
 
     total_count = len(stats.get("resolved_list", [])) if stats else 0
     pagination = build_pagination(total_count, page, PER_PAGE)
@@ -227,6 +229,7 @@ def polymarket_portfolio():
         status_summary=status_summary,
         bankroll_status=bankroll_status,
         strategy_overview_groups=strategy_overview_groups,
+        recent_decisions=recent_decisions,
         data_freshness=data_freshness,
         data_quality_flags=get_data_quality_flags(data_path),
         active_section="portfolio",
