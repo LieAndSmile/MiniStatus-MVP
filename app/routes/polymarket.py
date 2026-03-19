@@ -31,6 +31,7 @@ from app.utils.polymarket import (
     get_lifecycle_file_age,
     get_file_age,
     get_strategy_options_for_nav,
+    get_alerts_status_summary,
     SORT_OPTIONS,
     DEBUG_SORT_OPTIONS,
     LOOP_HOURS_MAX_PRESETS,
@@ -185,6 +186,7 @@ def polymarket_portfolio():
     stats = get_polymarket_stats(data_path, filter=filter_val, days=days, from_date=from_date_val, sort=sort_val, category=category_val or None, strategy=strategy_val)
     last_loop = get_last_loop_time(data_path)
     run_stats = get_run_stats_log(data_path)
+    status_summary = get_alerts_status_summary(data_path)
 
     total_count = len(stats.get("resolved_list", [])) if stats else 0
     pagination = build_pagination(total_count, page, PER_PAGE)
@@ -209,6 +211,7 @@ def polymarket_portfolio():
         sort_options=SORT_OPTIONS,
         last_loop=last_loop,
         run_stats=run_stats,
+        status_summary=status_summary,
         data_freshness=data_freshness,
         data_quality_flags=get_data_quality_flags(data_path),
         active_section="portfolio",

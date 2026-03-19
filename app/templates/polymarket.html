@@ -29,10 +29,32 @@
   <h2 class="text-lg font-semibold text-status-down-light dark:text-status-down-dark mb-2">{% if stats.error is string and stats.error.startswith('CSV schema mismatch') %}CSV schema mismatch{% else %}Error reading data{% endif %}</h2>
   <p class="text-light-text dark:text-dark-text">{{ stats.error }}</p>
   {% if stats.error is string and stats.error.startswith('CSV schema mismatch') %}
-  <p class="text-sm text-light-muted dark:text-dark-muted mt-2">Fix <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">alerts_log.csv</code> in the polymarket-alerts directory. Required columns: question, pnl_usd, resolved, actual_result, and ts or resolved_ts.</p>
+  <p class="text-sm text-light-muted dark:text-dark-muted mt-2">Fix <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">alerts_log.csv</code> in the polymarket-alerts directory. Required columns: question, pnl_usd, resolved, actual_result, and ts or resolved_ts. Check that <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">POLYMARKET_DATA_PATH</code> points to the correct directory and that the file is comma-delimited with a header row. In polymarket-alerts run: <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">python scripts/validate_alerts_log.py --csv alerts_log.csv</code> to validate or repair.</p>
   {% endif %}
 </div>
 {% elif stats %}
+{% if status_summary %}
+<div class="mb-4 bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
+  <h3 class="text-sm font-semibold text-light-text dark:text-dark-text mb-2">Live status mix</h3>
+  <div class="flex flex-wrap gap-2 text-xs">
+    <span class="px-2 py-1 rounded bg-light-hover dark:bg-dark-hover text-light-text dark:text-dark-text">Logged: {{ status_summary.logged }}</span>
+    <span class="px-2 py-1 rounded bg-status-up-light/20 dark:bg-status-up-dark/20 text-status-up-light dark:text-status-up-dark">Sent: {{ status_summary.sent }}</span>
+    <span class="px-2 py-1 rounded bg-light-hover dark:bg-dark-hover text-light-text dark:text-dark-text">Shadow: {{ status_summary.shadow }}</span>
+    <span class="px-2 py-1 rounded bg-status-down-light/20 dark:bg-status-down-dark/20 text-status-down-light dark:text-status-down-dark">Blocked: {{ status_summary.blocked }}</span>
+    {% if status_summary.blocked_inactive_strategy > 0 %}
+    <span class="px-2 py-1 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200">Inactive strategy: {{ status_summary.blocked_inactive_strategy }}</span>
+    {% endif %}
+  </div>
+  {% if status_summary.top_block_reasons %}
+  <p class="mt-2 text-xs text-light-muted dark:text-dark-muted">
+    Top block reasons:
+    {% for r in status_summary.top_block_reasons %}
+      {% if not loop.first %} · {% endif %}{{ r.reason }} ({{ r.count }})
+    {% endfor %}
+  </p>
+  {% endif %}
+</div>
+{% endif %}
 <!-- Health & actions -->
 <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
   <span class="text-sm text-light-muted dark:text-dark-muted">
