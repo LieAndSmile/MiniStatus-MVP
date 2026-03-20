@@ -8,7 +8,8 @@
 <div class="mb-6 flex flex-wrap items-center gap-4 justify-between">
   <div>
     <p class="text-sm text-light-muted dark:text-dark-muted">
-      Edge Quality, Timing, Strategy Cohort (with drawdown), and Post-Alert Midpoint Drift. Data from <code>analytics.json</code>.
+      Edge Quality, Timing, Strategy Cohort (with drawdown), and Post-Alert Midpoint Drift. Data from <code>analytics.json</code>
+      (resolved P/L and buckets use <strong>status=sent</strong> only — same as the Portfolio tab; regenerate JSON after changing the log).
       {% if current_strategy %}<span class="font-medium text-light-text dark:text-dark-text">Strategy filter: {{ current_strategy }}</span> (Cohort and Drift show this strategy only).{% endif %}
     </p>
     {% if analytics_age %}
