@@ -30,6 +30,10 @@ Polymarket Dashboard Improvement Plan (EPICs 1–4): Loss Lab v2 (breakdowns, mo
 
 ## [Unreleased]
 
+### Notes (upstream polymarket-alerts)
+
+- **Resolution CSV matching** — polymarket-alerts `jobs/resolution_tracker.py` now updates the correct `alerts_log.csv` row using `alert_id` (not the first row with the same `token_id`). If Portfolio showed “stuck” `sent` rows while `blocked_*` lines had P/L for the same market, upgrade polymarket-alerts and run `scripts/repair_duplicate_token_resolutions.py` then `jobs/resolution_tracker.py --once` on the data directory (see polymarket-alerts `docs/RUNBOOK.md`).
+
 ### Added
 
 - **Polymarket status-mix panel (backend v6.5 sync)** — Portfolio now shows a compact "Live status mix" panel sourced from `alerts_log.csv`: Logged, Sent, Shadow, Blocked, explicit `blocked_inactive_strategy` count, and top block reasons from `primary_block_reason`. This keeps MiniStatus aligned with polymarket-alerts dynamic sizing/risk telemetry and makes capacity/policy bottlenecks visible without reading Telegram logs.
