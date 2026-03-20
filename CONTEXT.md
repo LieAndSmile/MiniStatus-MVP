@@ -19,6 +19,7 @@ Both run on the same VM. MiniStatus reads polymarket-alerts data via `POLYMARKET
 
 ## Polymarket Integration
 
+- **Cross-repo maintainer summary:** [polymarket-alerts `docs/CROSS_REPO_SYNTHESIS_AND_ROADMAP.md`](https://github.com/LieAndSmile/polymarket-alerts/blob/main/docs/CROSS_REPO_SYNTHESIS_AND_ROADMAP.md) (architecture, risks, roadmap ideas).
 - Admin-only page at `/polymarket` with sub-nav: Portfolio, Open Positions, Performance, Loss Lab, Loop/Dev
 - Reads from polymarket-alerts dir: `alerts_log.csv`, `polymarket_alerts.log`, `run_stats.csv` (optional), `open_positions.csv`, `debug_candidates_v60.csv`
 - Features: summary stats, filter (All/Wins/Losses), time window (All time / 30/90/180 days), sort options, pagination (50/page), search, export CSV, P/L chart, per-run stats trend, Loop Summary tab
