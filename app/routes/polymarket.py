@@ -201,7 +201,8 @@ def polymarket_portfolio():
     status_summary = get_alerts_status_summary(data_path)
     bankroll_status = get_bankroll_status(data_path)
     strategy_overview_groups = get_strategy_summary(data_path)
-    recent_decisions = get_recent_decisions(data_path, limit=30)
+    # Simulated bets are status='sent' under polymarket-alerts risk guard policy.
+    recent_decisions = get_recent_decisions(data_path, limit=30, status_filter="sent")
 
     total_count = len(stats.get("resolved_list", [])) if stats else 0
     pagination = build_pagination(total_count, page, PER_PAGE)

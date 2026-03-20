@@ -555,10 +555,13 @@ def get_alerts_status_summary(data_path: str) -> dict:
 def get_recent_decisions(
     data_path: str,
     limit: int = 30,
+    status_filter: Optional[str] = None,
 ) -> list[dict]:
     """
-    Read alerts_log.csv and return recent decision rows (sent/shadow/blocked) with
-    bet_size_usd + conviction_score + primary_block_reason for UI inspection.
+    Read alerts_log.csv and return recent decision rows for UI inspection.
+
+    When status_filter is set, only include rows whose status matches it
+    (case-insensitive exact match, e.g. status_filter="sent").
     """
     if not data_path or not os.path.isdir(data_path):
         return []
@@ -579,6 +582,8 @@ def get_recent_decisions(
             ts_dt = _parse_date(row.get("ts") or row.get("resolved_ts") or row.get("resolved_ts"))
             ts_display = format_ts_display(ts_dt, (row.get("ts") or "").strip())
             status = (row.get("status") or "").strip().lower()
+            if status_filter and status != (status_filter or "").strip().lower():
+                continue
             strategy_id = (row.get("strategy_id") or "").strip()
             question_raw = row.get("question") or ""
             question = _get_display_label(question_raw)
@@ -588,6 +593,16 @@ def get_recent_decisions(
 
             primary_reason = (row.get("primary_block_reason") or "").strip()
             link = (row.get("link") or "").strip()
+
+            # Sent-only view: show resolution outcome if already resolved.
+            resolved_val = row.get("resolved", "")
+            actual_result = (row.get("actual_result") or "").strip().upper()
+            is_resolved = _parse_bool(resolved_val) or actual_result in ("YES", "NO")
+            pnl_usd = _parse_float(row.get("pnl_usd"), default=0.0)
+            if is_resolved and actual_result in ("YES", "NO"):
+                result_display = f"{actual_result} ({pnl_usd:.2f})"
+            else:
+                result_display = "—"
 
             decisions.append({
                 "ts_dt": ts_dt,
@@ -600,6 +615,7 @@ def get_recent_decisions(
                 "conviction_score": conviction_score,
                 "primary_block_reason": primary_reason,
                 "link": link if link.startswith("http") else "",
+                "result_display": result_display,
             })
     except (IOError, csv.Error):
         return []
