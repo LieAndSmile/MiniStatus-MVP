@@ -30,6 +30,11 @@ Polymarket Dashboard Improvement Plan (EPICs 1–4): Loss Lab v2 (breakdowns, mo
 
 ## [Unreleased]
 
+### Changed
+
+- **Polymarket Analytics vs Portfolio** — `analytics_export.py` (upstream) now counts resolved P/L for **`status=sent` only**, same as Portfolio. Regenerate `analytics.json` after upgrading polymarket-alerts. Analytics tab copy notes this; **data quality** warns when the live log has **no** sent+resolved rows but `analytics.json` cohort still shows resolved trades (stale JSON or empty log).
+- **Sidebar Polymarket links** — Preserve `?strategy=` when switching sections from the left nav (same as the tab bar).
+
 ### Notes (upstream polymarket-alerts)
 
 - **Resolution CSV matching** — polymarket-alerts `jobs/resolution_tracker.py` now updates the correct `alerts_log.csv` row using `alert_id` (not the first row with the same `token_id`). If Portfolio showed “stuck” `sent` rows while `blocked_*` lines had P/L for the same market, upgrade polymarket-alerts and run `scripts/repair_duplicate_token_resolutions.py` then `jobs/resolution_tracker.py --once` on the data directory (see polymarket-alerts `docs/RUNBOOK.md`).
