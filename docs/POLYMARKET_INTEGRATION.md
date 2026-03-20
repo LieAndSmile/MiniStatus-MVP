@@ -31,6 +31,7 @@ All consumer paths below are **relative to `POLYMARKET_DATA_PATH`** unless noted
 #### 2.1 `alerts_log.csv`
 
 - **Path**: `<POLYMARKET_DATA_PATH>/alerts_log.csv`
+- **Producer note:** polymarket-alerts `jobs/resolution_tracker.py` writes resolution fields on the row identified by **`alert_id`** (legacy rows: same `token_id` + `ts`). If you see inconsistent resolved counts vs Polymarket’s actual outcomes, ensure polymarket-alerts is current and run the upstream repair script if needed (`scripts/repair_duplicate_token_resolutions.py`; see polymarket-alerts `docs/RUNBOOK.md`).
 - **Consumed by**:
   - `app.utils.polymarket.get_polymarket_stats()`
   - `app.utils.polymarket.validate_alerts_log_schema()`
