@@ -345,9 +345,179 @@
   </div>
 </div>
 
+{% set aips = analytics.get('ai_policy_summary') or {} %}
+{% if aips and aips.get('rows_with_ai_verdict', 0) %}
+<div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4 mb-6">
+  <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-2">AI policy (measurement)</h2>
+  <p class="text-xs text-light-muted dark:text-dark-muted mb-3">{{ aips.get('note', '') }}</p>
+  <p class="text-sm text-light-text dark:text-dark-text mb-2">Rows with <code>ai_verdict</code>: <strong>{{ aips.get('rows_with_ai_verdict', 0) }}</strong></p>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+    <div>
+      <p class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase mb-1">By policy mode</p>
+      <ul class="list-none space-y-0.5 text-light-text dark:text-dark-text">
+        {% for k, v in (aips.get('by_policy_mode') or {}).items() %}
+        <li><span class="text-light-muted dark:text-dark-muted">{{ k }}</span>: {{ v }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div>
+      <p class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase mb-1">By applied effect</p>
+      <ul class="list-none space-y-0.5 text-light-text dark:text-dark-text">
+        {% for k, v in (aips.get('by_applied_effect') or {}).items() %}
+        <li><span class="text-light-muted dark:text-dark-muted">{{ k }}</span>: {{ v }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% set pnl_ai = analytics.get('ai_policy_pnl_cohort') or {} %}
+{% if pnl_ai and (pnl_ai.get('resolved_sent_count') or 0) > 0 %}
+<div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4 mb-6">
+  <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-2">AI policy — realized P/L (sent, resolved)</h2>
+  <p class="text-xs text-light-muted dark:text-dark-muted mb-3">{{ pnl_ai.get('note', '') }}</p>
+  <p class="text-sm text-light-text dark:text-dark-text mb-3">Resolved sent trades in cohort: <strong>{{ pnl_ai.get('resolved_sent_count', 0) }}</strong></p>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 text-sm">
+    <div>
+      <p class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase mb-2">By policy mode</p>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm border border-light-border dark:border-dark-border rounded">
+          <thead class="bg-light-hover dark:bg-dark-hover text-left text-xs text-light-muted dark:text-dark-muted">
+            <tr>
+              <th class="px-2 py-1">Mode</th>
+              <th class="px-2 py-1 text-right">n</th>
+              <th class="px-2 py-1 text-right">Win %</th>
+              <th class="px-2 py-1 text-right">P/L</th>
+              <th class="px-2 py-1 text-right">Med</th>
+              <th class="px-2 py-1 text-right">ROI %</th>
+              <th class="px-2 py-1 text-center" title="Sample size &lt; 5">⚠</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for mode, row in (pnl_ai.get('by_policy_mode') or {}).items() %}
+            <tr class="border-t border-light-border dark:border-dark-border">
+              <td class="px-2 py-1 font-mono text-xs">{{ mode }}</td>
+              <td class="px-2 py-1 text-right">{{ row.get('resolved_count', 0) }}</td>
+              <td class="px-2 py-1 text-right">{% if row.get('win_rate_pct') is not none %}{{ "%.1f"|format(row.get('win_rate_pct')) }}%{% else %}—{% endif %}</td>
+              <td class="px-2 py-1 text-right">{{ row.get('total_pnl') }}</td>
+              <td class="px-2 py-1 text-right">{% if row.get('median_pl_per_trade') is not none %}{{ row.get('median_pl_per_trade') }}{% else %}—{% endif %}</td>
+              <td class="px-2 py-1 text-right">{{ row.get('roi_pct') }}</td>
+              <td class="px-2 py-1 text-center text-amber-600 dark:text-amber-400">{% if row.get('low_data') %}·{% else %}—{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <p class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase mb-2">By AI verdict</p>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm border border-light-border dark:border-dark-border rounded">
+          <thead class="bg-light-hover dark:bg-dark-hover text-left text-xs text-light-muted dark:text-dark-muted">
+            <tr>
+              <th class="px-2 py-1">Verdict</th>
+              <th class="px-2 py-1 text-right">n</th>
+              <th class="px-2 py-1 text-right">Win %</th>
+              <th class="px-2 py-1 text-right">P/L</th>
+              <th class="px-2 py-1 text-right">Med</th>
+              <th class="px-2 py-1 text-right">ROI %</th>
+              <th class="px-2 py-1 text-center" title="Sample size &lt; 5">⚠</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for v, row in (pnl_ai.get('by_ai_verdict') or {}).items() %}
+            <tr class="border-t border-light-border dark:border-dark-border">
+              <td class="px-2 py-1 font-mono text-xs">{{ v }}</td>
+              <td class="px-2 py-1 text-right">{{ row.get('resolved_count', 0) }}</td>
+              <td class="px-2 py-1 text-right">{% if row.get('win_rate_pct') is not none %}{{ "%.1f"|format(row.get('win_rate_pct')) }}%{% else %}—{% endif %}</td>
+              <td class="px-2 py-1 text-right">{{ row.get('total_pnl') }}</td>
+              <td class="px-2 py-1 text-right">{% if row.get('median_pl_per_trade') is not none %}{{ row.get('median_pl_per_trade') }}{% else %}—{% endif %}</td>
+              <td class="px-2 py-1 text-right">{{ row.get('roi_pct') }}</td>
+              <td class="px-2 py-1 text-center text-amber-600 dark:text-amber-400">{% if row.get('low_data') %}·{% else %}—{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% if pnl_ai.get('by_sport_family') %}
+  <div class="mt-6 text-sm">
+    <p class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase mb-2">By market family (<code class="text-[11px]">sport</code>)</p>
+    <p class="text-xs text-light-muted dark:text-dark-muted mb-2">Buckets: <code class="text-[11px]">sports</code> (known league sports), <code class="text-[11px]">crypto</code>, <code class="text-[11px]">non_sports</code> (politics, other, narrative), <code class="text-[11px]">unknown</code>.</p>
+    <div class="overflow-x-auto max-w-4xl">
+      <table class="min-w-full text-sm border border-light-border dark:border-dark-border rounded">
+        <thead class="bg-light-hover dark:bg-dark-hover text-left text-xs text-light-muted dark:text-dark-muted">
+          <tr>
+            <th class="px-2 py-1">Family</th>
+            <th class="px-2 py-1 text-right">n</th>
+            <th class="px-2 py-1 text-right">Win %</th>
+            <th class="px-2 py-1 text-right">P/L</th>
+            <th class="px-2 py-1 text-right">Med</th>
+            <th class="px-2 py-1 text-right">ROI %</th>
+            <th class="px-2 py-1 text-center" title="Sample size &lt; 5">⚠</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fam, row in (pnl_ai.get('by_sport_family') or {}).items() %}
+          <tr class="border-t border-light-border dark:border-dark-border">
+            <td class="px-2 py-1 font-mono text-xs">{{ fam }}</td>
+            <td class="px-2 py-1 text-right">{{ row.get('resolved_count', 0) }}</td>
+            <td class="px-2 py-1 text-right">{% if row.get('win_rate_pct') is not none %}{{ "%.1f"|format(row.get('win_rate_pct')) }}%{% else %}—{% endif %}</td>
+            <td class="px-2 py-1 text-right">{{ row.get('total_pnl') }}</td>
+            <td class="px-2 py-1 text-right">{% if row.get('median_pl_per_trade') is not none %}{{ row.get('median_pl_per_trade') }}{% else %}—{% endif %}</td>
+            <td class="px-2 py-1 text-right">{{ row.get('roi_pct') }}</td>
+            <td class="px-2 py-1 text-center text-amber-600 dark:text-amber-400">{% if row.get('low_data') %}·{% else %}—{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+  {% if pnl_ai.get('by_verdict_and_policy') %}
+  <div class="mt-6 text-sm">
+    <p class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase mb-2">Verdict × policy mode</p>
+    <p class="text-xs text-light-muted dark:text-dark-muted mb-2">Keys are <code class="text-[11px]">verdict|policy_mode</code> (same realized cohort as above).</p>
+    <div class="overflow-x-auto max-w-4xl">
+      <table class="min-w-full text-sm border border-light-border dark:border-dark-border rounded">
+        <thead class="bg-light-hover dark:bg-dark-hover text-left text-xs text-light-muted dark:text-dark-muted">
+          <tr>
+            <th class="px-2 py-1">Verdict | mode</th>
+            <th class="px-2 py-1 text-right">n</th>
+            <th class="px-2 py-1 text-right">Win %</th>
+            <th class="px-2 py-1 text-right">P/L</th>
+            <th class="px-2 py-1 text-right">Med</th>
+            <th class="px-2 py-1 text-right">ROI %</th>
+            <th class="px-2 py-1 text-center" title="Sample size &lt; 5">⚠</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for key, row in (pnl_ai.get('by_verdict_and_policy') or {}).items() %}
+          <tr class="border-t border-light-border dark:border-dark-border">
+            <td class="px-2 py-1 font-mono text-xs">{{ key }}</td>
+            <td class="px-2 py-1 text-right">{{ row.get('resolved_count', 0) }}</td>
+            <td class="px-2 py-1 text-right">{% if row.get('win_rate_pct') is not none %}{{ "%.1f"|format(row.get('win_rate_pct')) }}%{% else %}—{% endif %}</td>
+            <td class="px-2 py-1 text-right">{{ row.get('total_pnl') }}</td>
+            <td class="px-2 py-1 text-right">{% if row.get('median_pl_per_trade') is not none %}{{ row.get('median_pl_per_trade') }}{% else %}—{% endif %}</td>
+            <td class="px-2 py-1 text-right">{{ row.get('roi_pct') }}</td>
+            <td class="px-2 py-1 text-center text-amber-600 dark:text-amber-400">{% if row.get('low_data') %}·{% else %}—{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+  <p class="text-xs text-light-muted dark:text-dark-muted mt-2">⚠ marks buckets with low_data (n &lt; 5). Med = median P/L per resolved trade in that bucket.</p>
+</div>
+{% endif %}
+
 {% if analytics and analytics.get('totals') %}
 <div class="text-sm text-light-muted dark:text-dark-muted">
-  Totals: {{ analytics.totals.get('alerts_resolved', 0) }} resolved, {{ analytics.totals.get('alerts_open', 0) }} open, {{ analytics.totals.get('alerts_total', 0) }} total alerts.
+  Totals: {{ analytics.totals.get('alerts_resolved', 0) }} resolved, {{ analytics.totals.get('alerts_open', 0) }} open{% if analytics.totals.get('alerts_other_status') is not none %}, {{ analytics.totals.get('alerts_other_status', 0) }} other (blocked / not open){% endif %}, {{ analytics.totals.get('alerts_total', 0) }} total alerts.
+  {% if analytics.totals.get('totals_note') %}<span class="block text-xs mt-1 opacity-90">{{ analytics.totals.get('totals_note') }}</span>{% endif %}
 </div>
 {% endif %}
 

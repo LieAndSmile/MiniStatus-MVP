@@ -4,6 +4,7 @@
 
 {% block content %}
 {% include "polymarket_nav.html" %}
+{% set nav_strategy = (current_strategy if current_strategy is defined else none) or 'all' %}
 
 {% if csv_schema_error %}
 <div class="mb-6 rounded-lg border border-status-down-light dark:border-status-down-dark bg-status-down-light/10 dark:bg-status-down-dark/10 p-4">
@@ -15,7 +16,7 @@
 
 <div class="mb-6 flex flex-wrap items-center gap-4" data-polymarket-filters>
   {% from "polymarket_time_filter.html" import render as polymarket_time_filter %}
-  {{ polymarket_time_filter('polymarket.polymarket_loss_lab', current_days, {'strategy': current_strategy}) }}
+  {{ polymarket_time_filter('polymarket.polymarket_loss_lab', current_days, {'strategy': nav_strategy}) }}
   {% if data_freshness %}<span class="text-xs text-light-muted dark:text-dark-muted">alerts_log: {{ data_freshness }}</span>{% endif %}
 </div>
 
@@ -35,7 +36,7 @@
     <div class="rounded-lg border border-status-down-light/30 dark:border-status-down-dark/30 bg-status-down-light/5 dark:bg-status-down-dark/5 p-4">
       <div class="flex items-center justify-between gap-2">
         <div class="text-sm font-medium text-light-muted dark:text-dark-muted uppercase">{{ item.category }}</div>
-        <a href="{{ url_for('polymarket.polymarket_portfolio', filter='losses', days=current_days, category=item.category, strategy=current_strategy) }}"
+        <a href="{{ url_for('polymarket.polymarket_portfolio', filter='losses', days=current_days, category=item.category, strategy=nav_strategy) }}"
            class="text-xs text-light-primary dark:text-dark-primary hover:underline">View in Portfolio</a>
       </div>
       <div class="text-xl font-bold text-status-down-light dark:text-status-down-dark mt-1">{{ item.count }} losses · {{ item.pnl_display }}</div>

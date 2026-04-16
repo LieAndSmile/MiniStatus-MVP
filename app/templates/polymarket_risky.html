@@ -4,6 +4,7 @@
 
 {% block content %}
 {% include "polymarket_nav.html" %}
+{% set nav_strategy = (current_strategy if current_strategy is defined else none) or 'all' %}
 
 <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
   <p class="text-sm text-light-muted dark:text-dark-muted">
@@ -11,37 +12,37 @@
     {% if not current_preset %}Tune via <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">RISKY_EDGE_MIN_PCT</code>, <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">RISKY_GAMMA_MAX</code>, <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">RISKY_EXPIRY_HOURS_MAX</code>.{% endif %}
     {% if data_freshness %} Data: <strong>open_positions {{ data_freshness }}</strong>.{% endif %}
   </p>
-  <a href="{{ url_for('polymarket.polymarket_positions', strategy=current_strategy) }}" class="px-4 py-2 rounded-md text-sm font-medium bg-light-hover dark:bg-dark-hover text-light-text dark:text-dark-text hover:bg-light-border dark:hover:bg-dark-border transition-colors">
+  <a href="{{ url_for('polymarket.polymarket_positions', strategy=nav_strategy) }}" class="px-4 py-2 rounded-md text-sm font-medium bg-light-hover dark:bg-dark-hover text-light-text dark:text-dark-text hover:bg-light-border dark:hover:bg-dark-border transition-colors">
     View all Open Positions
   </a>
 </div>
 
-{% set risky_extra = {'sort': current_sort, 'strategy': current_strategy} %}
+{% set risky_extra = {'sort': current_sort, 'strategy': nav_strategy} %}
 {% if current_from_date %}{% set _ = risky_extra.update({'from_date': current_from_date}) %}{% endif %}
 {% if current_preset %}{% set _ = risky_extra.update({'preset': current_preset}) %}{% endif %}
-{% set risky_extra_no_from = {'sort': current_sort, 'strategy': current_strategy} %}
+{% set risky_extra_no_from = {'sort': current_sort, 'strategy': nav_strategy} %}
 {% if current_preset %}{% set _ = risky_extra_no_from.update({'preset': current_preset}) %}{% endif %}
 <div class="mb-6 flex flex-wrap items-center gap-4" data-polymarket-filters>
   <div class="flex items-center gap-2">
     <span class="text-sm font-medium text-light-muted dark:text-dark-muted">Preset:</span>
-    <a href="{{ url_for('polymarket.polymarket_risky', days=current_days or 'all', from_date=current_from_date, sort=current_sort, strategy=current_strategy) }}"
+    <a href="{{ url_for('polymarket.polymarket_risky', days=current_days or 'all', from_date=current_from_date, sort=current_sort, strategy=nav_strategy) }}"
        class="px-3 py-1.5 rounded-md text-sm {% if not current_preset %}bg-light-primary dark:bg-dark-primary text-white{% else %}bg-light-hover dark:bg-dark-hover text-light-text dark:text-dark-text hover:bg-light-border dark:hover:bg-dark-border{% endif %} transition-colors">
       Env
     </a>
-    <a href="{{ url_for('polymarket.polymarket_risky', days=current_days or 'all', from_date=current_from_date, sort=current_sort, strategy=current_strategy, preset='conservative') }}"
+    <a href="{{ url_for('polymarket.polymarket_risky', days=current_days or 'all', from_date=current_from_date, sort=current_sort, strategy=nav_strategy, preset='conservative') }}"
        class="px-3 py-1.5 rounded-md text-sm {% if current_preset == 'conservative' %}bg-light-primary dark:bg-dark-primary text-white{% else %}bg-light-hover dark:bg-dark-hover text-light-text dark:text-dark-text hover:bg-light-border dark:hover:bg-dark-border{% endif %} transition-colors"
        title="edge ≥ 1.25%, gamma ≤ 0.90, expiry ≤ 24h">Conservative</a>
-    <a href="{{ url_for('polymarket.polymarket_risky', days=current_days or 'all', from_date=current_from_date, sort=current_sort, strategy=current_strategy, preset='default') }}"
+    <a href="{{ url_for('polymarket.polymarket_risky', days=current_days or 'all', from_date=current_from_date, sort=current_sort, strategy=nav_strategy, preset='default') }}"
        class="px-3 py-1.5 rounded-md text-sm {% if current_preset == 'default' %}bg-light-primary dark:bg-dark-primary text-white{% else %}bg-light-hover dark:bg-dark-hover text-light-text dark:text-dark-text hover:bg-light-border dark:hover:bg-dark-border{% endif %} transition-colors"
        title="edge ≥ 1%, gamma ≤ 0.94, expiry ≤ 48h">Default</a>
-    <a href="{{ url_for('polymarket.polymarket_risky', days=current_days or 'all', from_date=current_from_date, sort=current_sort, strategy=current_strategy, preset='loose') }}"
+    <a href="{{ url_for('polymarket.polymarket_risky', days=current_days or 'all', from_date=current_from_date, sort=current_sort, strategy=nav_strategy, preset='loose') }}"
        class="px-3 py-1.5 rounded-md text-sm {% if current_preset == 'loose' %}bg-light-primary dark:bg-dark-primary text-white{% else %}bg-light-hover dark:bg-dark-hover text-light-text dark:text-dark-text hover:bg-light-border dark:hover:bg-dark-border{% endif %} transition-colors"
        title="edge ≥ 0.5%, gamma ≤ 0.97, expiry ≤ 72h">Loose</a>
   </div>
   {% from "polymarket_time_filter.html" import render as polymarket_time_filter %}
   {{ polymarket_time_filter('polymarket.polymarket_risky', current_days, risky_extra_no_from) }}
   {% if current_from_date %}
-  <a href="{{ url_for('polymarket.polymarket_risky', days=current_days, sort=current_sort, strategy=current_strategy, **({'preset': current_preset} if current_preset else {})) }}"
+  <a href="{{ url_for('polymarket.polymarket_risky', days=current_days, sort=current_sort, strategy=nav_strategy, **({'preset': current_preset} if current_preset else {})) }}"
      class="px-3 py-1.5 rounded-md text-sm bg-light-hover dark:bg-dark-hover text-light-muted dark:text-dark-muted hover:bg-light-border dark:hover:bg-dark-border transition-colors">
     Clear from-date ({{ current_from_date }})
   </a>
@@ -133,7 +134,7 @@
         {% for c in risky_historical.categories %}
         <tr class="border-b border-light-border/60 dark:border-dark-border/60 last:border-b-0">
           <td class="py-1.5 pr-4 text-light-text dark:text-dark-text">
-            <a href="{{ url_for('polymarket.polymarket_portfolio', filter='losses', days=current_days or 'all', category=c.category, strategy=current_strategy) }}#resolved-alerts" class="text-light-primary dark:text-dark-primary hover:underline" title="View resolved losses for this category in Portfolio">{{ c.category }}</a>
+            <a href="{{ url_for('polymarket.polymarket_portfolio', filter='losses', days=current_days or 'all', category=c.category, strategy=nav_strategy) }}#resolved-alerts" class="text-light-primary dark:text-dark-primary hover:underline" title="View resolved losses for this category in Portfolio">{{ c.category }}</a>
           </td>
           <td class="py-1.5 pr-4 text-right text-light-text dark:text-dark-text">{{ c.count }}</td>
           <td class="py-1.5 pr-4 text-right text-light-text dark:text-dark-text">{{ c.wins }} / {{ c.losses }}</td>
@@ -235,7 +236,7 @@
           <td class="px-4 py-3 text-sm text-light-text dark:text-dark-text max-w-md truncate" title="{{ p.question }}">{{ p.question }}</td>
           <td class="px-4 py-3 text-sm whitespace-nowrap">
             {% if p.alert_date_param %}
-            <a href="{{ url_for('polymarket.polymarket_risky', days=current_days, sort=current_sort, from_date=p.alert_date_param, strategy=current_strategy, **({'preset': current_preset} if current_preset else {})) }}" class="text-light-primary dark:text-dark-primary hover:underline" title="Filter from this date">{{ p.alert_ts_display }}</a>
+            <a href="{{ url_for('polymarket.polymarket_risky', days=current_days, sort=current_sort, from_date=p.alert_date_param, strategy=nav_strategy, **({'preset': current_preset} if current_preset else {})) }}" class="text-light-primary dark:text-dark-primary hover:underline" title="Filter from this date">{{ p.alert_ts_display }}</a>
             {% else %}
             <span class="text-light-muted dark:text-dark-muted">{{ p.alert_ts_display }}</span>
             {% endif %}

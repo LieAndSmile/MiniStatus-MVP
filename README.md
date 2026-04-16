@@ -67,6 +67,29 @@ sudo journalctl -u ministatus -f   # View logs
 
 **Note:** The service uses `RestartSec=2` so restarts complete in a few seconds. If you previously installed with an older version, run `./scripts/restart.sh` once to update the delay and restart.
 
+### After pulling code changes
+
+1. If **`requirements.txt`** changed, install deps (from project root, using your venv — often `scripts/venv`):
+
+   ```bash
+   ./scripts/venv/bin/pip install -r requirements.txt
+   ```
+
+2. Regenerate the **CI minimal** lockfile when `requirements.txt` changes (keeps GitHub Actions `test-ci-minimal` in sync):
+
+   ```bash
+   python3 scripts/sync_requirements_ci_minimal.py
+   ```
+
+3. Restart the app:
+
+   ```bash
+   ./scripts/restart.sh
+   # or: sudo systemctl restart ministatus
+   ```
+
+**Polymarket integration** (optional): consumer contract, schema sync, and artifact expectations are documented in **`docs/POLYMARKET_INTEGRATION.md`**. Producer-side canonical schema is in **`polymarket-alerts/docs/INTEGRATION_CONTRACT.md`**.
+
 ## Configuration
 
 Configuration is in `.env` file (auto-created during installation). 
@@ -467,6 +490,7 @@ MiniStatus-MVP/
 │   ├── install.sh          # Installation script
 │   ├── uninstall.sh        # Uninstallation script
 │   ├── restart.sh          # Restart systemd service (and apply faster RestartSec if needed)
+│   ├── sync_requirements_ci_minimal.py  # Regenerate requirements-ci-minimal.txt from requirements.txt
 │   ├── start.sh            # Start script
 │   ├── test_api.sh         # API testing script
 │   ├── retention_alerts_log.py  # Trim old rows from polymarket alerts_log.csv

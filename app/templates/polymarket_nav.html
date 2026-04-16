@@ -3,7 +3,7 @@
   <div class="flex flex-wrap items-center gap-2 sm:gap-4">
     <div class="flex flex-nowrap min-w-max gap-0">
     {% for section_id, label, endpoint in polymarket_sections %}
-    <a href="{{ url_for(endpoint, strategy=current_strategy if current_strategy is defined else 'safe') }}"
+    <a href="{{ url_for(endpoint, strategy=(current_strategy if current_strategy is defined else none) or 'all') }}"
        class="polymarket-nav-link px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap flex-shrink-0
          {% if active_section is defined and active_section == section_id %}
          border-light-primary dark:border-dark-primary text-light-primary dark:text-dark-primary bg-light-primary/10 dark:bg-dark-primary/10 font-semibold
@@ -15,11 +15,21 @@
     </a>
     {% endfor %}
     </div>
-    {% if strategy_options is defined and strategy_options %}
-    <div class="flex items-center gap-2 ml-auto">
+    {# Show selector whenever the route passes strategy_options (even empty), so "All strategies" is always available. #}
+    {% if strategy_options is defined %}
+    <div class="flex flex-wrap items-center gap-2 ml-auto">
       <label for="polymarket-strategy" class="text-sm text-light-muted dark:text-dark-muted whitespace-nowrap">Strategy</label>
+      {% if current_strategy %}
+      <button type="button"
+              class="text-xs font-medium text-light-primary dark:text-dark-primary hover:underline whitespace-nowrap"
+              title="Show combined P/L and alerts for every strategy_id"
+              data-polymarket-strategy-all>
+        All strategies
+      </button>
+      {% endif %}
       <select id="polymarket-strategy" name="strategy" data-polymarket-nav
               class="text-sm rounded border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text px-2 py-1.5 focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary">
+        <option value="all" {% if not current_strategy %}selected{% endif %}>All strategies (combined)</option>
         {% if strategy_options_grouped is defined and strategy_options_grouped %}
           {% for group in strategy_options_grouped %}
           <optgroup label="{{ group.label }}">
@@ -40,6 +50,7 @@
     {% endif %}
   </div>
 </nav>
+{% include "polymarket_freshness_strip.html" %}
 <div id="polymarket-loading-overlay" class="fixed inset-0 bg-light-bg/80 dark:bg-dark-bg/80 z-[100] flex items-center justify-center pointer-events-none opacity-0 transition-opacity duration-200" aria-hidden="true">
   <div class="rounded-lg bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border px-6 py-4 flex items-center gap-3 shadow-lg">
     <div class="animate-spin rounded-full h-6 w-6 border-2 border-light-primary dark:border-dark-primary border-t-transparent"></div>
@@ -62,12 +73,20 @@
       a.addEventListener('click', function() { showLoading(); });
     }
   });
+  function polymarketApplyStrategy(value) {
+    showLoading();
+    var params = new URLSearchParams(window.location.search);
+    params.set('strategy', value);
+    window.location = window.location.pathname + '?' + params.toString();
+  }
   document.querySelectorAll('select[data-polymarket-nav]').forEach(function(sel) {
     sel.addEventListener('change', function() {
-      showLoading();
-      var params = new URLSearchParams(window.location.search);
-      params.set('strategy', this.value);
-      window.location = window.location.pathname + '?' + params.toString();
+      polymarketApplyStrategy(this.value);
+    });
+  });
+  document.querySelectorAll('[data-polymarket-strategy-all]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      polymarketApplyStrategy('all');
     });
   });
 })();

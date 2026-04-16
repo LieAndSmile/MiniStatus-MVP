@@ -2,6 +2,36 @@
 
 All notable changes to MiniStatus are documented in this file.
 
+## [1.5.2] - 2026-04-16
+
+### Added
+
+- **Polymarket: Mirror alerts poll groups** — Per-wallet `poll_group` (`standard` | `fast`) in `mirror_watch_config.json`; Mirror alerts UI (add form, per-row dropdown, `POST /polymarket/mirror-alerts/set-poll-group`). Use with polymarket-alerts **split** mirror timers (`--poll-group standard` vs `--poll-group fast`); see upstream `systemd/README.md`.
+- **`get_recent_decisions(..., strategy=...)`** — When the nav strategy is not `all`, recent decisions are filtered to that `strategy_id`.
+
+### Changed
+
+- **`get_alerts_status_summary`** — Adds `blocked_risk_limit`, `blocked_ai_screen`, and `top_risk_buckets` for the Portfolio status panel (`polymarket.html`).
+
+### Fixed
+
+- **Polymarket Portfolio 500** — Removed `TypeError` from `strategy=` on `get_recent_decisions`; removed Jinja `UndefinedError` for missing `status_summary.blocked_risk_limit` (and related keys).
+- **`app/utils/polymarket.py`** — Ensures the AI tab / schema bundle is present (`get_ai_performance`, `get_ai_sim_stats`, `collect_json_artifact_schema_warnings`, live loop diagnostics). Avoid partial edits that drop this block (app will not boot).
+
+---
+
+## [1.5.1] - 2026-04-13
+
+### Changed
+
+- **Polymarket `alerts_log.csv` schema messaging** — When required columns are missing and the CSV has **≤3** header columns, `validate_alerts_log_schema` appends a **non-canonical header** hint: check `POLYMARKET_DATA_PATH`, run **`polymarket-alerts`** `scripts/validate_alerts_log.py --csv ... --repair`, and note **`alerts_log.csv.bak.noncanonical`**. Aligns with upstream **polymarket-alerts v6.4.1** (header guard in `validate_alerts_log.py`).
+
+### Documentation
+
+- **`docs/POLYMARKET_INTEGRATION.md`** — Troubleshooting for junk / non-canonical `alerts_log.csv` headers and recovery.
+
+---
+
 ## [1.5.0] - 2026-03-17
 
 ### Added
@@ -29,6 +59,13 @@ Polymarket Dashboard Improvement Plan (EPICs 1–4): Loss Lab v2 (breakdowns, mo
 ---
 
 ## [Unreleased]
+
+### Added (2026-04-05)
+
+- **Polymarket: Mirror Portfolio** — Tab `/polymarket/mirror-portfolio`: reads `mirror_portfolio.json` from `POLYMARKET_DATA_PATH`; wallet + days form; POST refresh runs `analytics/mirror_portfolio_export.py` (CSRF-protected); sidebar link.
+- **Polymarket: Mirror alerts** — Tab `/polymarket/mirror-alerts`: manage up to **20** watched wallets (address, label, Telegram on/off, remove); reads/writes `mirror_watch_config.json` on the data directory; sidebar link. Separate from Mirror Portfolio to keep alert routing vs analytics separate.
+- **`app/utils/polymarket.py`** — `get_mirror_portfolio_json`, `get_mirror_portfolio_file_age`, `get_mirror_watch_config`, `save_mirror_watch_config`, `MIRROR_WATCH_MAX_WALLETS`.
+- **Tests** — `tests/test_polymarket_mirror_portfolio.py`, `tests/test_polymarket_mirror_watch_config.py`.
 
 ### Changed
 

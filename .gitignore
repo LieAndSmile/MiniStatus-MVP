@@ -24,7 +24,6 @@ wheels/
 venv/
 env/
 ENV/
-.env
 .venv
 scripts/venv/
 

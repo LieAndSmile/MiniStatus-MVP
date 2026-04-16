@@ -293,6 +293,22 @@
                  class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_loop' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
                 <span class="nav-label text-sm">Loop / Dev</span>
               </a>
+              <a href="{{ polymarket_sidebar_url('polymarket.polymarket_ai_simulation') }}"
+                 class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_ai_simulation' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
+                <span class="nav-label text-sm">AI Simulation</span>
+              </a>
+              <a href="{{ polymarket_sidebar_url('polymarket.polymarket_ai_performance') }}"
+                 class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_ai_performance' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
+                <span class="nav-label text-sm">AI Performance</span>
+              </a>
+              <a href="{{ polymarket_sidebar_url('polymarket.polymarket_mirror_portfolio') }}"
+                 class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_mirror_portfolio' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
+                <span class="nav-label text-sm">Mirror Portfolio</span>
+              </a>
+              <a href="{{ polymarket_sidebar_url('polymarket.polymarket_mirror_alerts') }}"
+                 class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_mirror_alerts' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
+                <span class="nav-label text-sm">Mirror alerts</span>
+              </a>
             </div>
           </div>
 

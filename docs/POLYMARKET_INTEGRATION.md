@@ -7,6 +7,14 @@
 
 This document describes how **MiniStatus-MVP** consumes data produced by the separate **polymarket-alerts** repo. It focuses on integration points, expected schemas as they are currently used, and failure modes – not product feature design.
 
+**Schema sync:** When `alerts_log.csv` columns change in polymarket-alerts, follow the **Schema change checklist** in `polymarket-alerts/docs/INTEGRATION_CONTRACT.md`. Copy `polymarket-alerts/docs/alerts_log_header.json` to **`tests/fixtures/alerts_log_header.json`** here and run `pytest tests/test_polymarket_alerts_schema_fixture.py`.
+
+**CI minimal deps:** After changing **`requirements.txt`**, regenerate **`requirements-ci-minimal.txt`** with `python scripts/sync_requirements_ci_minimal.py` so the **`test-ci-minimal`** workflow stays in sync.
+
+**Operational context:** Expected update cadences for CSV/JSON files live in **`polymarket-alerts/docs/RUNBOOK.md`** (“Data pipeline”). The Polymarket nav includes a **Data freshness** strip (artifact ages + link to `/polymarket/freshness` JSON).
+
+**MiniStatus restart:** After deploying code or template changes, restart the WSGI service so the dashboard serves the new bits: `./scripts/restart.sh` or `sudo systemctl restart ministatus` (see **Service Management** in the repo **`README.md`**).
+
 ---
 
 ### 1. Data Location and Configuration
@@ -121,6 +129,7 @@ MiniStatus expects the **v3 schema** maintained by polymarket-alerts (`alerts_lo
   - Portfolio returns `_STATS_EMPTY` with an `error` field prefixed with `CSV schema mismatch`.
   - Portfolio template shows a prominent red **CSV schema mismatch** banner with details and does **not** render stats / tables.
   - Loss Lab / other views are conservative and generally fall back to empty results when underlying reads fail.
+  - When required columns are missing and the file has **≤3** header columns (non-canonical header: wrong `POLYMARKET_DATA_PATH`, corrupt file, or stray test CSV), the error text includes a short hint to run **`polymarket-alerts`** `scripts/validate_alerts_log.py --csv "$POLYMARKET_DATA_PATH/alerts_log.csv" --repair`, which saves the bad file as **`alerts_log.csv.bak.noncanonical`** and writes a canonical header-only log upstream (`validate_alerts_log.py` since **v6.4.1**).
 - If specific fields fail to parse:
   - Numeric parsing functions (`_parse_float`, etc.) default to 0.0 and keep the row, which can influence aggregates but not crash rendering.
 

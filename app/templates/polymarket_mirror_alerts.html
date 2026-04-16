@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Mirror alerts – Polymarket{% endblock %}
+{% block header %}Polymarket Alerts{% endblock %}
+
+{% block content %}
+{% include "polymarket_nav.html" %}
+
+<div class="max-w-5xl mx-auto space-y-6">
+  <div class="rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-6">
+    <h1 class="text-xl font-semibold text-light-text dark:text-dark-text">Mirror alerts</h1>
+    <p class="text-sm text-light-muted dark:text-dark-muted mt-2">
+      Wallets to poll for <strong>new trades</strong> on the Polymarket Data API. Telegram messages use your existing bot (<code class="px-1 rounded bg-light-hover dark:bg-dark-hover">TELEGRAM_TOKEN</code> / <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">CHAT_ID</code>).
+      The job <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">jobs/mirror_watch.py --once</code> runs on the polymarket-alerts host. Assign each wallet to <strong>Standard</strong> or <strong>Fast</strong>, then run <strong>two</strong> systemd timers (e.g. <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">--poll-group standard</code> every 5 min and <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">--poll-group fast</code> every 1 min). See <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">polymarket-alerts/systemd/README.md</code>.
+    </p>
+    {% if cfg_age %}
+    <p class="text-xs text-light-muted dark:text-dark-muted mt-2">Config file age: <strong>{{ cfg_age }}</strong></p>
+    {% endif %}
+  </div>
+
+  <div class="rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-6">
+    <h2 class="text-sm font-semibold text-light-text dark:text-dark-text mb-4">Add wallet</h2>
+    <form method="post" action="{{ url_for('polymarket.polymarket_mirror_alerts_add') }}" class="space-y-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <input type="hidden" name="strategy" value="{{ current_strategy or '' }}" />
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-medium text-light-muted dark:text-dark-muted mb-1">Address</label>
+          <input type="text" name="address" required placeholder="0x…" autocomplete="off" spellcheck="false"
+            class="w-full font-mono text-sm px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-light-muted dark:text-dark-muted mb-1">Label (optional)</label>
+          <input type="text" name="label" maxlength="80" placeholder="Trader name"
+            class="w-full text-sm px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg" />
+        </div>
+      </div>
+      <label class="inline-flex items-center gap-2 text-sm text-light-text dark:text-dark-text cursor-pointer">
+        <input type="checkbox" name="telegram_enabled" checked class="rounded border-light-border dark:border-dark-border" />
+        Telegram on for this wallet
+      </label>
+      <div>
+        <label class="block text-xs font-medium text-light-muted dark:text-dark-muted mb-1">Poll group (host timers)</label>
+        <select name="poll_group" class="text-sm px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg max-w-md">
+          {% for val, label in mirror_poll_groups %}
+          <option value="{{ val }}" {% if val == 'standard' %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <button type="submit" class="text-sm px-4 py-2 rounded-lg bg-light-primary dark:bg-dark-primary text-white hover:opacity-90"
+          {% if (wallets|length) >= mirror_watch_max %}disabled title="Max wallets"{% endif %}>
+          Add wallet
+        </button>
+        <span class="text-xs text-light-muted dark:text-dark-muted ml-2">{{ wallets|length }} / {{ mirror_watch_max }}</span>
+      </div>
+    </form>
+  </div>
+
+  <div class="rounded-lg border border-light-border dark:border-dark-border overflow-hidden">
+    <div class="px-4 py-3 bg-light-hover dark:bg-dark-hover border-b border-light-border dark:border-dark-border">
+      <span class="text-sm font-semibold text-light-text dark:text-dark-text">Watched wallets</span>
+    </div>
+    {% if not wallets %}
+    <p class="p-6 text-sm text-light-muted dark:text-dark-muted">No wallets yet. Add one above, or create <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">mirror_watch_config.json</code> on the data host.</p>
+    {% else %}
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="bg-light-hover/80 dark:bg-dark-hover/80 text-left text-xs text-light-muted dark:text-dark-muted uppercase">
+          <tr>
+            <th class="px-4 py-2">Label</th>
+            <th class="px-4 py-2">Address</th>
+            <th class="px-4 py-2">Poll group</th>
+            <th class="px-4 py-2">Telegram</th>
+            <th class="px-4 py-2 w-24"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-light-border dark:divide-dark-border">
+          {% for w in wallets %}
+          <tr class="hover:bg-light-hover/40 dark:hover:bg-dark-hover/40">
+            <td class="px-4 py-2 text-light-text dark:text-dark-text">{{ w.get('label', '—') }}</td>
+            <td class="px-4 py-2 font-mono text-xs break-all">{{ w.get('address', '') }}</td>
+            <td class="px-4 py-2">
+              <form method="post" action="{{ url_for('polymarket.polymarket_mirror_alerts_set_poll_group') }}" class="inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="strategy" value="{{ current_strategy or '' }}" />
+                <input type="hidden" name="address" value="{{ w.get('address', '') }}" />
+                <select name="poll_group" class="text-xs px-2 py-1 rounded border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg max-w-[14rem]"
+                  onchange="this.form.submit()">
+                  {% for val, label in mirror_poll_groups %}
+                  <option value="{{ val }}" {% if (w.get('poll_group') or 'standard') == val %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </form>
+            </td>
+            <td class="px-4 py-2">
+              <form method="post" action="{{ url_for('polymarket.polymarket_mirror_alerts_toggle_telegram') }}" class="inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="strategy" value="{{ current_strategy or '' }}" />
+                <input type="hidden" name="address" value="{{ w.get('address', '') }}" />
+                {% if w.get('telegram_enabled', True) %}
+                <button type="submit" class="text-xs px-2 py-1 rounded bg-emerald-600/20 text-emerald-700 dark:text-emerald-300 border border-emerald-600/40">On</button>
+                {% else %}
+                <button type="submit" class="text-xs px-2 py-1 rounded bg-light-hover dark:bg-dark-hover text-light-muted">Off</button>
+                {% endif %}
+              </form>
+            </td>
+            <td class="px-4 py-2">
+              <form method="post" action="{{ url_for('polymarket.polymarket_mirror_alerts_remove') }}" class="inline"
+                onsubmit="return confirm('Remove this wallet from the watch list?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="strategy" value="{{ current_strategy or '' }}" />
+                <input type="hidden" name="address" value="{{ w.get('address', '') }}" />
+                <button type="submit" class="text-xs text-red-600 dark:text-red-400 hover:underline">Remove</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+
+  <p class="text-xs text-light-muted dark:text-dark-muted">
+    For portfolio charts and P&amp;L, use <a href="{{ url_for('polymarket.polymarket_mirror_portfolio', strategy=current_strategy or 'all') }}" class="text-light-primary dark:text-dark-primary underline">Mirror Portfolio</a>.
+  </p>
+</div>
+{% endblock %}

@@ -1,0 +1,53 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          ./venv/bin/pip install -r requirements.txt
+          ./venv/bin/pip install pytest
+
+      - name: Run pytest
+        run: ./venv/bin/python -m pytest tests/ -v
+
+  # Same test suite without gunicorn / anthropic — validates the dashboard + Polymarket tests in slimmer envs.
+  test-ci-minimal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install minimal test dependencies
+        run: |
+          python -m venv venv-min
+          ./venv-min/bin/pip install --upgrade pip
+          ./venv-min/bin/pip install -r requirements-ci-minimal.txt
+          ./venv-min/bin/pip install pytest
+
+      - name: Verify optional packages absent
+        run: |
+          if ./venv-min/bin/pip show gunicorn >/dev/null 2>&1; then echo "gunicorn must not be installed"; exit 1; fi
+          if ./venv-min/bin/pip show anthropic >/dev/null 2>&1; then echo "anthropic must not be installed"; exit 1; fi
+
+      - name: Run pytest (minimal venv)
+        run: ./venv-min/bin/python -m pytest tests/ -v --tb=short

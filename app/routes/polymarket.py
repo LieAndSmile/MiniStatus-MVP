@@ -1,8 +1,10 @@
 from flask import Blueprint, render_template, request, send_file, redirect, url_for, flash, jsonify
 from functools import wraps
 import os
+import re
 import csv
 import io
+import uuid
 from datetime import datetime, timedelta, timezone
 
 from app.utils.polymarket import (
@@ -36,6 +38,16 @@ from app.utils.polymarket import (
     get_recent_decisions,
     get_bankroll_status,
     get_strategy_summary,
+    get_ai_performance,
+    get_ai_sim_stats,
+    get_mirror_portfolio_json,
+    get_mirror_portfolio_file_age,
+    get_mirror_watch_config,
+    save_mirror_watch_config,
+    collect_json_artifact_schema_warnings,
+    MIRROR_WATCH_MAX_WALLETS,
+    MIRROR_POLL_GROUPS,
+    normalize_mirror_poll_group,
     SORT_OPTIONS,
     DEBUG_SORT_OPTIONS,
     LOOP_HOURS_MAX_PRESETS,
@@ -43,12 +55,33 @@ from app.utils.polymarket import (
     POSITIONS_EXPIRY_FILTERS,
     STRATEGY_OPTIONS,
     STRATEGY_MODE,
+    STRATEGY_LABELS,
 )
 from app.utils.polymarket_health import get_polymarket_health, get_polymarket_freshness
 from app.utils.data_quality import get_data_quality_flags
 from app.utils.decorators import admin_required
 
 polymarket_bp = Blueprint("polymarket", __name__, url_prefix="/polymarket")
+
+_MIRROR_WALLET_RE = re.compile(r"^0x[a-fA-F0-9]{40}$")
+
+
+def _normalize_mirror_wallet(s: str):
+    """Return checksummed lowercase 0x address or None."""
+    if not s or not isinstance(s, str):
+        return None
+    w = s.strip()
+    if _MIRROR_WALLET_RE.match(w):
+        return w.lower()
+    return None
+
+
+def _parse_mirror_days(s: str, default: str = "365") -> str:
+    try:
+        n = int((s or "").strip() or default)
+        return str(max(1, min(3650, n)))
+    except (TypeError, ValueError):
+        return default
 
 
 PER_PAGE = 50
@@ -62,6 +95,10 @@ POLYMARKET_SECTIONS = [
     ("analytics", "Analytics", "polymarket.polymarket_analytics"),
     ("lifecycle", "Lifecycle", "polymarket.polymarket_lifecycle"),
     ("loop", "Loop / Dev", "polymarket.polymarket_loop"),
+    ("ai-simulation", "AI Simulation", "polymarket.polymarket_ai_simulation"),
+    ("ai-performance", "AI Performance", "polymarket.polymarket_ai_performance"),
+    ("mirror-portfolio", "Mirror Portfolio", "polymarket.polymarket_mirror_portfolio"),
+    ("mirror-alerts", "Mirror alerts", "polymarket.polymarket_mirror_alerts"),
 ]
 
 
@@ -86,6 +123,17 @@ def _polymarket_configured_required(active_section: str):
 def _get_data_path():
     """Return POLYMARKET_DATA_PATH or empty string. Call only when configured."""
     return os.getenv("POLYMARKET_DATA_PATH", "").strip()
+
+
+def _polymarket_freshness_context():
+    """Artifact ages for the Polymarket nav strip (same data as /polymarket/freshness JSON)."""
+    ctx: dict = {"polymarket_freshness": get_polymarket_freshness()}
+    if is_polymarket_configured():
+        dp = _get_data_path()
+        ctx["polymarket_schema_warnings"] = collect_json_artifact_schema_warnings(dp) if dp else []
+    else:
+        ctx["polymarket_schema_warnings"] = []
+    return ctx
 
 
 def _parse_filter_days():
@@ -115,16 +163,20 @@ def _pagination_params():
 def _get_strategy(allowed=None):
     """Return strategy from request (v3).
 
-    If request doesn't specify a strategy (or specifies an unknown one), default to the first active strategy.
+    - ``strategy=all`` or missing/empty → ``None`` (no filter: show all strategy_id values in CSV).
+    - Known ``strategy_id`` → that id (Portfolio/P/L filtered to that strategy only).
+    - Unknown id → ``None`` (safe fallback).
+
+    Legacy rows often use ``safe_fast`` while new cohorts use ``safe_same_day_core`` / ``safe_1to2d_core``;
+    defaulting to "first active" made Portfolio look empty when those IDs had no sent rows yet.
     """
     s = (request.args.get("strategy") or "").strip()
     options = allowed if allowed is not None else STRATEGY_OPTIONS
+    if not s or s.lower() == "all":
+        return None
     if s in options:
         return s
-    for opt in options:
-        if STRATEGY_MODE.get(opt) == "active":
-            return opt
-    return options[0] if options else "safe"
+    return None
 
 
 # ── Health & freshness (admin) ─────────────────────────────────────────────────
@@ -153,17 +205,22 @@ def polymarket_freshness():
     - open_positions.csv older than N minutes
     """
     freshness = get_polymarket_freshness()
+    dp = _get_data_path() if is_polymarket_configured() else ""
+    schema_warnings = collect_json_artifact_schema_warnings(dp) if dp else []
     return jsonify(
         {
             "configured": is_polymarket_configured(),
             "freshness": {
                 "alerts_log_age": freshness.alerts_log_age,
                 "open_positions_age": freshness.open_positions_age,
+                "execution_log_age": freshness.execution_log_age,
                 "debug_candidates_age": freshness.debug_candidates_age,
                 "analytics_age": freshness.analytics_age,
                 "lifecycle_age": freshness.lifecycle_age,
+                "ai_performance_age": freshness.ai_performance_age,
                 "last_loop_run": freshness.last_loop_run,
             },
+            "schema_warnings": schema_warnings,
         }
     )
 
@@ -202,7 +259,10 @@ def polymarket_portfolio():
     bankroll_status = get_bankroll_status(data_path)
     strategy_overview_groups = get_strategy_summary(data_path)
     # Simulated bets are status='sent' under polymarket-alerts risk guard policy.
-    recent_decisions = get_recent_decisions(data_path, limit=30, status_filter="sent")
+    recent_decisions = get_recent_decisions(data_path, limit=30, status_filter="sent", strategy=strategy_val)
+    has_sent_elsewhere = bool(
+        status_summary and status_summary.get("sent", 0) > 0 and (stats.get("alerts_total", 0) == 0)
+    )
 
     total_count = len(stats.get("resolved_list", [])) if stats else 0
     pagination = build_pagination(total_count, page, PER_PAGE)
@@ -231,12 +291,14 @@ def polymarket_portfolio():
         bankroll_status=bankroll_status,
         strategy_overview_groups=strategy_overview_groups,
         recent_decisions=recent_decisions,
+        has_sent_elsewhere=has_sent_elsewhere,
         data_freshness=data_freshness,
         data_quality_flags=get_data_quality_flags(data_path),
         active_section="portfolio",
         polymarket_sections=POLYMARKET_SECTIONS,
         pagination=pagination,
         strategy_options_grouped=strategy_options_grouped,
+        **_polymarket_freshness_context(),
     )
 
 
@@ -332,6 +394,7 @@ def polymarket_positions():
         bankroll_status=bankroll_status,
         sort_options=POSITIONS_SORT_OPTIONS,
         expiry_filters=POSITIONS_EXPIRY_FILTERS,
+        **_polymarket_freshness_context(),
     )
 
 
@@ -425,6 +488,7 @@ def polymarket_risky():
         strategy_options=strategy_options,
         strategy_options_grouped=strategy_options_grouped,
         sort_options=POSITIONS_SORT_OPTIONS,
+        **_polymarket_freshness_context(),
     )
 
 
@@ -526,6 +590,7 @@ def polymarket_loss_lab():
         strategy_options=strategy_options,
         strategy_options_grouped=strategy_options_grouped,
         csv_schema_error=schema_error if not valid else None,
+        **_polymarket_freshness_context(),
     )
 
 
@@ -544,7 +609,7 @@ def polymarket_analytics():
     # Normalize so template never sees non-dict for strategy_cohort, edge_quality, timing, exit_study, insights
     if analytics is not None and isinstance(analytics, dict):
         analytics = dict(analytics)
-        for key in ("strategy_cohort", "edge_quality", "timing", "exit_study", "insights"):
+        for key in ("strategy_cohort", "edge_quality", "timing", "exit_study", "insights", "ai_policy_pnl_cohort"):
             if analytics.get(key) is not None and not isinstance(analytics.get(key), dict):
                 analytics[key] = {}
     return render_template(
@@ -558,6 +623,7 @@ def polymarket_analytics():
         current_strategy=strategy_val,
         strategy_options=strategy_options,
         strategy_options_grouped=strategy_options_grouped,
+        **_polymarket_freshness_context(),
     )
 
 
@@ -616,6 +682,7 @@ def polymarket_lifecycle():
         current_strategy=strategy_val,
         strategy_options=strategy_options,
         strategy_options_grouped=strategy_options_grouped,
+        **_polymarket_freshness_context(),
     )
 
 
@@ -723,6 +790,314 @@ def polymarket_loop():
         strategy_options_grouped=strategy_options_grouped,
         active_section="loop",
         polymarket_sections=POLYMARKET_SECTIONS,
+        **_polymarket_freshness_context(),
+    )
+
+
+# ── AI Simulation ─────────────────────────────────────────────────────────────
+@polymarket_bp.route("/ai-simulation")
+@admin_required
+@_polymarket_configured_required("ai-simulation")
+def polymarket_ai_simulation():
+    data_path = _get_data_path()
+    strategy_options = get_strategy_options_for_nav(data_path)
+    strategy_options_grouped = get_strategy_options_grouped(strategy_options)
+    current_strategy = _get_strategy(strategy_options)
+    data_quality_flags = get_data_quality_flags(data_path)
+
+    filter_val, days_val, days = _parse_filter_days()
+    sort_val = request.args.get("sort", "date_desc")
+    if sort_val not in ("pnl_asc", "pnl_desc", "date_desc", "date_asc"):
+        sort_val = "date_desc"
+    page = max(1, int(request.args.get("page", 1) or 1))
+
+    sim = get_ai_sim_stats(data_path, filter=filter_val, days=days, sort=sort_val, strategy=current_strategy)
+
+    total_count = len(sim.get("resolved_list", [])) if sim else 0
+    pagination = build_pagination(total_count, page, PER_PAGE)
+    start = (pagination["page"] - 1) * PER_PAGE
+    resolved_page = (sim.get("resolved_list") or [])[start: start + PER_PAGE] if sim else []
+    sim_paginated = dict(sim) if sim else {}
+    sim_paginated["resolved_list"] = resolved_page
+
+    return render_template(
+        "polymarket_ai_simulation.html",
+        polymarket_sections=POLYMARKET_SECTIONS,
+        active_section="ai-simulation",
+        strategy_options=strategy_options,
+        strategy_options_grouped=strategy_options_grouped,
+        current_strategy=current_strategy,
+        STRATEGY_LABELS=STRATEGY_LABELS,
+        data_quality_flags=data_quality_flags,
+        sim=sim_paginated,
+        total_count=total_count,
+        pagination=pagination,
+        current_filter=filter_val,
+        current_days=days_val,
+        current_sort=sort_val,
+        **_polymarket_freshness_context(),
+    )
+
+
+# ── Mirror Portfolio (read-only trade mirror export) ─────────────────────────
+@polymarket_bp.route("/mirror-portfolio")
+@admin_required
+@_polymarket_configured_required("mirror-portfolio")
+def polymarket_mirror_portfolio():
+    data_path = _get_data_path()
+    strategy_options = get_strategy_options_for_nav(data_path)
+    strategy_options_grouped = get_strategy_options_grouped(strategy_options)
+    current_strategy = _get_strategy(strategy_options)
+    data_quality_flags = get_data_quality_flags(data_path)
+    mirror = get_mirror_portfolio_json(data_path)
+    mirror_age = get_mirror_portfolio_file_age(data_path)
+    mirror_wallet_prefill = (request.args.get("mirror_wallet") or "").strip()
+    mirror_days_prefill = (request.args.get("mirror_days") or "").strip()
+    if not mirror_wallet_prefill and mirror and isinstance(mirror.get("meta"), dict):
+        mirror_wallet_prefill = (mirror["meta"].get("wallet") or "").strip()
+    if not mirror_days_prefill:
+        mirror_days_prefill = (os.getenv("MIRROR_DAYS") or "365").strip() or "365"
+    return render_template(
+        "polymarket_mirror_portfolio.html",
+        polymarket_sections=POLYMARKET_SECTIONS,
+        active_section="mirror-portfolio",
+        strategy_options=strategy_options,
+        strategy_options_grouped=strategy_options_grouped,
+        current_strategy=current_strategy,
+        STRATEGY_LABELS=STRATEGY_LABELS,
+        data_quality_flags=data_quality_flags,
+        mirror=mirror,
+        mirror_age=mirror_age,
+        mirror_wallet_prefill=mirror_wallet_prefill,
+        mirror_days_prefill=mirror_days_prefill,
+        **_polymarket_freshness_context(),
+    )
+
+
+@polymarket_bp.route("/mirror-portfolio/refresh", methods=["POST"])
+@admin_required
+@_polymarket_configured_required("mirror-portfolio")
+def polymarket_mirror_portfolio_refresh():
+    """Regenerate mirror_portfolio.json via analytics/mirror_portfolio_export.py."""
+    import subprocess
+
+    data_path = _get_data_path()
+    script_path = os.path.join(data_path, "analytics", "mirror_portfolio_export.py")
+    strategy_q = request.form.get("strategy") or None
+    form_wallet = (request.form.get("wallet") or "").strip()
+    form_days = (request.form.get("days") or "").strip()
+    wallet = _normalize_mirror_wallet(form_wallet) or _normalize_mirror_wallet(os.getenv("MIRROR_WALLET") or "")
+    days = _parse_mirror_days(form_days or os.getenv("MIRROR_DAYS") or "365")
+
+    def _redirect_with_form(**extra):
+        kw = {"strategy": strategy_q, "mirror_wallet": form_wallet or "", "mirror_days": form_days or days}
+        kw.update(extra)
+        return redirect(url_for("polymarket.polymarket_mirror_portfolio", **kw))
+
+    if not os.path.isfile(script_path):
+        flash("analytics/mirror_portfolio_export.py not found in polymarket-alerts directory.", "error")
+        return _redirect_with_form()
+    if not wallet:
+        flash("Enter a valid wallet address (0x + 40 hex characters), or set MIRROR_WALLET in .env.", "error")
+        return _redirect_with_form()
+    python_exe = os.path.join(data_path, "venv", "bin", "python") if os.path.isfile(os.path.join(data_path, "venv", "bin", "python")) else "python3"
+    try:
+        result = subprocess.run(
+            [
+                python_exe,
+                "analytics/mirror_portfolio_export.py",
+                "--data-dir",
+                data_path,
+                "--wallet",
+                wallet,
+                "--days",
+                days,
+            ],
+            cwd=data_path,
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        if result.returncode == 0:
+            flash("mirror_portfolio.json updated.", "success")
+        else:
+            err = (result.stderr or result.stdout or "").strip()[:400]
+            flash(f"Refresh failed: {err or 'Unknown error'}", "error")
+    except subprocess.TimeoutExpired:
+        flash("Refresh timed out (5 min). Try running manually on the server.", "error")
+    except Exception as e:
+        flash(f"Refresh failed: {e}", "error")
+    return redirect(
+        url_for(
+            "polymarket.polymarket_mirror_portfolio",
+            strategy=strategy_q,
+            mirror_wallet=wallet,
+            mirror_days=days,
+        )
+    )
+
+
+# ── Mirror alerts (multi-wallet Telegram watch list) ──────────────────────────
+@polymarket_bp.route("/mirror-alerts")
+@admin_required
+@_polymarket_configured_required("mirror-alerts")
+def polymarket_mirror_alerts():
+    data_path = _get_data_path()
+    strategy_options = get_strategy_options_for_nav(data_path)
+    strategy_options_grouped = get_strategy_options_grouped(strategy_options)
+    current_strategy = _get_strategy(strategy_options)
+    data_quality_flags = get_data_quality_flags(data_path)
+    cfg = get_mirror_watch_config(data_path) or {"version": 1, "wallets": []}
+    wallets = cfg.get("wallets") if isinstance(cfg.get("wallets"), list) else []
+    cfg_age = get_file_age(data_path, "mirror_watch_config.json")
+    return render_template(
+        "polymarket_mirror_alerts.html",
+        polymarket_sections=POLYMARKET_SECTIONS,
+        active_section="mirror-alerts",
+        strategy_options=strategy_options,
+        strategy_options_grouped=strategy_options_grouped,
+        current_strategy=current_strategy,
+        STRATEGY_LABELS=STRATEGY_LABELS,
+        data_quality_flags=data_quality_flags,
+        wallets=wallets,
+        mirror_watch_max=MIRROR_WATCH_MAX_WALLETS,
+        mirror_poll_groups=MIRROR_POLL_GROUPS,
+        cfg_age=cfg_age,
+        **_polymarket_freshness_context(),
+    )
+
+
+@polymarket_bp.route("/mirror-alerts/add", methods=["POST"])
+@admin_required
+@_polymarket_configured_required("mirror-alerts")
+def polymarket_mirror_alerts_add():
+    data_path = _get_data_path()
+    addr = _normalize_mirror_wallet((request.form.get("address") or "").strip())
+    label = (request.form.get("label") or "").strip()[:80] or None
+    telegram_on = request.form.get("telegram_enabled") == "on"
+    poll_group = normalize_mirror_poll_group(request.form.get("poll_group"))
+    if not addr:
+        flash("Enter a valid wallet address (0x + 40 hex characters).", "error")
+        return redirect(url_for("polymarket.polymarket_mirror_alerts", strategy=request.form.get("strategy") or None))
+    cfg = get_mirror_watch_config(data_path) or {"wallets": []}
+    wallets = list(cfg.get("wallets") or [])
+    if len(wallets) >= MIRROR_WATCH_MAX_WALLETS:
+        flash(f"Maximum {MIRROR_WATCH_MAX_WALLETS} wallets.", "error")
+        return redirect(url_for("polymarket.polymarket_mirror_alerts", strategy=request.form.get("strategy") or None))
+    if any((w.get("address") or "").lower() == addr for w in wallets if isinstance(w, dict)):
+        flash("That address is already in the list.", "error")
+        return redirect(url_for("polymarket.polymarket_mirror_alerts", strategy=request.form.get("strategy") or None))
+    wallets.append(
+        {
+            "id": uuid.uuid4().hex[:12],
+            "address": addr,
+            "label": label or (addr[:10] + "…"),
+            "telegram_enabled": telegram_on,
+            "poll_group": poll_group,
+        }
+    )
+    ok, err = save_mirror_watch_config(data_path, {"wallets": wallets})
+    if ok:
+        flash("Wallet added. First timer run will seed trades (no Telegram spam).", "success")
+    else:
+        flash(f"Could not save config: {err}", "error")
+    return redirect(url_for("polymarket.polymarket_mirror_alerts", strategy=request.form.get("strategy") or None))
+
+
+@polymarket_bp.route("/mirror-alerts/toggle-telegram", methods=["POST"])
+@admin_required
+@_polymarket_configured_required("mirror-alerts")
+def polymarket_mirror_alerts_toggle_telegram():
+    data_path = _get_data_path()
+    addr = _normalize_mirror_wallet((request.form.get("address") or "").strip())
+    if not addr:
+        flash("Invalid address.", "error")
+        return redirect(url_for("polymarket.polymarket_mirror_alerts", strategy=request.form.get("strategy") or None))
+    cfg = get_mirror_watch_config(data_path) or {"wallets": []}
+    wallets = []
+    for w in cfg.get("wallets") or []:
+        if not isinstance(w, dict):
+            continue
+        w = dict(w)
+        if (w.get("address") or "").lower() == addr:
+            w["telegram_enabled"] = not bool(w.get("telegram_enabled", True))
+        wallets.append(w)
+    ok, err = save_mirror_watch_config(data_path, {"wallets": wallets})
+    if ok:
+        flash("Telegram setting updated.", "success")
+    else:
+        flash(f"Could not save: {err}", "error")
+    return redirect(url_for("polymarket.polymarket_mirror_alerts", strategy=request.form.get("strategy") or None))
+
+
+@polymarket_bp.route("/mirror-alerts/set-poll-group", methods=["POST"])
+@admin_required
+@_polymarket_configured_required("mirror-alerts")
+def polymarket_mirror_alerts_set_poll_group():
+    data_path = _get_data_path()
+    addr = _normalize_mirror_wallet((request.form.get("address") or "").strip())
+    poll_group = normalize_mirror_poll_group(request.form.get("poll_group"))
+    if not addr:
+        flash("Invalid address.", "error")
+        return redirect(url_for("polymarket.polymarket_mirror_alerts", strategy=request.form.get("strategy") or None))
+    cfg = get_mirror_watch_config(data_path) or {"wallets": []}
+    wallets = []
+    for w in cfg.get("wallets") or []:
+        if not isinstance(w, dict):
+            continue
+        w = dict(w)
+        if (w.get("address") or "").lower() == addr:
+            w["poll_group"] = poll_group
+        wallets.append(w)
+    ok, err = save_mirror_watch_config(data_path, {"wallets": wallets})
+    if ok:
+        flash("Poll group updated.", "success")
+    else:
+        flash(f"Could not save: {err}", "error")
+    return redirect(url_for("polymarket.polymarket_mirror_alerts", strategy=request.form.get("strategy") or None))
+
+
+@polymarket_bp.route("/mirror-alerts/remove", methods=["POST"])
+@admin_required
+@_polymarket_configured_required("mirror-alerts")
+def polymarket_mirror_alerts_remove():
+    data_path = _get_data_path()
+    addr = _normalize_mirror_wallet((request.form.get("address") or "").strip())
+    if not addr:
+        flash("Invalid address.", "error")
+        return redirect(url_for("polymarket.polymarket_mirror_alerts", strategy=request.form.get("strategy") or None))
+    cfg = get_mirror_watch_config(data_path) or {"wallets": []}
+    wallets = [w for w in (cfg.get("wallets") or []) if isinstance(w, dict) and (w.get("address") or "").lower() != addr]
+    ok, err = save_mirror_watch_config(data_path, {"wallets": wallets})
+    if ok:
+        flash("Wallet removed from watch list.", "success")
+    else:
+        flash(f"Could not save: {err}", "error")
+    return redirect(url_for("polymarket.polymarket_mirror_alerts", strategy=request.form.get("strategy") or None))
+
+
+# ── AI Performance ────────────────────────────────────────────────────────────
+@polymarket_bp.route("/ai-performance")
+@admin_required
+@_polymarket_configured_required("ai-performance")
+def polymarket_ai_performance():
+    data_path = _get_data_path()
+    strategy_options = get_strategy_options_for_nav(data_path)
+    strategy_options_grouped = get_strategy_options_grouped(strategy_options)
+    current_strategy = _get_strategy(strategy_options)
+    data_quality_flags = get_data_quality_flags(data_path)
+    ai_perf = get_ai_performance(data_path, strategy=current_strategy)
+    return render_template(
+        "polymarket_ai_performance.html",
+        polymarket_sections=POLYMARKET_SECTIONS,
+        active_section="ai-performance",
+        strategy_options=strategy_options,
+        strategy_options_grouped=strategy_options_grouped,
+        current_strategy=current_strategy,
+        STRATEGY_LABELS=STRATEGY_LABELS,
+        data_quality_flags=data_quality_flags,
+        ai_perf=ai_perf,
+        **_polymarket_freshness_context(),
     )
 
 
@@ -750,11 +1125,13 @@ def polymarket_export():
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["question", "result", "pnl_usd", "link"])
+    writer.writerow(["question", "pick", "result", "result_detail", "pnl_usd", "link"])
     for r in stats["resolved_list"]:
         writer.writerow([
             r.get("question", ""),
+            r.get("outcome_label", "") or r.get("pick_display", ""),
             r.get("actual_result", ""),
+            r.get("result_detail_display", r.get("actual_result", "")),
             r.get("pnl_usd", 0),
             r.get("link", ""),
         ])

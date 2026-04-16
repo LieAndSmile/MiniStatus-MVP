@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+{% block title %}AI Performance – Polymarket{% endblock %}
+{% block header %}Polymarket Alerts{% endblock %}
+
+{% block content %}
+{% include "polymarket_nav.html" %}
+
+{% if ai_perf.data_source is defined and ai_perf.data_source != "none" %}
+<div class="mb-4 rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card px-4 py-3 text-xs text-light-text dark:text-dark-text space-y-1.5">
+  {% if ai_perf.data_source == "artifact" %}
+  <p><span class="font-semibold text-light-muted dark:text-dark-muted uppercase tracking-wider">Data source</span> — Precomputed <code class="px-1 py-0.5 rounded bg-light-hover dark:bg-dark-hover">ai_performance.json</code>
+    {% if ai_perf.artifact_exported_at %}<span class="text-light-muted dark:text-dark-muted"> · exported {{ ai_perf.artifact_exported_at }}</span>{% endif %}
+  </p>
+  {% elif ai_perf.data_source == "csv" %}
+  <p><span class="font-semibold text-light-muted dark:text-dark-muted uppercase tracking-wider">Data source</span> — Live scan of <code class="px-1 py-0.5 rounded bg-light-hover dark:bg-dark-hover">alerts_log.csv</code></p>
+  {% if current_strategy is defined and current_strategy and current_strategy|lower != "all" %}
+  <p class="text-amber-800 dark:text-amber-200">Strategy filter uses CSV only. The precomputed artifact (when fresh) summarizes <strong>all</strong> strategies on the AI Performance tab.</p>
+  {% endif %}
+  {% endif %}
+  {% if ai_perf.producer_global_ai_policy is defined and ai_perf.producer_global_ai_policy %}
+  <p class="text-light-muted dark:text-dark-muted">Producer policy: <code class="px-1 py-0.5 rounded bg-light-hover dark:bg-dark-hover">{{ ai_perf.producer_global_ai_policy }}</code>
+    {% if ai_perf.producer_last_ai_screen_ts %} · last AI screen {{ ai_perf.producer_last_ai_screen_ts }}{% endif %}
+  </p>
+  {% endif %}
+</div>
+{% endif %}
+
+{% with diag=ai_perf %}
+{% include "polymarket_ai_loop_diagnostics.html" %}
+{% endwith %}
+
+{% set lm = ai_perf.lift_metrics if (ai_perf.lift_metrics is defined) else {} %}
+{% if ai_perf.has_data and lm %}
+{# ── Block quality / lift (blocked AI rows) ─────────────────────────────── #}
+<div class="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
+    <div class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase mb-1">False-block rate</div>
+    {% if lm.false_block_rate_pct is not none %}
+    <div class="text-2xl font-bold text-light-text dark:text-dark-text">{{ lm.false_block_rate_pct }}%</div>
+    {% else %}
+    <div class="text-2xl font-bold text-light-muted dark:text-dark-muted">—</div>
+    {% endif %}
+    <div class="text-xs text-light-muted dark:text-dark-muted mt-1">blocked rows judged wrong (missed YES)</div>
+  </div>
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
+    <div class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase mb-1">Loss-avoided rate</div>
+    {% if lm.loss_avoided_rate_pct is not none %}
+    <div class="text-2xl font-bold text-status-up-light dark:text-status-up-dark">{{ lm.loss_avoided_rate_pct }}%</div>
+    {% else %}
+    <div class="text-2xl font-bold text-light-muted dark:text-dark-muted">—</div>
+    {% endif %}
+    <div class="text-xs text-light-muted dark:text-dark-muted mt-1">blocked rows judged correct (NO)</div>
+  </div>
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
+    <div class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase mb-1">SKIP High lift</div>
+    {% if lm.skip_tier_lift_pp is not none %}
+    <div class="text-2xl font-bold text-light-text dark:text-dark-text">{{ "%+.1f"|format(lm.skip_tier_lift_pp) }} pp</div>
+    {% else %}
+    <div class="text-2xl font-bold text-light-muted dark:text-dark-muted">—</div>
+    {% endif %}
+    <div class="text-xs text-light-muted dark:text-dark-muted mt-1">vs. baseline loss on sent rows</div>
+  </div>
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
+    <div class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase mb-1">CF blocked P/L est.</div>
+    {% if lm.counterfactual_blocked_pnl_est is not none %}
+    <div class="text-2xl font-bold {% if lm.counterfactual_blocked_pnl_est >= 0 %}text-status-up-light dark:text-status-up-dark{% else %}text-status-down-light dark:text-status-down-dark{% endif %}">${{ "%.0f"|format(lm.counterfactual_blocked_pnl_est) }}</div>
+    {% else %}
+    <div class="text-2xl font-bold text-light-muted dark:text-dark-muted">—</div>
+    {% endif %}
+    <div class="text-xs text-light-muted dark:text-dark-muted mt-1">{{ lm.blocked_judged_count or 0 }} judged blocked rows</div>
+  </div>
+</div>
+{% endif %}
+
+{# ── Summary KPI cards ──────────────────────────────────────────────────── #}
+<div class="mb-6 grid grid-cols-1 sm:grid-cols-4 gap-4">
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
+    <div class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase mb-1">Total screened</div>
+    <div class="text-2xl font-bold text-light-text dark:text-dark-text">{{ ai_perf.total_screened }}</div>
+    <div class="text-xs text-light-muted dark:text-dark-muted mt-1">rows with an AI verdict</div>
+  </div>
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
+    <div class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase mb-1">Total blocked</div>
+    <div class="text-2xl font-bold text-light-text dark:text-dark-text">{{ ai_perf.total_blocked }}</div>
+    <div class="text-xs text-light-muted dark:text-dark-muted mt-1">blocked_ai_screen rows</div>
+  </div>
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
+    <div class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase mb-1">Overall accuracy</div>
+    {% if ai_perf.overall_accuracy is not none %}
+    <div class="text-2xl font-bold
+      {% if ai_perf.overall_accuracy > 60 %}text-status-up-light dark:text-status-up-dark
+      {% elif ai_perf.overall_accuracy >= 40 %}text-amber-600 dark:text-amber-400
+      {% else %}text-status-down-light dark:text-status-down-dark{% endif %}">
+      {{ ai_perf.overall_accuracy }}%
+    </div>
+    {% else %}
+    <div class="text-2xl font-bold text-light-muted dark:text-dark-muted">—</div>
+    {% endif %}
+    <div class="text-xs text-light-muted dark:text-dark-muted mt-1">correct / judged (direction-based)</div>
+  </div>
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
+    <div class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase mb-1">Baseline loss rate</div>
+    {% if ai_perf.baseline_loss_rate is not none %}
+    <div class="text-2xl font-bold text-light-text dark:text-dark-text">{{ ai_perf.baseline_loss_rate }}%</div>
+    {% else %}
+    <div class="text-2xl font-bold text-light-muted dark:text-dark-muted">—</div>
+    {% endif %}
+    <div class="text-xs text-light-muted dark:text-dark-muted mt-1">sent rows that resolved NO</div>
+  </div>
+</div>
+
+{# ── Accuracy by verdict tier ───────────────────────────────────────────── #}
+<div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-6 mb-6">
+  <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-2">Accuracy by verdict tier</h2>
+  <div class="rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 px-4 py-3 text-xs text-amber-800 dark:text-amber-300 mb-4">
+    <strong>How accuracy is measured (direction-based):</strong>
+    BET = correct if resolved YES (bet would have won).
+    SKIP = correct if resolved NO (loss avoided).
+    CAUTION = same direction logic.
+    SKIP counterfactual P/L uses a ${{ ai_perf.cf_standard_bet|int }} est. proxy bet size (real size unknown for blocked rows).
+  </div>
+  {% if ai_perf.accuracy_tiers and ai_perf.accuracy_tiers|length > 0 %}
+  <div class="overflow-x-auto">
+    <table class="min-w-full text-sm">
+      <thead>
+        <tr class="text-left text-xs font-semibold text-light-muted dark:text-dark-muted border-b border-light-border dark:border-dark-border">
+          <th class="py-2 pr-4">Verdict</th>
+          <th class="py-2 pr-4">Confidence</th>
+          <th class="py-2 pr-4 text-right">Resolved</th>
+          <th class="py-2 pr-4 text-right">Correct</th>
+          <th class="py-2 pr-4 text-right">Wrong</th>
+          <th class="py-2 pr-4 text-right">Accuracy</th>
+          <th class="py-2 text-right">P&amp;L / CF Saved</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tier in ai_perf.accuracy_tiers %}
+        <tr class="border-b border-light-border/60 dark:border-dark-border/60 last:border-b-0">
+          <td class="py-2 pr-4">
+            {% if tier.verdict == "BET" %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-status-up-light/15 dark:bg-status-up-dark/15 text-status-up-light dark:text-status-up-dark">BET</span>
+            {% elif tier.verdict == "SKIP" %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-status-down-light/15 dark:bg-status-down-dark/15 text-status-down-light dark:text-status-down-dark">SKIP</span>
+            {% elif tier.verdict == "CAUTION" %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-400">CAUTION</span>
+            {% else %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-light-hover dark:bg-dark-hover text-light-muted dark:text-dark-muted">{{ tier.verdict }}</span>
+            {% endif %}
+          </td>
+          <td class="py-2 pr-4 text-light-text dark:text-dark-text">{{ tier.confidence or "—" }}</td>
+          <td class="py-2 pr-4 text-right text-light-text dark:text-dark-text">
+            {{ tier.resolved }}{% if tier.pending %}<span class="text-[10px] text-light-muted dark:text-dark-muted ml-1">({{ tier.pending }} pending)</span>{% endif %}
+          </td>
+          <td class="py-2 pr-4 text-right text-status-up-light dark:text-status-up-dark">{{ tier.correct }}</td>
+          <td class="py-2 pr-4 text-right text-status-down-light dark:text-status-down-dark">{{ tier.wrong }}</td>
+          <td class="py-2 pr-4 text-right font-medium
+            {% if tier.accuracy_pct is not none %}
+              {% if tier.accuracy_pct > 60 %}text-status-up-light dark:text-status-up-dark
+              {% elif tier.accuracy_pct >= 40 %}text-amber-600 dark:text-amber-400
+              {% else %}text-status-down-light dark:text-status-down-dark{% endif %}
+            {% else %}text-light-muted dark:text-dark-muted{% endif %}">
+            {% if tier.accuracy_pct is not none %}{{ tier.accuracy_pct }}%{% else %}—{% endif %}
+          </td>
+          <td class="py-2 text-right font-medium">
+            {% if tier.verdict == "SKIP" %}
+              {% if tier.cf_pnl_saved is defined %}
+              <span class="{% if tier.cf_pnl_saved >= 0 %}text-status-up-light dark:text-status-up-dark{% else %}text-status-down-light dark:text-status-down-dark{% endif %}">
+                {{ tier.cf_pnl_saved_display }}
+              </span>
+              {% if tier.lift is not none %}
+              <div class="text-[10px] text-light-muted dark:text-dark-muted">lift {{ "+" if tier.lift > 0 else "" }}{{ tier.lift }}pp vs. baseline</div>
+              {% endif %}
+              {% else %}—{% endif %}
+            {% else %}
+              <span class="{% if tier.pnl > 0 %}text-status-up-light dark:text-status-up-dark{% elif tier.pnl < 0 %}text-status-down-light dark:text-status-down-dark{% else %}text-light-muted dark:text-dark-muted{% endif %}">
+                {{ tier.pnl_display }}
+              </span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="py-10 text-center text-sm text-light-muted dark:text-dark-muted">
+    No resolved AI-screened bets yet. Stats will appear once the bot has run with your LLM API key configured (this stack uses
+    <code class="px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover">OPENAI_API_KEY</code>)
+    and screened bets have resolved.
+  </div>
+  {% endif %}
+</div>
+
+{# ── Blocked bets review ────────────────────────────────────────────────── #}
+<div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-6">
+  <details {% if ai_perf.total_blocked < 20 %}open{% endif %}>
+    <summary class="cursor-pointer list-none flex items-center gap-2 select-none">
+      <h2 class="text-lg font-semibold text-light-text dark:text-dark-text inline">
+        Blocked alerts review ({{ ai_perf.total_blocked }})
+      </h2>
+      <span class="text-light-muted dark:text-dark-muted text-sm">[click to toggle]</span>
+    </summary>
+    {% if ai_perf.blocked_rows_full_count is defined and ai_perf.blocked_rows and ai_perf.blocked_rows_full_count > (ai_perf.blocked_rows|length) %}
+    <p class="text-xs text-light-muted dark:text-dark-muted mt-2">Showing {{ ai_perf.blocked_rows|length }} of {{ ai_perf.blocked_rows_full_count }} blocked rows (newest first).</p>
+    {% endif %}
+
+    <p class="text-sm text-light-muted dark:text-dark-muted mt-3 mb-4">
+      These markets passed all quantitative filters but were blocked by AI (SKIP + High confidence).
+      <strong>Correct</strong> = resolved NO (loss avoided). <strong>Missed</strong> = resolved YES (opportunity cost).
+      Counterfactual P/L uses a ${{ ai_perf.cf_standard_bet|int }} est. proxy bet size.
+    </p>
+
+    {% if ai_perf.blocked_rows and ai_perf.blocked_rows|length > 0 %}
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="text-left text-xs font-semibold text-light-muted dark:text-dark-muted border-b border-light-border dark:border-dark-border">
+            <th class="py-2 pr-4 whitespace-nowrap">Date</th>
+            <th class="py-2 pr-4">Market</th>
+            <th class="py-2 pr-4">Sport</th>
+            <th class="py-2 pr-4">Confidence</th>
+            <th class="py-2 pr-4">Red flags</th>
+            <th class="py-2 pr-4">Reasoning</th>
+            <th class="py-2 pr-4">Result</th>
+            <th class="py-2 pr-4">AI Decision</th>
+            <th class="py-2 text-right">CF P/L est.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for b in ai_perf.blocked_rows %}
+          <tr class="border-b border-light-border/60 dark:border-dark-border/60 last:border-b-0 align-top">
+            <td class="py-2 pr-4 whitespace-nowrap text-light-muted dark:text-dark-muted text-xs">{{ b.ts }}</td>
+            <td class="py-2 pr-4 max-w-xs">
+              {% if b.link %}
+              <a href="{{ b.link }}" target="_blank" rel="noopener"
+                 class="text-light-primary dark:text-dark-primary hover:underline break-words">{{ b.question }}{% if b.question|length >= 80 %}…{% endif %}</a>
+              {% else %}
+              <span class="text-light-text dark:text-dark-text break-words">{{ b.question }}{% if b.question|length >= 80 %}…{% endif %}</span>
+              {% endif %}
+            </td>
+            <td class="py-2 pr-4 text-light-muted dark:text-dark-muted whitespace-nowrap">{{ b.sport or b.market_type or "—" }}</td>
+            <td class="py-2 pr-4 whitespace-nowrap">
+              {% if b.ai_confidence == "High" %}
+              <span class="inline-flex px-1.5 py-0.5 rounded text-xs font-medium bg-status-down-light/10 dark:bg-status-down-dark/10 text-status-down-light dark:text-status-down-dark">High</span>
+              {% elif b.ai_confidence == "Medium" %}
+              <span class="inline-flex px-1.5 py-0.5 rounded text-xs font-medium bg-amber-500/10 text-amber-700 dark:text-amber-400">Medium</span>
+              {% elif b.ai_confidence %}
+              <span class="inline-flex px-1.5 py-0.5 rounded text-xs font-medium bg-light-hover dark:bg-dark-hover text-light-muted dark:text-dark-muted">{{ b.ai_confidence }}</span>
+              {% else %}
+              <span class="text-light-muted dark:text-dark-muted">—</span>
+              {% endif %}
+            </td>
+            <td class="py-2 pr-4">
+              {% if b.red_flags %}
+              <div class="flex flex-wrap gap-1">
+                {% for flag in b.red_flags %}
+                <span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-light-hover dark:bg-dark-hover text-light-muted dark:text-dark-muted">{{ flag }}</span>
+                {% endfor %}
+              </div>
+              {% else %}
+              <span class="text-light-muted dark:text-dark-muted">—</span>
+              {% endif %}
+            </td>
+            <td class="py-2 pr-4 text-xs text-light-muted dark:text-dark-muted max-w-xs break-words">{{ b.reasoning or "—" }}</td>
+            <td class="py-2 pr-4 whitespace-nowrap">
+              {% if b.actual_result == "YES" %}
+              <span class="inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-status-up-light/15 dark:bg-status-up-dark/15 text-status-up-light dark:text-status-up-dark">YES</span>
+              {% elif b.actual_result == "NO" %}
+              <span class="inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-status-down-light/15 dark:bg-status-down-dark/15 text-status-down-light dark:text-status-down-dark">NO</span>
+              {% else %}
+              <span class="text-xs text-light-muted dark:text-dark-muted">unresolved</span>
+              {% endif %}
+            </td>
+            <td class="py-2 pr-4 whitespace-nowrap">
+              {% if b.outcome_verdict == "correct" %}
+              <span class="inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-status-up-light/15 dark:bg-status-up-dark/15 text-status-up-light dark:text-status-up-dark">Correct</span>
+              {% elif b.outcome_verdict == "wrong" %}
+              <span class="inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-status-down-light/15 dark:bg-status-down-dark/15 text-status-down-light dark:text-status-down-dark">Missed</span>
+              {% else %}
+              <span class="text-xs text-light-muted dark:text-dark-muted">Pending</span>
+              {% endif %}
+            </td>
+            <td class="py-2 text-right whitespace-nowrap text-xs font-medium">
+              {% if b.cf_pnl_est is not none %}
+              <span class="{% if b.cf_pnl_est >= 0 %}text-status-up-light dark:text-status-up-dark{% else %}text-status-down-light dark:text-status-down-dark{% endif %}">
+                ${{ "%.2f"|format(b.cf_pnl_est) }} est.
+              </span>
+              {% else %}
+              <span class="text-light-muted dark:text-dark-muted">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="py-8 text-center text-sm text-light-muted dark:text-dark-muted">
+      No blocked alerts yet.
+    </div>
+    {% endif %}
+  </details>
+</div>
+{% endblock %}

@@ -1,0 +1,92 @@
+{# Expects `diag` — dict from get_ai_performance / get_ai_sim_stats (Phase 3 live loop state). #}
+<details class="mb-4 rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card open:shadow-sm">
+  <summary class="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-light-text dark:text-dark-text select-none">
+    AI loop diagnostics <span class="text-xs font-normal text-light-muted dark:text-dark-muted">(producer)</span>
+  </summary>
+  <div class="px-4 pb-4 text-xs border-t border-light-border/60 dark:border-dark-border/60 pt-3 space-y-3">
+    {% if diag.ai_loop_display_source == "live" %}
+    <p class="text-light-muted dark:text-dark-muted">Counters and policy are read from live <code class="px-1 py-0.5 rounded bg-light-hover dark:bg-dark-hover">ai_loop_state.json</code> (may be newer than the export snapshot).</p>
+    {% elif diag.ai_loop_display_source == "artifact_snapshot" %}
+    <p class="text-amber-800 dark:text-amber-200">No <code class="px-1 py-0.5 rounded bg-light-hover dark:bg-dark-hover">ai_loop_state.json</code> on disk — showing values embedded in the last <code class="px-1 py-0.5 rounded bg-light-hover dark:bg-dark-hover">ai_performance.json</code> export.</p>
+    {% else %}
+    <p class="text-light-muted dark:text-dark-muted">No producer loop state file or export snapshot found.</p>
+    {% endif %}
+
+    {% if diag.producer_global_ai_policy is defined and diag.producer_global_ai_policy %}
+      {% set pol = (diag.producer_global_ai_policy|string)|lower %}
+      {% if pol == "off" %}
+      <p class="rounded-md bg-amber-50 dark:bg-amber-900/25 border border-amber-200 dark:border-amber-700 px-3 py-2 text-amber-900 dark:text-amber-200">Policy is <strong>off</strong> — the producer skips LLM screening; counters may still reflect historical runs.</p>
+      {% endif %}
+    {% endif %}
+
+    <div class="flex flex-wrap gap-x-4 gap-y-1 text-light-text dark:text-dark-text">
+      {% if diag.producer_global_ai_policy is defined and diag.producer_global_ai_policy %}
+      <span>Policy: <code class="px-1 py-0.5 rounded bg-light-hover dark:bg-dark-hover">{{ diag.producer_global_ai_policy }}</code></span>
+      {% endif %}
+      {% if diag.producer_allow_hard_block is defined and diag.producer_allow_hard_block %}
+      <span class="text-status-down-light dark:text-status-down-dark">Hard block allowed</span>
+      {% endif %}
+      {% if diag.producer_loop_updated_at %}
+      <span class="text-light-muted dark:text-dark-muted">State updated: {{ diag.producer_loop_updated_at }}</span>
+      {% endif %}
+      {% if diag.producer_last_ai_screen_ts %}
+      <span class="text-light-muted dark:text-dark-muted">Last screen: {{ diag.producer_last_ai_screen_ts }}</span>
+      {% endif %}
+      {% if diag.producer_last_ai_sim_ts %}
+      <span class="text-light-muted dark:text-dark-muted">Last sim: {{ diag.producer_last_ai_sim_ts }}</span>
+      {% endif %}
+    </div>
+
+    {% if diag.producer_last_screen_meta is defined and diag.producer_last_screen_meta %}
+    {% set m = diag.producer_last_screen_meta %}
+    <div class="rounded-md border border-light-border dark:border-dark-border bg-light-hover/30 dark:bg-dark-hover/20 px-3 py-3 space-y-2">
+      <p class="text-[11px] font-semibold uppercase tracking-wider text-light-muted dark:text-dark-muted">Last successful LLM screen <span class="font-normal text-light-muted dark:text-dark-muted">(structured snapshot)</span></p>
+      <div class="flex flex-wrap gap-2 text-light-text dark:text-dark-text">
+        {% if m.ts %}<span class="text-light-muted dark:text-dark-muted">{{ m.ts }}</span>{% endif %}
+        {% if m.strategy_id %}<span><code class="px-1 py-0.5 rounded bg-light-hover dark:bg-dark-hover">{{ m.strategy_id }}</code></span>{% endif %}
+        {% if m.verdict %}<span class="font-medium">{{ m.verdict }}</span>{% endif %}
+        {% if m.confidence %}<span class="text-light-muted dark:text-dark-muted">{{ m.confidence }}</span>{% endif %}
+      </div>
+      {% if m.screen_model or m.prompt_version %}
+      <p class="text-light-muted dark:text-dark-muted">Model <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">{{ m.screen_model or "—" }}</code> · prompt <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">v{{ m.prompt_version or "?" }}</code></p>
+      {% endif %}
+      {% if m.question_preview %}
+      <p class="text-light-text dark:text-dark-text break-words">{{ m.question_preview }}</p>
+      {% endif %}
+      {% if m.short_summary %}
+      <p class="text-light-text dark:text-dark-text leading-snug">{{ m.short_summary }}</p>
+      {% elif m.matchup_summary %}
+      <p class="text-light-text dark:text-dark-text leading-snug text-light-muted dark:text-dark-muted">{{ m.matchup_summary }}</p>
+      {% endif %}
+      {% if m.reason_codes and m.reason_codes|length > 0 %}
+      <div class="flex flex-wrap gap-1">
+        {% for code in m.reason_codes %}
+        <span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-light-hover dark:bg-dark-hover text-light-muted dark:text-dark-muted">{{ code }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if diag.producer_counter_rows and diag.producer_counter_rows|length > 0 %}
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-xs">
+        <thead>
+          <tr class="text-left text-light-muted dark:text-dark-muted border-b border-light-border dark:border-dark-border">
+            <th class="py-1.5 pr-4 font-semibold">Metric</th>
+            <th class="py-1.5 pr-4 font-semibold text-right">Count</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in diag.producer_counter_rows %}
+          <tr class="border-b border-light-border/50 dark:border-dark-border/50 last:border-b-0">
+            <td class="py-1.5 pr-4 text-light-text dark:text-dark-text">{{ row.label }}</td>
+            <td class="py-1.5 text-right font-mono text-light-text dark:text-dark-text">{{ row.value }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+</details>

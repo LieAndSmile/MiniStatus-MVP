@@ -27,9 +27,11 @@ class PolymarketFreshness:
 
     alerts_log_age: Optional[str]
     open_positions_age: Optional[str]
+    execution_log_age: Optional[str]
     debug_candidates_age: Optional[str]
     analytics_age: Optional[str]
     lifecycle_age: Optional[str]
+    ai_performance_age: Optional[str]
     last_loop_run: Optional[str]
 
 
@@ -73,9 +75,11 @@ def get_polymarket_freshness() -> PolymarketFreshness:
         return PolymarketFreshness(
             alerts_log_age=None,
             open_positions_age=None,
+            execution_log_age=None,
             debug_candidates_age=None,
             analytics_age=None,
             lifecycle_age=None,
+            ai_performance_age=None,
             last_loop_run=None,
         )
 
@@ -83,18 +87,22 @@ def get_polymarket_freshness() -> PolymarketFreshness:
 
     alerts_age = get_file_age(data_path, "alerts_log.csv")
     open_positions_age = get_file_age(data_path, "open_positions.csv")
+    execution_log_age = get_file_age(data_path, "execution_log.csv")
     debug_candidates_age = get_file_age(data_path, "debug_candidates.csv")
 
     analytics_age = get_analytics_file_age(data_path)
     lifecycle_age = get_lifecycle_file_age(data_path)
+    ai_performance_age = get_file_age(data_path, "ai_performance.json")
     last_loop = get_last_loop_time(data_path)
 
     return PolymarketFreshness(
         alerts_log_age=alerts_age,
         open_positions_age=open_positions_age,
+        execution_log_age=execution_log_age,
         debug_candidates_age=debug_candidates_age,
         analytics_age=analytics_age,
         lifecycle_age=lifecycle_age,
+        ai_performance_age=ai_performance_age,
         last_loop_run=last_loop,
     )
 

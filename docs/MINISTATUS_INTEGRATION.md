@@ -9,6 +9,8 @@ It is written purely from the **MiniStatus (consumer) perspective**: what we rea
 > That document defines the full field-level contract for each artifact.  
 > This file only documents how MiniStatus uses those artifacts.
 
+> **Short “what’s done / what’s left” notes:** `docs/AI_MINISTATUS_TRACKER.md` (stub) · canonical `polymarket-alerts/docs/AI_MINISTATUS_TRACKER.md`
+
 ---
 
 ### 1. What MiniStatus Reads from `polymarket-alerts`
@@ -58,6 +60,15 @@ MiniStatus consumes the following artifacts under that directory:
   - Used for:
     - Lifecycle tab (`/polymarket/lifecycle`): strategy verdicts, progress, thresholds.
 
+- **`ai_performance.json`** (optional; producer precomputed snapshot)
+  - Produced by `polymarket-alerts/analytics/ai_performance_export.py` (often via `scripts/export_analytics_lifecycle.sh`).
+  - Used for:
+    - **AI Performance** (`/polymarket/ai-performance`) when the file is present, `schema_version` is supported, and **`alerts_log.csv` was not modified after export** (its mtime is **not greater than** `freshness.alerts_log_csv_mtime`; a newer file triggers a live CSV rescan).
+    - **AI Simulation** (`/polymarket/ai-simulation`) under the same freshness rule; strategy filter is applied to the embedded sim lists. Live paper bankroll still comes from `ai_sim_bankroll.json`.
+  - **All-strategies summary**: the artifact’s `performance` block reflects **all** strategies; per-strategy AI Performance still uses `alerts_log.csv` only.
+  - **Phase 3:** when **`ai_loop_state.json`** exists on `POLYMARKET_DATA_PATH`, MiniStatus **prefers it** for producer counters / policy / timestamps shown in the AI tabs (export snapshot is fallback only).
+  - **Phase 4:** producer persists **`last_screen_meta`** after each successful LLM screen (summaries, **`reason_codes`**, model id, **`prompt_version`**); MiniStatus shows it inside **AI loop diagnostics**.
+
 - **`polymarket_alerts.log`**
   - Produced by the polymarket-alerts main loop.
   - Used for:
@@ -69,6 +80,17 @@ MiniStatus consumes the following artifacts under that directory:
     - Stores the set of “interesting” `market_id`s marked from the Open Positions UI.
   - Used for:
     - Open Positions and Risky tabs when showing/ filtering “interesting” positions.
+
+- **`mirror_portfolio.json`** (optional, producer-generated)
+  - Produced by `polymarket-alerts` `analytics/mirror_portfolio_export.py` (or MiniStatus “Refresh from API” on the Mirror Portfolio tab).
+  - Used for:
+    - **Mirror Portfolio** tab (`/polymarket/mirror-portfolio`): public-wallet trade mirror, ledger, P/L, anomalies.
+
+- **`mirror_watch_config.json`** (optional; **written by MiniStatus**)
+  - Lists watched `0x` addresses (max 20), labels, `telegram_enabled`, and **`poll_group`** (`standard` | `fast`) per wallet for the producer job `jobs/mirror_watch.py`.
+  - **Split cadence:** On the polymarket-alerts host, run two timers (e.g. 5 min + 1 min) with `python jobs/mirror_watch.py --once --poll-group standard` vs `--poll-group fast`; disable the single “all wallets” timer when using split mode. See polymarket-alerts `systemd/README.md`.
+  - Used for:
+    - **Mirror alerts** tab (`/polymarket/mirror-alerts`) only (edit UI). The producer reads this file on the same `POLYMARKET_DATA_PATH` host.
 
 ---
 
@@ -117,12 +139,32 @@ MiniStatus consumes the following artifacts under that directory:
     - Strategy verdicts and progress against thresholds.
     - Strategy filter and lifecycle event history (when present).
 
+- **`/polymarket/ai-performance` (AI Performance)**
+  - **Artifacts**: `ai_performance.json` (when fresh), else `alerts_log.csv`; optional `ai_loop_state.json` fields surfaced when present inside the artifact’s `producer` section.
+  - **Features**:
+    - Screener accuracy by tier, blocked-row review, lift / false-block metrics; UI shows whether data came from the artifact or a CSV scan.
+
+- **`/polymarket/ai-simulation` (AI Simulation)**
+  - **Artifacts**: `ai_performance.json` (when fresh) or `alerts_log.csv` for sim rows; `ai_sim_bankroll.json` for bankroll widget.
+  - **Features**:
+    - Resolved/open sim bets, charts, filters; data source called out in-page when the artifact is used.
+
 - **`/polymarket/loop` (Loop / Dev)**
   - **Artifacts**: `debug_candidates*.csv`, `polymarket_alerts.log`
   - **Features**:
     - Loop summary table with filters (status, hrs left, date, strategy).
     - Hrs‑left and countdown computations.
     - “Last run” indicator based on LOOP SUMMARY log lines.
+
+- **`/polymarket/mirror-portfolio` (Mirror Portfolio)**
+  - **Artifacts**: `mirror_portfolio.json` (optional)
+  - **Features**:
+    - Summary, ledger (truncated), open positions, resolution events, anomalies; POST refresh runs producer export script on the server.
+
+- **`/polymarket/mirror-alerts` (Mirror alerts)**
+  - **Artifacts**: `mirror_watch_config.json` (read/write; optional until first save)
+  - **Features**:
+    - Add/remove watched wallets; toggle Telegram per wallet; does **not** send Telegram itself (producer `jobs/mirror_watch.py` + timer).
 
 - **JSON health endpoints**
   - **`/polymarket/health`**, **`/polymarket/freshness`**
@@ -168,9 +210,23 @@ MiniStatus is designed to **fail soft** on integration issues and surface clear 
   - **Wrong top-level types**:
     - Non-dict values are normalized to `{}` before templates; sections become empty rather than crashing.
 
+- **`ai_performance.json`**
+  - **Missing or stale** (CSV newer than embedded `freshness.alerts_log_csv_mtime`, or unreadable schema):
+    - AI Performance and AI Simulation fall back to scanning `alerts_log.csv` (same metrics semantics where applicable).
+  - **Present and fresh**:
+    - Pages may show “precomputed export” as the data source; producer counters / policy timestamps appear when the export included them.
+
 - **`polymarket_alerts.log`**
   - **Missing / no LOOP SUMMARY lines**:
     - “Last run” labels are omitted or show “log not found”; the rest of each tab works normally.
+
+- **`mirror_portfolio.json`**
+  - **Missing**:
+    - Mirror Portfolio tab shows an empty state and CLI hint; no 500s.
+
+- **`mirror_watch_config.json`**
+  - **Missing**:
+    - Mirror alerts tab shows an empty watch list; producer job may still use `MIRROR_WATCH_WALLET` from `.env` until the JSON file exists.
 
 ---
 
@@ -184,7 +240,7 @@ When **polymarket-alerts** changes any integration‑relevant artifact or contra
      - `alerts_schema_ok == true`
      - `alerts_schema_error == null`
    - Call `GET /polymarket/freshness`:
-     - `freshness.alerts_log_age`, `open_positions_age`, `debug_candidates_age`, etc. are **recent enough** for your SLO.
+     - `freshness.alerts_log_age`, `open_positions_age`, `debug_candidates_age`, `ai_performance_age`, etc. are **recent enough** for your SLO.
 
 2. **Portfolio tab**
    - Loads without warnings except expected empty‑data states.
@@ -212,6 +268,10 @@ When **polymarket-alerts** changes any integration‑relevant artifact or contra
 
 5. **Loop / Dev**
    - Loop table loads with recent debug candidates.
+
+6. **Mirror Portfolio / Mirror alerts**
+   - After generating `mirror_portfolio.json` on the producer host, Mirror Portfolio shows data; refresh POST succeeds (CSRF).
+   - Mirror alerts: add a test wallet, toggle Telegram, remove; confirm `mirror_watch_config.json` updates on disk under `POLYMARKET_DATA_PATH`.
    - Status and hrs‑left filters, date filters, and all sort modes behave as expected.
    - Export Debug CSV downloads and opens with sensible content.
 

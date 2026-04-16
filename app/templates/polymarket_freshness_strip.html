@@ -1,0 +1,24 @@
+{# Core artifact ages — same fields as GET /polymarket/freshness JSON #}
+{% if polymarket_freshness is defined and polymarket_freshness %}
+<div class="mt-3 mb-2 px-1 sm:px-0 border-t border-light-border/60 dark:border-dark-border/60 pt-3">
+  <p class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase tracking-wider mb-1.5">Data freshness</p>
+  <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-light-muted dark:text-dark-muted items-baseline">
+    <span title="alerts_log.csv mtime">alerts_log <strong class="text-light-text dark:text-dark-text">{{ polymarket_freshness.alerts_log_age or "—" }}</strong></span>
+    <span title="open_positions.csv mtime">open_positions <strong class="text-light-text dark:text-dark-text">{{ polymarket_freshness.open_positions_age or "—" }}</strong></span>
+    <span title="execution_log.csv mtime">execution_log <strong class="text-light-text dark:text-dark-text">{{ polymarket_freshness.execution_log_age or "—" }}</strong></span>
+    <span title="debug_candidates.csv mtime">debug <strong class="text-light-text dark:text-dark-text">{{ polymarket_freshness.debug_candidates_age or "—" }}</strong></span>
+    <span title="analytics.json mtime">analytics.json <strong class="text-light-text dark:text-dark-text">{{ polymarket_freshness.analytics_age or "—" }}</strong></span>
+    <span title="lifecycle.json mtime">lifecycle.json <strong class="text-light-text dark:text-dark-text">{{ polymarket_freshness.lifecycle_age or "—" }}</strong></span>
+    <span title="ai_performance.json mtime">ai_performance <strong class="text-light-text dark:text-dark-text">{{ polymarket_freshness.ai_performance_age or "—" }}</strong></span>
+    <span title="Derived from polymarket_alerts.log">last loop <strong class="text-light-text dark:text-dark-text">{{ polymarket_freshness.last_loop_run or "—" }}</strong></span>
+    <a href="{{ url_for('polymarket.polymarket_freshness') }}" class="text-light-primary dark:text-dark-primary hover:underline shrink-0">JSON</a>
+  </div>
+  {% if polymarket_schema_warnings is defined and polymarket_schema_warnings %}
+  <div class="mt-2 text-xs text-amber-700 dark:text-amber-300 space-y-0.5" role="status">
+    {% for w in polymarket_schema_warnings %}
+    <p>{{ w }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endif %}
