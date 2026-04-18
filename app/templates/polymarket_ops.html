@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Ops – Polymarket{% endblock %}
+{% block header %}Polymarket Alerts{% endblock %}
+
+{% block content %}
+{% include "polymarket_nav.html" %}
+
+<p class="text-sm text-light-muted dark:text-dark-muted mb-6 max-w-3xl">
+  Secondary tools and diagnostics. Day-to-day monitoring stays on <strong>Live</strong>, <strong>Scorecard</strong>, and <strong>AI Simulation</strong>.
+  Strategy selector applies to links below when supported.
+</p>
+
+{% set st = current_strategy if current_strategy is defined and current_strategy and current_strategy != 'all' else none %}
+
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  <a href="{{ url_for('polymarket.polymarket_positions', strategy=st) }}"
+     class="rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-4 hover:border-light-primary dark:hover:border-dark-primary transition-colors">
+    <h2 class="text-base font-semibold text-light-text dark:text-dark-text">Open Positions</h2>
+    <p class="mt-1 text-sm text-light-muted dark:text-dark-muted">Live and paper positions from the engine.</p>
+  </a>
+  <a href="{{ url_for('polymarket.polymarket_risky', strategy=st) }}"
+     class="rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-4 hover:border-light-primary dark:hover:border-dark-primary transition-colors">
+    <h2 class="text-base font-semibold text-light-text dark:text-dark-text">Risky</h2>
+    <p class="mt-1 text-sm text-light-muted dark:text-dark-muted">Higher-risk cohorts and flags.</p>
+  </a>
+  <a href="{{ url_for('polymarket.polymarket_loss_lab', strategy=st) }}"
+     class="rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-4 hover:border-light-primary dark:hover:border-dark-primary transition-colors">
+    <h2 class="text-base font-semibold text-light-text dark:text-dark-text">Loss Lab</h2>
+    <p class="mt-1 text-sm text-light-muted dark:text-dark-muted">Drill into loss drivers.</p>
+  </a>
+  <a href="{{ url_for('polymarket.polymarket_analytics', strategy=st) }}"
+     class="rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-4 hover:border-light-primary dark:hover:border-dark-primary transition-colors">
+    <h2 class="text-base font-semibold text-light-text dark:text-dark-text">Analytics</h2>
+    <p class="mt-1 text-sm text-light-muted dark:text-dark-muted">Edge quality, timing, cohorts — from <code class="text-xs">analytics.json</code>.</p>
+  </a>
+  <a href="{{ url_for('polymarket.polymarket_lifecycle', strategy=st) }}"
+     class="rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-4 hover:border-light-primary dark:hover:border-dark-primary transition-colors">
+    <h2 class="text-base font-semibold text-light-text dark:text-dark-text">Lifecycle</h2>
+    <p class="mt-1 text-sm text-light-muted dark:text-dark-muted">Promote / kill verdicts from <code class="text-xs">lifecycle.json</code>.</p>
+  </a>
+  <a href="{{ url_for('polymarket.polymarket_loop', strategy=st) }}"
+     class="rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-4 hover:border-light-primary dark:hover:border-dark-primary transition-colors">
+    <h2 class="text-base font-semibold text-light-text dark:text-dark-text">Loop / Dev</h2>
+    <p class="mt-1 text-sm text-light-muted dark:text-dark-muted">Engine loop diagnostics and dev hooks.</p>
+  </a>
+  <a href="{{ url_for('polymarket.polymarket_ai_performance', strategy=st) }}"
+     class="rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-4 hover:border-light-primary dark:hover:border-dark-primary transition-colors">
+    <h2 class="text-base font-semibold text-light-text dark:text-dark-text">AI Performance</h2>
+    <p class="mt-1 text-sm text-light-muted dark:text-dark-muted">AI screen quality and blocked-row review.</p>
+  </a>
+  <a href="{{ url_for('polymarket.polymarket_mirror_portfolio', strategy=st) }}"
+     class="rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-4 hover:border-light-primary dark:hover:border-dark-primary transition-colors">
+    <h2 class="text-base font-semibold text-light-text dark:text-dark-text">Mirror Portfolio</h2>
+    <p class="mt-1 text-sm text-light-muted dark:text-dark-muted">External wallet mirror tracking.</p>
+  </a>
+  <a href="{{ url_for('polymarket.polymarket_mirror_alerts', strategy=st) }}"
+     class="rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-4 hover:border-light-primary dark:hover:border-dark-primary transition-colors">
+    <h2 class="text-base font-semibold text-light-text dark:text-dark-text">Mirror alerts</h2>
+    <p class="mt-1 text-sm text-light-muted dark:text-dark-muted">Telegram / poll groups for mirrors.</p>
+  </a>
+</div>
+{% endblock %}

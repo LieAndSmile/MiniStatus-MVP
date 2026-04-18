@@ -2,11 +2,25 @@
 
 All notable changes to MiniStatus are documented in this file.
 
+## [1.6.1] - 2026-04-18
+
+### Added
+
+- **Phase 5 Chunk 5b — nav consolidation:** Polymarket top tabs are **Live** (portfolio), **Scorecard**, **AI Simulation**, and **Ops**. Secondary tools (Open Positions, Risky, Loss Lab, Analytics, Lifecycle, Loop / Dev, AI Performance, mirrors) live on **`GET /polymarket/ops`** and stay linked from the sidebar under **Ops**.
+
+### Changed
+
+- **`polymarket.html`:** **Analytics & data tools** and **Block reasons & policy detail** use `<details>` drawers; full Analytics remains a first-class route.
+- **`polymarket_analytics.html`:** Breadcrumb-style note pointing at Live + Ops.
+- **`base.html`:** Polymarket sidebar matches the four primary destinations.
+
+---
+
 ## [1.6.0] - 2026-04-18
 
 ### Added
 
-- **Phase 5 Chunk 5a — global safe scope:** `polymarket_safe_scope` in the Flask session, set from `?safe_scope=` on Polymarket routes and used when the query param is omitted. **Portfolio** (stats, recent decisions, CSV export) and **top section nav** use the same scope as Scorecard / AI Simulation.
+- **Phase 5 Chunk 5a — global safe scope:** `polymarket_safe_scope` in the Flask session, set from `?safe_scope=` on any Polymarket route and used as the default when the query param is omitted. **Portfolio** (stats + recent decisions + export) and **top section nav** respect the same scope as Scorecard / AI Simulation.
 
 ### Changed
 

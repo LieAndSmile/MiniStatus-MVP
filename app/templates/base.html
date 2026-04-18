@@ -209,53 +209,28 @@
               {{ url_for(endpoint) }}
               {% endif %}
               {%- endmacro %}
+              {# Phase 5b: four primary destinations; secondary tools via Ops hub #}
+              {% set polymarket_ops_sidebar = request.endpoint in [
+                'polymarket.polymarket_ops', 'polymarket.polymarket_positions', 'polymarket.polymarket_risky',
+                'polymarket.polymarket_loss_lab', 'polymarket.polymarket_analytics', 'polymarket.polymarket_lifecycle',
+                'polymarket.polymarket_loop', 'polymarket.polymarket_ai_performance', 'polymarket.polymarket_mirror_portfolio',
+                'polymarket.polymarket_mirror_alerts'
+              ] %}
+              <a href="{{ polymarket_sidebar_url('polymarket.polymarket_portfolio') }}"
+                 class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_portfolio' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
+                <span class="nav-label text-sm">Live</span>
+              </a>
               <a href="{{ polymarket_sidebar_url('polymarket.polymarket_scorecard') }}"
                  class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_scorecard' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
                 <span class="nav-label text-sm">Scorecard</span>
-              </a>
-              <a href="{{ polymarket_sidebar_url('polymarket.polymarket_portfolio') }}"
-                 class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_portfolio' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
-                <span class="nav-label text-sm">Portfolio</span>
-              </a>
-              <a href="{{ polymarket_sidebar_url('polymarket.polymarket_positions') }}"
-                 class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_positions' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
-                <span class="nav-label text-sm">Open Positions</span>
-              </a>
-              <a href="{{ polymarket_sidebar_url('polymarket.polymarket_risky') }}"
-                 class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_risky' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
-                <span class="nav-label text-sm">Risky</span>
-              </a>
-              <a href="{{ polymarket_sidebar_url('polymarket.polymarket_loss_lab') }}"
-                 class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_loss_lab' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
-                <span class="nav-label text-sm">Loss Lab</span>
-              </a>
-              <a href="{{ polymarket_sidebar_url('polymarket.polymarket_analytics') }}"
-                 class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_analytics' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
-                <span class="nav-label text-sm">Analytics</span>
-              </a>
-              <a href="{{ polymarket_sidebar_url('polymarket.polymarket_lifecycle') }}"
-                 class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_lifecycle' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
-                <span class="nav-label text-sm">Lifecycle</span>
-              </a>
-              <a href="{{ polymarket_sidebar_url('polymarket.polymarket_loop') }}"
-                 class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_loop' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
-                <span class="nav-label text-sm">Loop / Dev</span>
               </a>
               <a href="{{ polymarket_sidebar_url('polymarket.polymarket_ai_simulation') }}"
                  class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_ai_simulation' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
                 <span class="nav-label text-sm">AI Simulation</span>
               </a>
-              <a href="{{ polymarket_sidebar_url('polymarket.polymarket_ai_performance') }}"
-                 class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_ai_performance' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
-                <span class="nav-label text-sm">AI Performance</span>
-              </a>
-              <a href="{{ polymarket_sidebar_url('polymarket.polymarket_mirror_portfolio') }}"
-                 class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_mirror_portfolio' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
-                <span class="nav-label text-sm">Mirror Portfolio</span>
-              </a>
-              <a href="{{ polymarket_sidebar_url('polymarket.polymarket_mirror_alerts') }}"
-                 class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_mirror_alerts' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
-                <span class="nav-label text-sm">Mirror alerts</span>
+              <a href="{{ polymarket_sidebar_url('polymarket.polymarket_ops') }}"
+                 class="flex items-center space-x-3 p-2 rounded-lg {% if polymarket_ops_sidebar %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
+                <span class="nav-label text-sm">Ops</span>
               </a>
             </div>
           </div>

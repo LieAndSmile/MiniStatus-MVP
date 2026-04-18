@@ -77,6 +77,20 @@
 </div>
 {% endif %}
 
+<details class="mb-4 rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-4">
+  <summary class="cursor-pointer text-sm font-semibold text-light-text dark:text-dark-text">
+    Analytics &amp; data tools
+  </summary>
+  <div class="mt-3 text-sm text-light-muted dark:text-dark-muted space-y-2">
+    <p>Edge quality, timing cohorts, and drift — powered by <code class="text-xs px-1 rounded bg-light-hover dark:bg-dark-hover">analytics.json</code> in polymarket-alerts.</p>
+    <p>
+      <a href="{{ url_for('polymarket.polymarket_analytics', strategy=(current_strategy if current_strategy is defined and current_strategy != 'all' else none)) }}"
+         class="font-medium text-light-primary dark:text-dark-primary hover:underline">Open full Analytics →</a>
+    </p>
+    <p class="text-xs">Same report is listed under <strong>Ops</strong> in the top nav.</p>
+  </div>
+</details>
+
 {% if strategy_overview_groups %}
 <details class="mb-4 rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-4">
   <summary class="cursor-pointer text-sm font-semibold text-light-text dark:text-dark-text">
@@ -124,53 +138,59 @@
     {{ status_summary.logged }} candidates logged · {{ status_summary.sent }} placed · {{ status_summary.shadow }} observing (shadow) · {{ status_summary.blocked }} blocked
   </p>
 
-  {% if status_summary.top_block_reasons and status_summary.top_block_reasons|length > 0 %}
-  {% set top_reason = status_summary.top_block_reasons[0] %}
-  <p class="mt-2 text-xs text-light-muted dark:text-dark-muted">
-    Why blocked:
-    <span title="{{ top_reason.reason }}">
-      {{ BLOCK_REASON_LABELS.get(top_reason.reason, top_reason.reason) }} ({{ top_reason.count }})
-    </span>
-  </p>
-  {% endif %}
+  <details class="mt-3 group border-t border-light-border dark:border-dark-border pt-3">
+    <summary class="cursor-pointer text-sm font-medium text-light-primary dark:text-dark-primary hover:underline list-none flex items-center gap-1">
+      <span>Block reasons &amp; policy detail</span>
+      <span class="text-light-muted dark:text-dark-muted text-xs font-normal">(expand)</span>
+    </summary>
+    <div class="mt-3 space-y-2 text-xs text-light-muted dark:text-dark-muted">
+      {% if status_summary.top_block_reasons and status_summary.top_block_reasons|length > 0 %}
+      {% set top_reason = status_summary.top_block_reasons[0] %}
+      <p>
+        Why blocked:
+        <span title="{{ top_reason.reason }}">
+          {{ BLOCK_REASON_LABELS.get(top_reason.reason, top_reason.reason) }} ({{ top_reason.count }})
+        </span>
+      </p>
+      {% endif %}
 
-  {% if status_summary.blocked_inactive_strategy > 0 %}
-  <p class="mt-1 text-xs text-amber-700 dark:text-amber-300">
-    Strategy inactive blocks (size_multiplier = 0.0): {{ status_summary.blocked_inactive_strategy }}
-  </p>
-  {% endif %}
+      {% if status_summary.blocked_inactive_strategy > 0 %}
+      <p class="text-amber-700 dark:text-amber-300">
+        Strategy inactive blocks (size_multiplier = 0.0): {{ status_summary.blocked_inactive_strategy }}
+      </p>
+      {% endif %}
 
-  {% if status_summary.blocked_risk_limit > 0 %}
-  <p class="mt-1 text-xs text-light-text dark:text-dark-text">
-    Portfolio / exposure blocks: <strong>{{ status_summary.blocked_risk_limit }}</strong>
-    {% if status_summary.top_risk_buckets and status_summary.top_risk_buckets|length > 0 %}
-    <span class="text-light-muted dark:text-dark-muted"> · Top risk_bucket:</span>
-    {% for b in status_summary.top_risk_buckets %}
-      {% if not loop.first %}, {% endif %}<code class="text-xs">{{ b.bucket }}</code> ({{ b.count }})
-    {% endfor %}
-    {% endif %}
-  </p>
-  {% endif %}
+      {% if status_summary.blocked_risk_limit > 0 %}
+      <p class="text-light-text dark:text-dark-text">
+        Portfolio / exposure blocks: <strong>{{ status_summary.blocked_risk_limit }}</strong>
+        {% if status_summary.top_risk_buckets and status_summary.top_risk_buckets|length > 0 %}
+        <span class="text-light-muted dark:text-dark-muted"> · Top risk_bucket:</span>
+        {% for b in status_summary.top_risk_buckets %}
+          {% if not loop.first %}, {% endif %}<code class="text-xs">{{ b.bucket }}</code> ({{ b.count }})
+        {% endfor %}
+        {% endif %}
+      </p>
+      {% endif %}
 
-  {% if status_summary.blocked_ai_screen > 0 %}
-  <p class="mt-1 text-xs text-purple-700 dark:text-purple-300">
-    🤖 AI hard-block: {{ status_summary.blocked_ai_screen }} (SKIP+High under hard_skip policy — narrative / unknown sport)
-  </p>
-  {% endif %}
+      {% if status_summary.blocked_ai_screen > 0 %}
+      <p class="text-purple-700 dark:text-purple-300">
+        🤖 AI hard-block: {{ status_summary.blocked_ai_screen }} (SKIP+High under hard_skip policy — narrative / unknown sport)
+      </p>
+      {% endif %}
 
-  {% if status_summary.top_block_reasons %}
-  <p class="mt-2 text-xs text-light-muted dark:text-dark-muted">
-    Top block reasons:
-    {% for r in status_summary.top_block_reasons %}
-      {% if not loop.first %} · {% endif %}
-      <span title="{{ r.reason }}">{{ BLOCK_REASON_LABELS.get(r.reason, r.reason) }} ({{ r.count }})</span>
-    {% endfor %}
-  </p>
-  {% endif %}
+      {% if status_summary.top_block_reasons %}
+      <p>
+        Top block reasons:
+        {% for r in status_summary.top_block_reasons %}
+          {% if not loop.first %} · {% endif %}
+          <span title="{{ r.reason }}">{{ BLOCK_REASON_LABELS.get(r.reason, r.reason) }} ({{ r.count }})</span>
+        {% endfor %}
+      </p>
+      {% endif %}
 
-  <p class="mt-2 text-xs text-light-muted dark:text-dark-muted">
-    Blocked = valid setup, portfolio policy said no
-  </p>
+      <p>Blocked = valid setup, portfolio policy said no</p>
+    </div>
+  </details>
 </div>
 {% endif %}
 

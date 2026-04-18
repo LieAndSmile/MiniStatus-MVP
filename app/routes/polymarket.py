@@ -111,20 +111,29 @@ def _parse_mirror_days(s: str, default: str = "365") -> str:
 PER_PAGE = 50
 DEBUG_PER_PAGE = 100
 
+# Top horizontal nav: ≤4 primary tabs (Phase 5 Chunk 5b). Secondary tools live under /polymarket/ops.
 POLYMARKET_SECTIONS = [
+    ("portfolio", "Live", "polymarket.polymarket_portfolio"),
     ("scorecard", "Scorecard", "polymarket.polymarket_scorecard"),
-    ("portfolio", "Portfolio", "polymarket.polymarket_portfolio"),
-    ("positions", "Open Positions", "polymarket.polymarket_positions"),
-    ("risky", "Risky", "polymarket.polymarket_risky"),
-    ("loss-lab", "Loss Lab", "polymarket.polymarket_loss_lab"),
-    ("analytics", "Analytics", "polymarket.polymarket_analytics"),
-    ("lifecycle", "Lifecycle", "polymarket.polymarket_lifecycle"),
-    ("loop", "Loop / Dev", "polymarket.polymarket_loop"),
     ("ai-simulation", "AI Simulation", "polymarket.polymarket_ai_simulation"),
-    ("ai-performance", "AI Performance", "polymarket.polymarket_ai_performance"),
-    ("mirror-portfolio", "Mirror Portfolio", "polymarket.polymarket_mirror_portfolio"),
-    ("mirror-alerts", "Mirror alerts", "polymarket.polymarket_mirror_alerts"),
+    ("ops", "Ops", "polymarket.polymarket_ops"),
 ]
+
+# Routes that highlight the "Ops" tab in the four-item nav (and sidebar).
+POLYMARKET_OPS_ENDPOINTS = frozenset(
+    {
+        "polymarket.polymarket_ops",
+        "polymarket.polymarket_positions",
+        "polymarket.polymarket_risky",
+        "polymarket.polymarket_loss_lab",
+        "polymarket.polymarket_analytics",
+        "polymarket.polymarket_lifecycle",
+        "polymarket.polymarket_loop",
+        "polymarket.polymarket_ai_performance",
+        "polymarket.polymarket_mirror_portfolio",
+        "polymarket.polymarket_mirror_alerts",
+    }
+)
 
 
 def _polymarket_configured_required(active_section: str):
@@ -353,6 +362,29 @@ def polymarket_freshness():
 def polymarket_index():
     """Redirect /polymarket to /polymarket/portfolio (default landing)."""
     return redirect(url_for("polymarket.polymarket_portfolio"))
+
+
+# ── Ops hub (secondary tools) ─────────────────────────────────────────────────
+@polymarket_bp.route("/ops")
+@admin_required
+@_polymarket_configured_required("ops")
+def polymarket_ops():
+    """Hub for Open Positions, Analytics, mirrors, dev tools — not top-level nav items."""
+    data_path = _get_data_path()
+    strategy_options = get_strategy_options_for_nav(data_path)
+    strategy_options_grouped = get_strategy_options_grouped(strategy_options)
+    strategy_val = _get_strategy(strategy_options)
+    return render_template(
+        "polymarket_ops.html",
+        configured=True,
+        active_section="ops",
+        polymarket_sections=POLYMARKET_SECTIONS,
+        current_strategy=strategy_val,
+        strategy_options=strategy_options,
+        strategy_options_grouped=strategy_options_grouped,
+        data_quality_flags=get_data_quality_flags(data_path),
+        **_polymarket_freshness_context(),
+    )
 
 
 # ── Portfolio ─────────────────────────────────────────────────────────────────

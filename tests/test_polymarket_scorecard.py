@@ -411,3 +411,31 @@ def test_scorecard_defaults_to_html_json_explicit(tmp_path, monkeypatch):
     assert b"Strategy scorecard" in r_html.data
     assert r_json.status_code == 200
     assert r_json.get_json() == []
+
+
+def test_polymarket_primary_nav_four_tabs():
+    """Phase 5b: horizontal Polymarket nav is four primary tabs + Ops hub for the rest."""
+    from app.routes.polymarket import POLYMARKET_OPS_ENDPOINTS, POLYMARKET_SECTIONS
+
+    assert len(POLYMARKET_SECTIONS) == 4
+    assert [s[0] for s in POLYMARKET_SECTIONS] == ["portfolio", "scorecard", "ai-simulation", "ops"]
+    assert "polymarket.polymarket_analytics" in POLYMARKET_OPS_ENDPOINTS
+
+
+def test_polymarket_ops_hub_renders(tmp_path, monkeypatch):
+    """GET /polymarket/ops renders the secondary-tools hub."""
+    import app.utils.polymarket as pm
+
+    monkeypatch.setenv("POLYMARKET_DATA_PATH", str(tmp_path))
+    _write_csv(str(tmp_path / "alerts_log.csv"), [])
+    pm._CSV_CACHE.clear()
+    app = create_app()
+    app.config["TESTING"] = True
+    with app.test_client() as c:
+        with c.session_transaction() as sess:
+            sess["authenticated"] = True
+        r = c.get("/polymarket/ops")
+    assert r.status_code == 200
+    html = r.get_data(as_text=True)
+    assert "Open Positions" in html
+    assert "Analytics" in html

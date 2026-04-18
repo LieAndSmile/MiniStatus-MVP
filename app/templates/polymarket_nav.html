@@ -1,12 +1,13 @@
 {% if polymarket_sections is defined and polymarket_sections %}
-{# Section order is defined in POLYMARKET_SECTIONS (routes/polymarket.py); Scorecard is listed first. #}
+{# POLYMARKET_SECTIONS: Live, Scorecard, AI Simulation, Ops (Phase 5b). Secondary routes highlight Ops. #}
+{% set nav_act = active_section if active_section is defined and active_section in ['portfolio', 'scorecard', 'ai-simulation'] else 'ops' %}
 <nav class="mb-6 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 border-b border-light-border dark:border-dark-border" aria-label="Polymarket sections">
   <div class="flex flex-wrap items-center gap-2 sm:gap-4">
     <div class="flex flex-nowrap min-w-max gap-0">
     {% for section_id, label, endpoint in polymarket_sections %}
     <a href="{{ url_for(endpoint, strategy=(current_strategy if current_strategy is defined else none) or 'all', safe_scope=g.polymarket_safe_scope) }}"
        class="polymarket-nav-link px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap flex-shrink-0
-         {% if active_section is defined and active_section == section_id %}
+         {% if nav_act == section_id %}
          border-light-primary dark:border-dark-primary text-light-primary dark:text-dark-primary bg-light-primary/10 dark:bg-dark-primary/10 font-semibold
          {% else %}
          border-transparent text-light-muted dark:text-dark-muted hover:text-light-text dark:hover:text-dark-text hover:border-light-border dark:hover:border-dark-border hover:bg-light-hover/50 dark:hover:bg-dark-hover/50
