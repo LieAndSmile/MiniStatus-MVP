@@ -2,6 +2,14 @@
 
 All notable changes to MiniStatus are documented in this file.
 
+## [1.5.7] - 2026-04-18
+
+### Added
+
+- **Scorecard (Chunk 1c):** `polymarket_scorecard.html` — table (sent / resolved / wins / losses / win rate / realized PnL / ROI / last sent), scope + time window (All / 7d / 30d), sortable column headers (default realized PnL desc), insufficient-sample badge + muted win rate/ROI. Default response is HTML; `format=json` for API. **Scorecard** is the first Polymarket nav item.
+
+---
+
 ## [1.5.6] - 2026-04-18
 
 ### Added

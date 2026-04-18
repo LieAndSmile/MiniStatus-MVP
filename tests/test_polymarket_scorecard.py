@@ -328,13 +328,54 @@ def test_scorecard_json_route(tmp_path, monkeypatch):
     assert data[0]["realized_pnl_usd"] == 10.0
 
 
-def test_scorecard_format_html_returns_501_until_chunk_1c(tmp_path, monkeypatch):
+def test_scorecard_html_renders(tmp_path, monkeypatch):
+    import app.utils.polymarket as pm
+
     monkeypatch.setenv("POLYMARKET_DATA_PATH", str(tmp_path))
+    _write_csv(
+        str(tmp_path / "alerts_log.csv"),
+        [
+            {
+                "ts": "2026-04-10T10:00:00Z",
+                "question": "Q",
+                "status": "sent",
+                "strategy_id": "s_a",
+                "resolved": "true",
+                "pnl_usd": "10",
+                "cost_usd": "5",
+                "bet_size_usd": "",
+                "sport": "nba",
+            },
+        ],
+    )
+    pm._CSV_CACHE.clear()
     app = create_app()
     app.config["TESTING"] = True
     with app.test_client() as c:
         with c.session_transaction() as sess:
             sess["authenticated"] = True
-        r = c.get("/polymarket/scorecard?format=html")
-    assert r.status_code == 501
-    assert "Chunk 1c" in (r.get_json() or {}).get("error", "")
+        r = c.get("/polymarket/scorecard")
+    assert r.status_code == 200
+    html = r.get_data(as_text=True)
+    assert "Strategy scorecard" in html
+    assert "s_a" in html or "S_a" in html  # label or raw id
+
+
+def test_scorecard_defaults_to_html_json_explicit(tmp_path, monkeypatch):
+    """Default format is HTML; ``format=json`` still returns JSON."""
+    import app.utils.polymarket as pm
+
+    monkeypatch.setenv("POLYMARKET_DATA_PATH", str(tmp_path))
+    _write_csv(str(tmp_path / "alerts_log.csv"), [])
+    pm._CSV_CACHE.clear()
+    app = create_app()
+    app.config["TESTING"] = True
+    with app.test_client() as c:
+        with c.session_transaction() as sess:
+            sess["authenticated"] = True
+        r_html = c.get("/polymarket/scorecard")
+        r_json = c.get("/polymarket/scorecard?format=json")
+    assert r_html.status_code == 200
+    assert b"Strategy scorecard" in r_html.data
+    assert r_json.status_code == 200
+    assert r_json.get_json() == []

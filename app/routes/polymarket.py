@@ -89,6 +89,7 @@ PER_PAGE = 50
 DEBUG_PER_PAGE = 100
 
 POLYMARKET_SECTIONS = [
+    ("scorecard", "Scorecard", "polymarket.polymarket_scorecard"),
     ("portfolio", "Portfolio", "polymarket.polymarket_portfolio"),
     ("positions", "Open Positions", "polymarket.polymarket_positions"),
     ("risky", "Risky", "polymarket.polymarket_risky"),
@@ -139,14 +140,98 @@ def _polymarket_freshness_context():
 
 def _parse_scorecard_days():
     """Optional ``days`` query param for scorecard; None means all time."""
-    raw = (request.args.get("days") or "").strip()
-    if not raw:
+    raw = (request.args.get("days") or "").strip().lower()
+    if not raw or raw == "all":
         return None
     try:
         d = int(raw)
         return d if d > 0 else None
     except (TypeError, ValueError):
         return None
+
+
+def _parse_scorecard_days_display() -> str:
+    """UI state for scorecard time filter: 'all' | '7' | '30'."""
+    raw = (request.args.get("days") or "").strip().lower()
+    if not raw or raw == "all":
+        return "all"
+    if raw in ("7", "30"):
+        return raw
+    try:
+        d = int(raw)
+        if d == 7:
+            return "7"
+        if d == 30:
+            return "30"
+    except (TypeError, ValueError):
+        pass
+    return "all"
+
+
+_SCORECARD_SORT_KEYS = (
+    "pnl",
+    "strategy",
+    "sent",
+    "resolved",
+    "wins",
+    "losses",
+    "win_rate",
+    "roi",
+    "last_sent",
+)
+
+
+def _sort_scorecard_rows(rows: list[dict], sort_col: str, order: str) -> list[dict]:
+    """Sort a copy of scorecard rows for HTML table (default: pnl desc)."""
+    if sort_col not in _SCORECARD_SORT_KEYS:
+        sort_col = "pnl"
+    reverse = order == "desc"
+    if sort_col == "pnl":
+        key = lambda r: float(r.get("realized_pnl_usd") or 0)
+    elif sort_col == "strategy":
+        key = lambda r: (r.get("strategy_id") or "").lower()
+    elif sort_col == "sent":
+        key = lambda r: int(r.get("sent") or 0)
+    elif sort_col == "resolved":
+        key = lambda r: int(r.get("resolved") or 0)
+    elif sort_col == "wins":
+        key = lambda r: int(r.get("wins") or 0)
+    elif sort_col == "losses":
+        key = lambda r: int(r.get("losses") or 0)
+    elif sort_col == "win_rate":
+        key = lambda r: float(r.get("win_rate") or 0)
+    elif sort_col == "roi":
+        key = lambda r: float(r.get("roi_pct") or 0)
+    else:  # last_sent
+        key = lambda r: (r.get("last_sent_ts") or "")
+
+    out = list(rows)
+    out.sort(key=key, reverse=reverse)
+    return out
+
+
+def _scorecard_sort_href(
+    col: str,
+    *,
+    safe_scope: str,
+    days_disp: str,
+    sort_col: str,
+    order: str,
+) -> str:
+    """URL for table header: same column toggles order; new column uses default order."""
+    if col == sort_col:
+        next_order = "asc" if order == "desc" else "desc"
+    else:
+        next_order = "asc" if col in ("strategy", "last_sent") else "desc"
+    q_days = days_disp if days_disp != "all" else "all"
+    return url_for(
+        "polymarket.polymarket_scorecard",
+        format="html",
+        safe_scope=safe_scope,
+        days=q_days,
+        sort=col,
+        order=next_order,
+    )
 
 
 def _parse_filter_days():
@@ -810,23 +895,68 @@ def polymarket_loop():
 # ── Scorecard (Phase 1) ───────────────────────────────────────────────────────
 @polymarket_bp.route("/scorecard")
 @admin_required
+@_polymarket_configured_required("scorecard")
 def polymarket_scorecard():
     """
-    Per-strategy scorecard as JSON (Chunk 1b). HTML template in Chunk 1c.
-    Query: ``safe_scope`` (safe_only | all_tracked), ``days`` (optional int),
-    ``format`` (json | html; html returns 501 until template exists).
+    Per-strategy scorecard. Default response is HTML (Chunk 1c). Use ``format=json`` for JSON.
+    Query: ``safe_scope``, ``days`` (all | 7 | 30), ``sort``, ``order``.
     """
-    fmt = (request.args.get("format") or "json").strip().lower()
-    if fmt == "html":
-        return jsonify({"error": "Scorecard HTML is not available until Chunk 1c."}), 501
+    fmt = (request.args.get("format") or "html").strip().lower()
+    if fmt not in ("json", "html"):
+        fmt = "html"
 
     safe_scope = (request.args.get("safe_scope") or "safe_only").strip().lower()
     if safe_scope not in ("safe_only", "all_tracked"):
         safe_scope = "safe_only"
     days = _parse_scorecard_days()
+    days_disp = _parse_scorecard_days_display()
+
+    sort_col = (request.args.get("sort") or "pnl").strip().lower()
+    if sort_col not in _SCORECARD_SORT_KEYS:
+        sort_col = "pnl"
+    order = (request.args.get("order") or "desc").strip().lower()
+    if order not in ("asc", "desc"):
+        order = "desc"
+
     data_path = _get_data_path()
     rows = get_strategy_scorecard(data_path, safe_scope=safe_scope, days=days)
-    return jsonify(rows)
+    rows = _sort_scorecard_rows(rows, sort_col, order)
+
+    if fmt == "json":
+        return jsonify(rows)
+
+    strategy_options = get_strategy_options_for_nav(data_path)
+    strategy_options_grouped = get_strategy_options_grouped(strategy_options)
+    current_strategy = _get_strategy(strategy_options)
+
+    sort_href = {
+        col: _scorecard_sort_href(
+            col,
+            safe_scope=safe_scope,
+            days_disp=days_disp,
+            sort_col=sort_col,
+            order=order,
+        )
+        for col in _SCORECARD_SORT_KEYS
+    }
+
+    return render_template(
+        "polymarket_scorecard.html",
+        polymarket_sections=POLYMARKET_SECTIONS,
+        active_section="scorecard",
+        strategy_options=strategy_options,
+        strategy_options_grouped=strategy_options_grouped,
+        current_strategy=current_strategy,
+        STRATEGY_LABELS=STRATEGY_LABELS,
+        scorecard_rows=rows,
+        current_safe_scope=safe_scope,
+        current_days_scorecard=days_disp,
+        current_scorecard_sort=sort_col,
+        current_scorecard_order=order,
+        scorecard_sort_href=sort_href,
+        data_quality_flags=get_data_quality_flags(data_path),
+        **_polymarket_freshness_context(),
+    )
 
 
 # ── AI Simulation ─────────────────────────────────────────────────────────────
