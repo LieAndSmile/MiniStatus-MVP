@@ -2,6 +2,14 @@
 
 All notable changes to MiniStatus are documented in this file.
 
+## [1.5.5] - 2026-04-18
+
+### Added
+
+- **Scorecard (Phase 1, Chunk 1a):** `get_strategy_scorecard(data_path, safe_scope=…, days=…)` in `app/utils/polymarket.py` — read-only per-strategy aggregates over `alerts_log.csv` (`status=sent` only; resolved = truthy `resolved` + numeric `pnl_usd`). Tests in `tests/test_polymarket_scorecard.py`.
+
+---
+
 ## [1.5.4] - 2026-04-18
 
 ### Added

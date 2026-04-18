@@ -239,6 +239,133 @@ def _safe_execution_sports() -> set[str]:
     return {"soccer", "tennis", "nba", "nhl", "mlb"}
 
 
+def _parse_pnl_numeric(row: dict) -> Optional[float]:
+    """Return float pnl if column is present and numeric; else None (not resolved for scorecard)."""
+    raw = row.get("pnl_usd")
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    try:
+        return float(s)
+    except (ValueError, TypeError):
+        return None
+
+
+def _scorecard_row_cost_usd(row: dict) -> float:
+    """Cost basis for ROI denominator (resolved rows). Prefer cost_usd, else bet_size_usd."""
+    c = _parse_float(row.get("cost_usd"))
+    if c > 0:
+        return c
+    return _parse_float(row.get("bet_size_usd"))
+
+
+def get_strategy_scorecard(
+    data_path: str,
+    safe_scope: Literal["safe_only", "all_tracked"] = "safe_only",
+    days: Optional[int] = None,
+) -> list[dict]:
+    """
+    Per-strategy aggregates from alerts_log.csv: only status=sent rows.
+    Resolved = resolved flag truthy and pnl_usd parseable as a number.
+    No UI; read-only over existing columns.
+    """
+    if not data_path or not os.path.isdir(data_path):
+        return []
+    csv_path = os.path.join(data_path, "alerts_log.csv")
+    cached = _read_csv_cached(csv_path)
+    if not cached:
+        return []
+    _, rows = cached
+
+    cutoff: Optional[datetime] = None
+    if days is not None and int(days) > 0:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=int(days))
+
+    allowed_sports: Optional[set[str]]
+    if safe_scope == "all_tracked":
+        allowed_sports = None
+    else:
+        allowed_sports = _safe_execution_sports()
+
+    def row_in_scope(row: dict) -> bool:
+        if allowed_sports is not None:
+            sp = (row.get("sport") or "").strip().lower()
+            if sp not in allowed_sports:
+                return False
+        if cutoff is not None:
+            ts = _parse_iso_datetime(row.get("ts") or "") or _parse_date(row.get("ts"))
+            if ts is None:
+                return False
+            ts_utc = ts.replace(tzinfo=timezone.utc) if ts.tzinfo is None else ts.astimezone(timezone.utc)
+            if ts_utc < cutoff:
+                return False
+        return True
+
+    # strategy_id -> aggregates
+    sent: dict[str, int] = defaultdict(int)
+    resolved_n: dict[str, int] = defaultdict(int)
+    wins: dict[str, int] = defaultdict(int)
+    losses: dict[str, int] = defaultdict(int)
+    realized: dict[str, float] = defaultdict(float)
+    cost_sum: dict[str, float] = defaultdict(float)
+    last_ts: dict[str, Optional[datetime]] = defaultdict(lambda: None)
+
+    for row in rows:
+        if not row_in_scope(row):
+            continue
+        if (row.get("status") or "").strip().lower() != "sent":
+            continue
+        sid = (row.get("strategy_id") or "").strip() or "(unknown)"
+        sent[sid] += 1
+        ts = _parse_iso_datetime(row.get("ts") or "") or _parse_date(row.get("ts"))
+        if ts is not None:
+            ts_utc = ts.replace(tzinfo=timezone.utc) if ts.tzinfo is None else ts.astimezone(timezone.utc)
+            prev = last_ts[sid]
+            if prev is None or ts_utc > prev:
+                last_ts[sid] = ts_utc
+
+        res_flag = _parse_bool(row.get("resolved"))
+        pnl_opt = _parse_pnl_numeric(row)
+        if res_flag and pnl_opt is not None:
+            resolved_n[sid] += 1
+            realized[sid] += pnl_opt
+            cost_sum[sid] += _scorecard_row_cost_usd(row)
+            if pnl_opt > 0:
+                wins[sid] += 1
+            else:
+                losses[sid] += 1
+
+    out: list[dict] = []
+    for sid in sent:
+        rn = resolved_n[sid]
+        rpnl = round(realized[sid], 2)
+        ctot = cost_sum[sid]
+        roi = (rpnl / ctot) if ctot > 0 else 0.0
+        wr = (wins[sid] / rn) if rn else 0.0
+        lt = last_ts[sid]
+        last_sent_ts = lt.isoformat() if lt else ""
+        out.append(
+            {
+                "strategy_id": sid,
+                "sent": sent[sid],
+                "resolved": rn,
+                "wins": wins[sid],
+                "losses": losses[sid],
+                "win_rate": round(wr, 6),
+                "realized_pnl_usd": rpnl,
+                "roi_pct": round(roi, 6),
+                "cost_usd_total": round(ctot, 2),
+                "sample_warning": rn < 30,
+                "last_sent_ts": last_sent_ts,
+            }
+        )
+
+    out.sort(key=lambda x: x["realized_pnl_usd"], reverse=True)
+    return out
+
+
 def get_strategy_options_grouped(strategy_options: tuple[str, ...]) -> list[dict]:
     """
     Group strategy options by mode for the nav dropdown.
