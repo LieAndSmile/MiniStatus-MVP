@@ -120,26 +120,16 @@ API_KEY=supersecret
     with app.app_context():
         # Import routes here to avoid circular imports
         from app.routes.admin import admin_bp
-        from app.routes.sync import sync_bp
-        from app.routes.remote import remote_bp
-        from app.routes.ports import ports_bp
         from app.routes.polymarket import polymarket_bp
         from app.routes.public import public_bp
-        from app.routes.api import api_bp
         from app.routes.error_handlers import errors_bp
 
-        # Register blueprints - public routes first
-        app.register_blueprint(public_bp)  # For public routes
+        # Register blueprints - public routes first (``/`` → Polymarket scorecard)
+        app.register_blueprint(public_bp)
         app.register_blueprint(admin_bp)  # Admin routes (no prefix, handled in blueprint)
         app.register_blueprint(errors_bp)  # 403 and other error handlers
-        app.register_blueprint(sync_bp)
-        app.register_blueprint(remote_bp)
-        app.register_blueprint(ports_bp)
         app.register_blueprint(polymarket_bp)
-        app.register_blueprint(api_bp)  # API routes
-        
-        # Exempt API routes from CSRF (they use API keys instead)
-        csrf.exempt(api_bp)
+        # Phase 1.5 Tier 2: sync / remote / ports / api blueprints unregistered (files remain on disk).
 
         # Create database tables
         db.create_all()

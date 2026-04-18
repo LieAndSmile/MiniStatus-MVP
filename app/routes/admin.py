@@ -1,3 +1,5 @@
+from functools import wraps
+
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from datetime import datetime
 from app.models import Service, Tag, AutoTagRule
@@ -11,6 +13,19 @@ from dotenv import load_dotenv
 from app.utils.auto_tag import get_auto_tagged_for_service
 
 admin_bp = Blueprint("admin", __name__, url_prefix='/admin')
+
+
+def _legacy_service_monitor_gone(f):
+    """Phase 1.5 Tier 2 — legacy service/tag UI returns 404 (routes kept on disk for revert)."""
+
+    @wraps(f)
+    def wrapped(*args, **kwargs):
+        from flask import abort
+
+        abort(404)
+
+    return wrapped
+
 
 DEFAULT_TAGS = [
     {"name": "networking", "color": "#6366f1", "is_public": False},
@@ -42,49 +57,8 @@ def ensure_default_tags():
 @admin_bp.route("/")
 @admin_required
 def dashboard():
-    """Admin dashboard"""
-    ensure_default_tags()
-    filter_status = request.args.get('filter')
-    tag_ids = request.args.getlist('tag')
-    no_tags = request.args.get('no_tags') == '1'
-    services = Service.query
-
-    if filter_status in ['up', 'down', 'degraded']:
-        services = services.filter(Service.status == filter_status)
-
-    if tag_ids:
-        services = services.join(Service.tags).filter(Tag.id.in_(tag_ids)).distinct()
-    elif no_tags:
-        services = services.filter(~Service.tags.any())
-
-    services = services.all()
-    tags = Tag.query.all()
-    # Determine auto-tagged info for each service
-    auto_tagged_map = {}
-    for svc in services:
-        svc_data = {
-            'name': svc.name,
-            'description': svc.description,
-            'port': svc.port,
-            'source': getattr(svc, 'source', None),
-            'host': svc.host
-        }
-        auto_tags = get_auto_tagged_for_service(svc_data)
-        auto_tagged_map[svc.id] = auto_tags
-    
-    # Get system information for admin dashboard
-    system_stats = get_system_stats()
-    system_identity = get_system_identity()
-    
-    return render_template("admin.html",
-                         services=services,
-                         tags=tags,
-                         selected_tag_ids=tag_ids,
-                         no_tags=no_tags,
-                         has_systemctl=has_systemctl(),
-                         auto_tagged_map=auto_tagged_map,
-                         system_stats=system_stats,
-                         system_identity=system_identity)
+    """Legacy admin home — redirect to Polymarket operator console."""
+    return redirect(url_for("polymarket.polymarket_scorecard"))
 
 @admin_bp.route("/login", methods=["GET", "POST"])
 @limiter.limit("5 per minute", error_message="Too many login attempts. Please wait a minute before trying again.")
@@ -100,7 +74,7 @@ def login():
         if username == stored_username and stored_password and verify_password(password, stored_password):
             session['authenticated'] = True
             flash('Successfully logged in!', 'success')
-            return redirect(url_for('admin.dashboard'))
+            return redirect(url_for("polymarket.polymarket_scorecard"))
         flash('Invalid credentials. Please try again.', 'error')
     
     return render_template("login.html")
@@ -113,6 +87,7 @@ def logout():
 
 @admin_bp.route("/service/add", methods=['GET', 'POST'])
 @admin_required
+@_legacy_service_monitor_gone
 def add_service():
     tags = Tag.query.all()
     if request.method == 'POST':
@@ -143,6 +118,7 @@ def add_service():
 
 @admin_bp.route("/service/update/<int:service_id>", methods=["POST"])
 @admin_required
+@_legacy_service_monitor_gone
 def update_service(service_id):
     new_status = request.form["status"]
     service = Service.query.get_or_404(service_id)
@@ -154,6 +130,7 @@ def update_service(service_id):
 
 @admin_bp.route("/service/delete/<int:service_id>", methods=["POST"])
 @admin_required
+@_legacy_service_monitor_gone
 def delete_service(service_id):
     service = Service.query.get_or_404(service_id)
     db.session.delete(service)
@@ -163,6 +140,7 @@ def delete_service(service_id):
 
 @admin_bp.route("/service/edit/<int:service_id>", methods=["GET", "POST"])
 @admin_required
+@_legacy_service_monitor_gone
 def edit_service(service_id):
     service = Service.query.get_or_404(service_id)
     tags = Tag.query.all()
@@ -185,6 +163,7 @@ def edit_service(service_id):
 
 @admin_bp.route('/tags', methods=['GET', 'POST'])
 @admin_required
+@_legacy_service_monitor_gone
 def manage_tags():
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
@@ -205,6 +184,7 @@ def manage_tags():
 
 @admin_bp.route('/tags/delete/<int:tag_id>', methods=['POST'])
 @admin_required
+@_legacy_service_monitor_gone
 def delete_tag(tag_id):
     tag = Tag.query.get_or_404(tag_id)
     if tag.services:
@@ -217,6 +197,7 @@ def delete_tag(tag_id):
 
 @admin_bp.route('/auto-tag-rules', methods=['GET', 'POST'])
 @admin_required
+@_legacy_service_monitor_gone
 def manage_auto_tag_rules():
     if request.method == 'POST':
         tag_name = request.form.get('tag_name', '').strip()
@@ -234,6 +215,7 @@ def manage_auto_tag_rules():
 
 @admin_bp.route('/auto-tag-rules/edit/<int:rule_id>', methods=['GET', 'POST'])
 @admin_required
+@_legacy_service_monitor_gone
 def edit_auto_tag_rule(rule_id):
     rule = AutoTagRule.query.get_or_404(rule_id)
     if request.method == 'POST':
@@ -248,6 +230,7 @@ def edit_auto_tag_rule(rule_id):
 
 @admin_bp.route('/auto-tag-rules/delete/<int:rule_id>', methods=['POST'])
 @admin_required
+@_legacy_service_monitor_gone
 def delete_auto_tag_rule(rule_id):
     rule = AutoTagRule.query.get_or_404(rule_id)
     db.session.delete(rule)
@@ -257,6 +240,7 @@ def delete_auto_tag_rule(rule_id):
 
 @admin_bp.route('/auto-tag-rules/toggle/<int:rule_id>', methods=['POST'])
 @admin_required
+@_legacy_service_monitor_gone
 def toggle_auto_tag_rule(rule_id):
     rule = AutoTagRule.query.get_or_404(rule_id)
     rule.enabled = not rule.enabled
@@ -310,7 +294,7 @@ def change_password():
             # Reload environment variables to make the change take effect immediately
             load_dotenv(override=True)
             flash('Password changed successfully!', 'success')
-            return redirect(url_for('admin.dashboard'))
+            return redirect(url_for("polymarket.polymarket_scorecard"))
         else:
             flash('Failed to update password. Please check file permissions.', 'error')
     

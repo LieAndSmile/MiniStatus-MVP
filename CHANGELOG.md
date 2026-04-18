@@ -2,6 +2,18 @@
 
 All notable changes to MiniStatus are documented in this file.
 
+## [1.5.9] - 2026-04-18
+
+### Changed
+
+- **Phase 1.5 (Tier 2) — Polymarket operator console:** MiniStatus is now positioned as the read-only console for `polymarket-alerts`. Legacy **service monitor** UI is removed from the product surface; **no Python modules are deleted** (single `git revert` can restore blueprints).
+- **`app/templates/base.html`:** Sidebar shows **Polymarket** (collapsible, **Scorecard** first) + **Settings** (password, API test) + **Logout**; legacy links (public dashboard, ports, admin services dashboard, remote, tags, auto-tag rules) removed. Logo points to the scorecard.
+- **`app/routes/public.py`:** `GET /` → `302` → `/polymarket/scorecard`. `/feed.xml` and `/rss` → `404`.
+- **`app/__init__.py`:** Unregistered blueprints `sync`, `remote`, `ports`, `api` (CSRF exempt removed with `api`).
+- **`app/routes/admin.py`:** `/admin/` → redirect to scorecard; login / password-change success → scorecard; service/tag/auto-tag CRUD routes return **404** via `_legacy_service_monitor_gone`.
+
+---
+
 ## [1.5.8] - 2026-04-18
 
 ### Added
