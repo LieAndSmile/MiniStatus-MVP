@@ -2,6 +2,14 @@
 
 All notable changes to MiniStatus are documented in this file.
 
+## [1.5.8] - 2026-04-18
+
+### Added
+
+- **Scorecard (Chunk 1d):** “See full scorecard →” on Portfolio (Strategy Overview details + Pipeline card when overview is empty) and AI Simulation (below KPI cards; respects `safe_scope` / `days`). Nav order unchanged — Scorecard remains first via `POLYMARKET_SECTIONS` (comment in `polymarket_nav.html`).
+
+---
+
 ## [1.5.7] - 2026-04-18
 
 ### Added

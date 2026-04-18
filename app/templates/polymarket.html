@@ -81,6 +81,10 @@
   <summary class="cursor-pointer text-sm font-semibold text-light-text dark:text-dark-text">
     Strategy Overview
   </summary>
+  <p class="mt-2 text-right">
+    <a href="{{ url_for('polymarket.polymarket_scorecard', format='html', safe_scope='safe_only', days='all', sort='pnl', order='desc') }}"
+       class="text-sm font-medium text-light-primary dark:text-dark-primary hover:underline">See full scorecard →</a>
+  </p>
   <div class="mt-3 space-y-3">
     {% for group in strategy_overview_groups %}
       {% if group['items'] and group['items']|length > 0 %}
@@ -108,7 +112,13 @@
 
 {% if status_summary %}
 <div class="mb-4 bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
-  <h3 class="text-sm font-semibold text-light-text dark:text-dark-text mb-1">Pipeline activity (all time)</h3>
+  <div class="flex flex-wrap items-start justify-between gap-2 mb-1">
+    <h3 class="text-sm font-semibold text-light-text dark:text-dark-text">Pipeline activity (all time)</h3>
+    {% if not strategy_overview_groups %}
+    <a href="{{ url_for('polymarket.polymarket_scorecard', format='html', safe_scope='safe_only', days='all', sort='pnl', order='desc') }}"
+       class="text-sm font-medium text-light-primary dark:text-dark-primary hover:underline shrink-0">See full scorecard →</a>
+    {% endif %}
+  </div>
   <p class="text-sm text-light-muted dark:text-dark-muted">
     {{ status_summary.logged }} candidates logged · {{ status_summary.sent }} placed · {{ status_summary.shadow }} observing (shadow) · {{ status_summary.blocked }} blocked
   </p>

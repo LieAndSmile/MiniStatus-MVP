@@ -108,6 +108,11 @@
   </div>
 </div>
 
+<p class="mb-4 text-right">
+  <a href="{{ url_for('polymarket.polymarket_scorecard', format='html', safe_scope=current_safe_scope, days=(current_days if current_days and current_days != 'all' else 'all'), sort='pnl', order='desc') }}"
+     class="text-sm font-medium text-light-primary dark:text-dark-primary hover:underline">See full scorecard →</a>
+</p>
+
 {# ── Cumulative P/L chart ─────────────────────────────────────────────────── #}
 {% if sim.chart_data and sim.chart_data|length > 0 %}
 <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4 mb-6">
