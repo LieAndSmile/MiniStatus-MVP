@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, send_file, redirect, url_for, flash, jsonify
+from flask import Blueprint, g, render_template, request, send_file, redirect, session, url_for, flash, jsonify
 from functools import wraps
 import os
 import re
@@ -63,6 +63,29 @@ from app.utils.data_quality import get_data_quality_flags
 from app.utils.decorators import admin_required
 
 polymarket_bp = Blueprint("polymarket", __name__, url_prefix="/polymarket")
+
+# Phase 5 Chunk 5a: persist safe-scope choice across Polymarket pages (session-backed).
+POLYMARKET_SAFE_SCOPE_SESSION_KEY = "polymarket_safe_scope"
+
+
+@polymarket_bp.before_request
+def _apply_polymarket_safe_scope():
+    """Set ``g.polymarket_safe_scope`` and update session when ``?safe_scope=`` is present."""
+    raw = request.args.get("safe_scope")
+    if raw is not None and str(raw).strip() != "":
+        s = str(raw).strip().lower()
+        if s in ("safe_only", "all_tracked"):
+            session[POLYMARKET_SAFE_SCOPE_SESSION_KEY] = s
+            g.polymarket_safe_scope = s
+        else:
+            g.polymarket_safe_scope = "safe_only"
+    else:
+        g.polymarket_safe_scope = session.get(POLYMARKET_SAFE_SCOPE_SESSION_KEY, "safe_only")
+
+
+def _effective_polymarket_safe_scope() -> str:
+    return getattr(g, "polymarket_safe_scope", "safe_only")
+
 
 _MIRROR_WALLET_RE = re.compile(r"^0x[a-fA-F0-9]{40}$")
 
@@ -350,14 +373,26 @@ def polymarket_portfolio():
     if sort_val not in SORT_OPTIONS:
         sort_val = "pnl_asc"
 
-    stats = get_polymarket_stats(data_path, filter=filter_val, days=days, from_date=from_date_val, sort=sort_val, category=category_val or None, strategy=strategy_val)
+    safe_scope = _effective_polymarket_safe_scope()
+    stats = get_polymarket_stats(
+        data_path,
+        filter=filter_val,
+        days=days,
+        from_date=from_date_val,
+        sort=sort_val,
+        category=category_val or None,
+        strategy=strategy_val,
+        safe_scope=safe_scope,
+    )
     last_loop = get_last_loop_time(data_path)
     run_stats = get_run_stats_log(data_path)
     status_summary = get_alerts_status_summary(data_path)
     bankroll_status = get_bankroll_status(data_path)
     strategy_overview_groups = get_strategy_summary(data_path)
     # Simulated bets are status='sent' under polymarket-alerts risk guard policy.
-    recent_decisions = get_recent_decisions(data_path, limit=30, status_filter="sent", strategy=strategy_val)
+    recent_decisions = get_recent_decisions(
+        data_path, limit=30, status_filter="sent", strategy=strategy_val, safe_scope=safe_scope
+    )
     has_sent_elsewhere = bool(
         status_summary and status_summary.get("sent", 0) > 0 and (stats.get("alerts_total", 0) == 0)
     )
@@ -396,6 +431,7 @@ def polymarket_portfolio():
         polymarket_sections=POLYMARKET_SECTIONS,
         pagination=pagination,
         strategy_options_grouped=strategy_options_grouped,
+        current_safe_scope=safe_scope,
         **_polymarket_freshness_context(),
     )
 
@@ -905,9 +941,7 @@ def polymarket_scorecard():
     if fmt not in ("json", "html"):
         fmt = "html"
 
-    safe_scope = (request.args.get("safe_scope") or "safe_only").strip().lower()
-    if safe_scope not in ("safe_only", "all_tracked"):
-        safe_scope = "safe_only"
+    safe_scope = _effective_polymarket_safe_scope()
     days = _parse_scorecard_days()
     days_disp = _parse_scorecard_days_display()
 
@@ -974,9 +1008,7 @@ def polymarket_ai_simulation():
     sort_val = request.args.get("sort", "date_desc")
     if sort_val not in ("pnl_asc", "pnl_desc", "date_desc", "date_asc"):
         sort_val = "date_desc"
-    safe_scope = (request.args.get("safe_scope") or "safe_only").strip().lower()
-    if safe_scope not in ("safe_only", "all_tracked"):
-        safe_scope = "safe_only"
+    safe_scope = _effective_polymarket_safe_scope()
     page = max(1, int(request.args.get("page", 1) or 1))
 
     sim = get_ai_sim_stats(
@@ -1302,7 +1334,17 @@ def polymarket_export():
     if sort_val not in SORT_OPTIONS:
         sort_val = "pnl_asc"
 
-    stats = get_polymarket_stats(data_path, filter=filter_val, days=days, from_date=from_date_val, sort=sort_val, category=category_val, strategy=strategy_val)
+    safe_scope = _effective_polymarket_safe_scope()
+    stats = get_polymarket_stats(
+        data_path,
+        filter=filter_val,
+        days=days,
+        from_date=from_date_val,
+        sort=sort_val,
+        category=category_val,
+        strategy=strategy_val,
+        safe_scope=safe_scope,
+    )
     if not stats or "resolved_list" not in stats:
         return "No data to export", 404
 

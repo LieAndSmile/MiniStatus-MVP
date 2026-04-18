@@ -2,6 +2,18 @@
 
 All notable changes to MiniStatus are documented in this file.
 
+## [1.6.0] - 2026-04-18
+
+### Added
+
+- **Phase 5 Chunk 5a — global safe scope:** `polymarket_safe_scope` in the Flask session, set from `?safe_scope=` on Polymarket routes and used when the query param is omitted. **Portfolio** (stats, recent decisions, CSV export) and **top section nav** use the same scope as Scorecard / AI Simulation.
+
+### Changed
+
+- **`get_polymarket_stats` / `get_recent_decisions`:** optional `safe_scope='safe_only'` filters rows to the safe-execution sport allowlist (same semantics as the scorecard).
+
+---
+
 ## [1.5.9] - 2026-04-18
 
 ### Changed

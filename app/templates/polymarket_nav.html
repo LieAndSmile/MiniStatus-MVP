@@ -4,7 +4,7 @@
   <div class="flex flex-wrap items-center gap-2 sm:gap-4">
     <div class="flex flex-nowrap min-w-max gap-0">
     {% for section_id, label, endpoint in polymarket_sections %}
-    <a href="{{ url_for(endpoint, strategy=(current_strategy if current_strategy is defined else none) or 'all') }}"
+    <a href="{{ url_for(endpoint, strategy=(current_strategy if current_strategy is defined else none) or 'all', safe_scope=g.polymarket_safe_scope) }}"
        class="polymarket-nav-link px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap flex-shrink-0
          {% if active_section is defined and active_section == section_id %}
          border-light-primary dark:border-dark-primary text-light-primary dark:text-dark-primary bg-light-primary/10 dark:bg-dark-primary/10 font-semibold

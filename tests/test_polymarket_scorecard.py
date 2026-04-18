@@ -361,6 +361,38 @@ def test_scorecard_html_renders(tmp_path, monkeypatch):
     assert "s_a" in html or "S_a" in html  # label or raw id
 
 
+def test_polymarket_safe_scope_persists_in_session(tmp_path, monkeypatch):
+    """Phase 5a: choosing scope on scorecard stores session default for later requests."""
+    import app.utils.polymarket as pm
+
+    monkeypatch.setenv("POLYMARKET_DATA_PATH", str(tmp_path))
+    _write_csv(
+        str(tmp_path / "alerts_log.csv"),
+        [
+            {
+                "ts": "2026-04-10T10:00:00Z",
+                "question": "Q",
+                "status": "sent",
+                "strategy_id": "s_a",
+                "resolved": "true",
+                "pnl_usd": "10",
+                "cost_usd": "5",
+                "bet_size_usd": "",
+                "sport": "nba",
+            },
+        ],
+    )
+    pm._CSV_CACHE.clear()
+    app = create_app()
+    app.config["TESTING"] = True
+    with app.test_client() as c:
+        with c.session_transaction() as sess:
+            sess["authenticated"] = True
+        c.get("/polymarket/scorecard?safe_scope=all_tracked&format=html")
+        with c.session_transaction() as sess:
+            assert sess.get("polymarket_safe_scope") == "all_tracked"
+
+
 def test_scorecard_defaults_to_html_json_explicit(tmp_path, monkeypatch):
     """Default format is HTML; ``format=json`` still returns JSON."""
     import app.utils.polymarket as pm

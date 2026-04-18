@@ -741,6 +741,7 @@ def get_recent_decisions(
     limit: int = 30,
     status_filter: Optional[str] = None,
     strategy: Optional[str] = None,
+    safe_scope: Optional[str] = None,
 ) -> list[dict]:
     """
     Read alerts_log.csv and return recent decision rows for UI inspection.
@@ -748,6 +749,7 @@ def get_recent_decisions(
     When status_filter is set, only include rows whose status matches it
     (case-insensitive exact match, e.g. status_filter="sent").
     When strategy is set and not "all", only rows with matching strategy_id.
+    When ``safe_scope`` is the string ``safe_only``, restrict to sports on the safe-execution allowlist.
     """
     if not data_path or not os.path.isdir(data_path):
         return []
@@ -765,6 +767,10 @@ def get_recent_decisions(
     strat = (strategy or "").strip()
     if strat and strat.lower() != "all":
         rows = [r for r in rows if (r.get("strategy_id") or "").strip() == strat]
+
+    if safe_scope == "safe_only":
+        allowed = _safe_execution_sports()
+        rows = [r for r in rows if (r.get("sport") or "").strip().lower() in allowed]
 
     decisions: list[dict] = []
     try:
@@ -947,6 +953,7 @@ def get_polymarket_stats(
     sort: str = "pnl_asc",
     category: Optional[str] = None,
     strategy: Optional[str] = None,
+    safe_scope: Optional[str] = None,
 ) -> Optional[dict]:
     """
     Read alerts_log.csv from polymarket-alerts directory and compute stats.
@@ -956,6 +963,7 @@ def get_polymarket_stats(
     from_date: if set (YYYY-MM-DD), only include resolved_ts >= that date (overrides days when both set)
     sort: pnl_asc | pnl_desc | date_desc | date_asc | question_asc | question_desc | result_yes | result_no
     strategy: if set, only include rows with strategy_id == strategy (v3).
+    safe_scope: if set to ``safe_only``, restrict to sports on the safe-execution allowlist.
     """
     if not data_path or not os.path.isdir(data_path):
         return None
@@ -982,6 +990,9 @@ def get_polymarket_stats(
         all_rows = _filter_sent_rows(all_rows)
         if strategy and strategy.strip():
             all_rows = [r for r in all_rows if (r.get("strategy_id") or "").strip() == strategy.strip()]
+        if safe_scope == "safe_only":
+            allowed = _safe_execution_sports()
+            all_rows = [r for r in all_rows if (r.get("sport") or "").strip().lower() in allowed]
 
         for row in all_rows:
                 alerts_total += 1
