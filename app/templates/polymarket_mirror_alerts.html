@@ -12,6 +12,13 @@
       Wallets to poll for <strong>new trades</strong> on the Polymarket Data API. Telegram messages use your existing bot (<code class="px-1 rounded bg-light-hover dark:bg-dark-hover">TELEGRAM_TOKEN</code> / <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">CHAT_ID</code>).
       The job <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">jobs/mirror_watch.py --once</code> runs on the polymarket-alerts host. Assign each wallet to <strong>Standard</strong> or <strong>Fast</strong>, then run <strong>two</strong> systemd timers (e.g. <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">--poll-group standard</code> every 5 min and <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">--poll-group fast</code> every 1 min). See <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">polymarket-alerts/systemd/README.md</code>.
     </p>
+    <p class="text-sm text-light-muted dark:text-dark-muted mt-2">
+      {% if mirror_min_notional_usd is not none and mirror_min_notional_usd > 0 %}
+      Telegram alerts only when trade notional (|size| × price) is <strong>≥ ${{ "%.0f"|format(mirror_min_notional_usd) }}</strong>. Stored as <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">min_notional_usd</code> in <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">mirror_watch_config.json</code> on the data host; non-empty <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">MIRROR_WATCH_MIN_NOTIONAL_USD</code> in polymarket-alerts <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">.env</code> overrides this when set.
+      {% else %}
+      No minimum notional in config (or set to 0) — all new trades can notify unless limited by <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">MIRROR_WATCH_MIN_NOTIONAL_USD</code> in <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">.env</code>.
+      {% endif %}
+    </p>
     {% if cfg_age %}
     <p class="text-xs text-light-muted dark:text-dark-muted mt-2">Config file age: <strong>{{ cfg_age }}</strong></p>
     {% endif %}

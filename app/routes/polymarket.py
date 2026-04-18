@@ -950,6 +950,12 @@ def polymarket_mirror_alerts():
     cfg = get_mirror_watch_config(data_path) or {"version": 1, "wallets": []}
     wallets = cfg.get("wallets") if isinstance(cfg.get("wallets"), list) else []
     cfg_age = get_file_age(data_path, "mirror_watch_config.json")
+    mirror_min_notional_usd = None
+    if isinstance(cfg, dict) and "min_notional_usd" in cfg:
+        try:
+            mirror_min_notional_usd = max(0.0, float(cfg["min_notional_usd"]))
+        except (TypeError, ValueError):
+            mirror_min_notional_usd = None
     return render_template(
         "polymarket_mirror_alerts.html",
         polymarket_sections=POLYMARKET_SECTIONS,
@@ -963,6 +969,7 @@ def polymarket_mirror_alerts():
         mirror_watch_max=MIRROR_WATCH_MAX_WALLETS,
         mirror_poll_groups=MIRROR_POLL_GROUPS,
         cfg_age=cfg_age,
+        mirror_min_notional_usd=mirror_min_notional_usd,
         **_polymarket_freshness_context(),
     )
 
