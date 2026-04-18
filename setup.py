@@ -15,7 +15,7 @@ setup(
     name="ministatus-mvp",
     version="1.3.0",
     author="LieAndSmile",
-    description="A lightweight, self-hosted service status dashboard",
+    description="Read-only operator console for polymarket-alerts (Flask)",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/LieAndSmile/MiniStatus-MVP",
@@ -34,17 +34,13 @@ setup(
     python_requires=">=3.8",
     install_requires=[
         "Flask>=3.1.0",
-        "Flask-SQLAlchemy>=3.1.1",
         "python-dotenv>=1.1.0",
-        "psutil",
         "PyYAML",
         "requests>=2.32.0",
+        "Flask-WTF>=1.2.0",
+        "Flask-Limiter>=3.5.0",
+        "bcrypt>=4.1.0",
     ],
-    entry_points={
-        "console_scripts": [
-            "ministatus=run:main",
-        ],
-    },
     include_package_data=True,
 )
 

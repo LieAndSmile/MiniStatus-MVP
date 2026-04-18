@@ -2,6 +2,26 @@
 
 All notable changes to MiniStatus are documented in this file.
 
+## [1.7.0] - 2026-04-18
+
+### Removed (Phase 5 Chunk 5c — Tier 3)
+
+- **Legacy service monitor stack:** SQLite models, sync/remote/ports/api blueprints, systemd sync service, auto-tag and system helpers, legacy templates (`admin` dashboard, `public/`, `components/`), and the JSON status API surface.
+- **Flask-SQLAlchemy** and **`ministatus.db` usage** — the app no longer creates or migrates ORM tables. Optional on-disk DB may be moved to `data/legacy/` manually.
+
+### Added
+
+- **`app/routes/root.py`** — `GET /` → scorecard redirect; `/feed.xml` and `/rss` → 404.
+
+### Changed
+
+- **`app/__init__.py` / `extensions.py`:** CSRF + Limiter only; no `db`.
+- **`app/routes/admin.py`:** Login, logout, change password, help, API key page only.
+- **`app/utils/polymarket_health.py`:** hosts **`get_data_quality_flags`** (moved from deleted `data_quality.py`).
+- **`README.md`:** Identity line matches the Polymarket operator console; trimmed obsolete service-monitor documentation.
+
+---
+
 ## [1.6.1] - 2026-04-18
 
 ### Added

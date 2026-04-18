@@ -4,12 +4,16 @@ Health and freshness helpers for Polymarket integration.
 These helpers are intentionally small and focused so they can be probed by:
 - internal admin views
 - external monitoring (via JSON endpoints)
+
+Data-quality banner flags (formerly ``app.utils.data_quality``) live here for Tier 3 cleanup.
 """
 
 from __future__ import annotations
 
+import json
+import os
 from dataclasses import dataclass, asdict
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from .polymarket import (
     is_polymarket_configured,
@@ -18,6 +22,9 @@ from .polymarket import (
     get_lifecycle_file_age,
     validate_alerts_log_schema,
     get_last_loop_time,
+    _read_csv_cached,
+    _parse_float,
+    _is_resolved_row,
 )
 
 
@@ -131,4 +138,97 @@ def get_polymarket_health() -> PolymarketHealth:
         alerts_schema_error=alerts_error,
         freshness=freshness,
     )
+
+
+# --- Data quality flags (Polymarket views) ------------------------------------
+
+
+def _count_sent_resolved(rows: list) -> int:
+    """Resolved trades that count toward Portfolio (status=sent only; legacy = no status column)."""
+    if not rows:
+        return 0
+    no_status_col = "status" not in (rows[0] or {})
+    n = 0
+    for r in rows:
+        if not no_status_col and (r.get("status") or "").strip().lower() != "sent":
+            continue
+        if _is_resolved_row(r):
+            n += 1
+    return n
+
+
+def _cohort_resolved_sum(analytics_path: str) -> int:
+    try:
+        with open(analytics_path, encoding="utf-8") as f:
+            aj = json.load(f)
+    except (OSError, ValueError, json.JSONDecodeError):
+        return 0
+    cohort = aj.get("strategy_cohort") or {}
+    if not isinstance(cohort, dict):
+        return 0
+    total = 0
+    for v in cohort.values():
+        if isinstance(v, dict):
+            total += int(v.get("resolved_count") or 0)
+    return total
+
+
+def get_data_quality_flags(data_path: str) -> List[dict]:
+    """Return banner flags for Polymarket templates: ``severity`` + ``message``."""
+    flags: List[dict] = []
+    if not data_path:
+        return flags
+
+    alerts_path = os.path.join(data_path, "alerts_log.csv")
+    analytics_path = os.path.join(data_path, "analytics.json")
+    if os.path.isfile(alerts_path) and os.path.isfile(analytics_path):
+        result = _read_csv_cached(alerts_path)
+        csv_n = _count_sent_resolved(result[1] if result else [])
+        json_n = _cohort_resolved_sum(analytics_path)
+        if csv_n == 0 and json_n > 0:
+            flags.append(
+                {
+                    "severity": "warning",
+                    "message": (
+                        "Portfolio reads live alerts_log.csv (sent trades only); analytics.json still shows "
+                        f"{json_n} resolved cohort trade(s). Regenerate analytics after restoring the log, or click "
+                        "Refresh analytics on the Analytics tab so JSON matches the CSV."
+                    ),
+                }
+            )
+
+    positions_path = os.path.join(data_path, "open_positions.csv")
+    result = _read_csv_cached(positions_path)
+    if result:
+        _, rows = result
+        if rows and all(_parse_float(r.get("unrealized_pnl")) == 0.0 for r in rows):
+            flags.append(
+                {
+                    "severity": "info",
+                    "message": (
+                        "Live pricing unavailable — unrealized P/L shows cost basis only. "
+                        "Run update_open_positions.py (without --no-live) to fetch current prices."
+                    ),
+                }
+            )
+
+    exec_path = os.path.join(data_path, "execution_log.csv")
+    result = _read_csv_cached(exec_path)
+    if result:
+        _, rows = result
+        if len(rows) > 50:
+            filled_5m = sum(1 for r in rows if (r.get("price_5m_after") or "").strip())
+            if filled_5m < 10:
+                flags.append(
+                    {
+                        "severity": "info",
+                        "message": (
+                            f"Drift data sparse — {filled_5m} of {len(rows)} execution rows "
+                            "have 5m price data. Drift columns populate in real time as new "
+                            "alerts age through their windows."
+                        ),
+                    }
+                )
+
+    return flags
 
