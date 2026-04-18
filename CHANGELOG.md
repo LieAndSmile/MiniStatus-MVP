@@ -2,6 +2,14 @@
 
 All notable changes to MiniStatus are documented in this file.
 
+## [1.5.6] - 2026-04-18
+
+### Added
+
+- **Scorecard (Chunk 1b):** `GET /polymarket/scorecard` — JSON list from `get_strategy_scorecard()`; query params `safe_scope` (default `safe_only`), optional `days`, `format=json` (default). `format=html` returns 501 until Chunk 1c.
+
+---
+
 ## [1.5.5] - 2026-04-18
 
 ### Added

@@ -40,6 +40,7 @@ from app.utils.polymarket import (
     get_strategy_summary,
     get_ai_performance,
     get_ai_sim_stats,
+    get_strategy_scorecard,
     get_mirror_portfolio_json,
     get_mirror_portfolio_file_age,
     get_mirror_watch_config,
@@ -134,6 +135,18 @@ def _polymarket_freshness_context():
     else:
         ctx["polymarket_schema_warnings"] = []
     return ctx
+
+
+def _parse_scorecard_days():
+    """Optional ``days`` query param for scorecard; None means all time."""
+    raw = (request.args.get("days") or "").strip()
+    if not raw:
+        return None
+    try:
+        d = int(raw)
+        return d if d > 0 else None
+    except (TypeError, ValueError):
+        return None
 
 
 def _parse_filter_days():
@@ -792,6 +805,28 @@ def polymarket_loop():
         polymarket_sections=POLYMARKET_SECTIONS,
         **_polymarket_freshness_context(),
     )
+
+
+# ── Scorecard (Phase 1) ───────────────────────────────────────────────────────
+@polymarket_bp.route("/scorecard")
+@admin_required
+def polymarket_scorecard():
+    """
+    Per-strategy scorecard as JSON (Chunk 1b). HTML template in Chunk 1c.
+    Query: ``safe_scope`` (safe_only | all_tracked), ``days`` (optional int),
+    ``format`` (json | html; html returns 501 until template exists).
+    """
+    fmt = (request.args.get("format") or "json").strip().lower()
+    if fmt == "html":
+        return jsonify({"error": "Scorecard HTML is not available until Chunk 1c."}), 501
+
+    safe_scope = (request.args.get("safe_scope") or "safe_only").strip().lower()
+    if safe_scope not in ("safe_only", "all_tracked"):
+        safe_scope = "safe_only"
+    days = _parse_scorecard_days()
+    data_path = _get_data_path()
+    rows = get_strategy_scorecard(data_path, safe_scope=safe_scope, days=days)
+    return jsonify(rows)
 
 
 # ── AI Simulation ─────────────────────────────────────────────────────────────

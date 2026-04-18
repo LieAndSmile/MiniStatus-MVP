@@ -1,4 +1,4 @@
-"""Chunk 1a: get_strategy_scorecard() — read-only aggregates from alerts_log.csv."""
+"""Chunk 1a: get_strategy_scorecard(); Chunk 1b: /polymarket/scorecard JSON route."""
 import csv
 import os
 import sys
@@ -10,6 +10,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
+from app import create_app  # noqa: E402
 from app.utils.polymarket import get_strategy_scorecard  # noqa: E402
 
 
@@ -280,3 +281,60 @@ def test_sorted_by_realized_pnl_desc(tmp_path):
     pm._CSV_CACHE.clear()
     rows = get_strategy_scorecard(str(tmp_path), safe_scope="all_tracked")
     assert [r["strategy_id"] for r in rows] == ["high", "low"]
+
+
+def test_scorecard_route_redirects_when_not_authenticated(tmp_path, monkeypatch):
+    monkeypatch.setenv("POLYMARKET_DATA_PATH", str(tmp_path))
+    app = create_app()
+    app.config["TESTING"] = True
+    with app.test_client() as c:
+        r = c.get("/polymarket/scorecard")
+    assert r.status_code == 302
+    assert "/admin/login" in (r.headers.get("Location") or "")
+
+
+def test_scorecard_json_route(tmp_path, monkeypatch):
+    import app.utils.polymarket as pm
+
+    monkeypatch.setenv("POLYMARKET_DATA_PATH", str(tmp_path))
+    _write_csv(
+        str(tmp_path / "alerts_log.csv"),
+        [
+            {
+                "ts": "2026-04-10T10:00:00Z",
+                "question": "Q",
+                "status": "sent",
+                "strategy_id": "s_a",
+                "resolved": "true",
+                "pnl_usd": "10",
+                "cost_usd": "5",
+                "bet_size_usd": "",
+                "sport": "nba",
+            },
+        ],
+    )
+    pm._CSV_CACHE.clear()
+    app = create_app()
+    app.config["TESTING"] = True
+    with app.test_client() as c:
+        with c.session_transaction() as sess:
+            sess["authenticated"] = True
+        r = c.get("/polymarket/scorecard?format=json&safe_scope=all_tracked")
+    assert r.status_code == 200
+    data = r.get_json()
+    assert isinstance(data, list)
+    assert len(data) == 1
+    assert data[0]["strategy_id"] == "s_a"
+    assert data[0]["realized_pnl_usd"] == 10.0
+
+
+def test_scorecard_format_html_returns_501_until_chunk_1c(tmp_path, monkeypatch):
+    monkeypatch.setenv("POLYMARKET_DATA_PATH", str(tmp_path))
+    app = create_app()
+    app.config["TESTING"] = True
+    with app.test_client() as c:
+        with c.session_transaction() as sess:
+            sess["authenticated"] = True
+        r = c.get("/polymarket/scorecard?format=html")
+    assert r.status_code == 501
+    assert "Chunk 1c" in (r.get_json() or {}).get("error", "")
