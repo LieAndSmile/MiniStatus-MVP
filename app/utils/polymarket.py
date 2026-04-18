@@ -11,7 +11,11 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Literal
 
-from app.utils.polymarket_constants import SUPPORTED_JSON_ARTIFACT_SCHEMA_VERSION, _CF_STANDARD_BET
+from app.utils.polymarket_constants import (
+    SUPPORTED_JSON_ARTIFACT_SCHEMA_VERSION,
+    SPORT_DISPLAY_LABELS,
+    _CF_STANDARD_BET,
+)
 
 # mtime cache: filepath -> (mtime, fieldnames, rows). Invalidates when file changes.
 _CSV_CACHE: dict[str, tuple[float, list[str], list[dict]]] = {}
@@ -223,8 +227,16 @@ BLOCK_REASON_LABELS: dict[str, str] = {
     "MAX_OPEN_POSITIONS": "Max positions open",
     "MAX_CATEGORY_EXPOSURE_USD": "Category limit reached",
     "MAX_STRATEGY_EXPOSURE_USD": "Strategy limit reached",
+    "sport_not_enabled_for_safe_execution": "Sport not enabled for safe execution",
     "blocked_inactive_strategy": "Strategy inactive",
 }
+
+
+def _safe_execution_sports() -> set[str]:
+    raw = (os.getenv("SAFE_EXECUTION_SPORTS") or "").strip()
+    if raw:
+        return {x.strip().lower() for x in raw.split(",") if x.strip()}
+    return {"soccer", "tennis", "nba", "nhl", "mlb"}
 
 
 def get_strategy_options_grouped(strategy_options: tuple[str, ...]) -> list[dict]:
@@ -318,6 +330,7 @@ def get_bankroll_status(data_path: str) -> dict:
         "deployed_pct": None,
         "last_updated_display": "—",
         "open_positions_count": 0,
+        "sport_open": [],
     }
 
     if not data_path or not os.path.isdir(data_path):
@@ -331,13 +344,30 @@ def get_bankroll_status(data_path: str) -> dict:
         if rows:
             # Only count rows that the simulation would have "placed" (sent), but not resolved yet.
             open_cnt = 0
+            sport_deploy: dict[str, dict[str, float]] = {}
             for row in rows:
                 st = (row.get("status") or "").strip().lower()
                 if st != "sent":
                     continue
                 if not _is_resolved_row(row):
                     open_cnt += 1
+                    sk = (row.get("sport") or "").strip().lower()
+                    if sk in ("nba", "nhl", "mlb"):
+                        stake = _parse_float(row.get("bet_size_usd"), default=0.0)
+                        if sk not in sport_deploy:
+                            sport_deploy[sk] = {"count": 0.0, "deployed_usd": 0.0}
+                        sport_deploy[sk]["count"] += 1.0
+                        sport_deploy[sk]["deployed_usd"] += stake
             status["open_positions_count"] = open_cnt
+            status["sport_open"] = [
+                {
+                    "sport": k,
+                    "count": int(v["count"]),
+                    "deployed_usd": v["deployed_usd"],
+                    "deployed_display": format_compact_usd(v["deployed_usd"]),
+                }
+                for k, v in sorted(sport_deploy.items())
+            ]
 
     # Bankroll file
     bankroll_path = os.path.join(data_path, "bankroll.json")
@@ -626,8 +656,12 @@ def get_recent_decisions(
 
             primary_reason = (row.get("primary_block_reason") or "").strip()
             link = (row.get("link") or "").strip()
+            outcome_label = (row.get("outcome_label") or "").strip()
+            pick_display = outcome_label or "—"
 
             # Sent-only view: show resolution outcome if already resolved.
+            # Result is blank ("—") until polymarket-alerts resolution_tracker fills
+            # actual_result (YES/NO) from the Gamma API after the market closes.
             resolved_val = row.get("resolved", "")
             actual_result = (row.get("actual_result") or "").strip().upper()
             is_resolved = _parse_bool(resolved_val) or actual_result in ("YES", "NO")
@@ -637,12 +671,27 @@ def get_recent_decisions(
             else:
                 result_display = "—"
 
+            sport_raw = (row.get("sport") or "").strip()
+            sport_display = SPORT_DISPLAY_LABELS.get(sport_raw.lower(), sport_raw or "—") if sport_raw else "—"
+            mt = (row.get("market_type") or "").strip()
+            market_type_display = mt or "—"
+            ek = (row.get("event_key") or "").strip()
+            event_key_display = ek[:48] + "…" if len(ek) > 48 else (ek or "—")
+
             decisions.append({
                 "ts_dt": ts_dt,
                 "ts_display": ts_display,
                 "status": status,
                 "strategy_id": strategy_id,
                 "question": question,
+                "outcome_label": outcome_label,
+                "pick_display": pick_display,
+                "sport": sport_raw,
+                "sport_display": sport_display,
+                "market_type": mt,
+                "market_type_display": market_type_display,
+                "event_key": ek,
+                "event_key_display": event_key_display,
                 "bet_size_usd": bet_size,
                 "bet_size_display": format_compact_usd(bet_size),
                 "conviction_score": conviction_score,
@@ -2760,6 +2809,7 @@ def get_ai_sim_stats(
     days: Optional[int] = None,
     sort: str = "date_desc",
     strategy: Optional[str] = None,
+    safe_scope: str = "all_tracked",
 ) -> Optional[dict]:
     """
     Prefer ai_performance.json when fresh; else read alerts_log.csv.
@@ -2797,6 +2847,11 @@ def get_ai_sim_stats(
         sim_sec = art.get("sim")
         if isinstance(sim_sec, dict) and (sim_sec.get("resolved_list") is not None or sim_sec.get("open_list") is not None):
             resolved_rows, open_rows, alerts_total = _sim_lists_from_artifact_sim(sim_sec, strategy)
+            if safe_scope == "safe_only":
+                allowed_sports = _safe_execution_sports()
+                resolved_rows = [r for r in resolved_rows if (r.get("sport") or "").strip().lower() in allowed_sports]
+                open_rows = [r for r in open_rows if (r.get("sport") or "").strip().lower() in allowed_sports]
+                alerts_total = len(resolved_rows) + len(open_rows)
             prod = art.get("producer") or {}
             return _finalize_ai_sim_stats_body(
                 resolved_rows,
@@ -2828,6 +2883,9 @@ def get_ai_sim_stats(
         all_rows = [r for r in all_rows if (r.get("strategy_id") or "").strip() == strategy.strip()]
 
     sim_rows = [r for r in all_rows if (r.get("status") or "").strip().lower() == "ai_sim"]
+    if safe_scope == "safe_only":
+        allowed_sports = _safe_execution_sports()
+        sim_rows = [r for r in sim_rows if (r.get("sport") or "").strip().lower() in allowed_sports]
 
     resolved_rows = []
     open_rows = []

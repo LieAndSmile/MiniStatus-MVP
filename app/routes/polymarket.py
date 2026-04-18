@@ -809,9 +809,19 @@ def polymarket_ai_simulation():
     sort_val = request.args.get("sort", "date_desc")
     if sort_val not in ("pnl_asc", "pnl_desc", "date_desc", "date_asc"):
         sort_val = "date_desc"
+    safe_scope = (request.args.get("safe_scope") or "safe_only").strip().lower()
+    if safe_scope not in ("safe_only", "all_tracked"):
+        safe_scope = "safe_only"
     page = max(1, int(request.args.get("page", 1) or 1))
 
-    sim = get_ai_sim_stats(data_path, filter=filter_val, days=days, sort=sort_val, strategy=current_strategy)
+    sim = get_ai_sim_stats(
+        data_path,
+        filter=filter_val,
+        days=days,
+        sort=sort_val,
+        strategy=current_strategy,
+        safe_scope=safe_scope,
+    )
 
     total_count = len(sim.get("resolved_list", [])) if sim else 0
     pagination = build_pagination(total_count, page, PER_PAGE)
@@ -835,6 +845,7 @@ def polymarket_ai_simulation():
         current_filter=filter_val,
         current_days=days_val,
         current_sort=sort_val,
+        current_safe_scope=safe_scope,
         **_polymarket_freshness_context(),
     )
 

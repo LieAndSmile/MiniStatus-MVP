@@ -75,6 +75,9 @@
   });
   function polymarketApplyStrategy(value) {
     showLoading();
+    try {
+      sessionStorage.setItem('polymarket_scroll', String(window.scrollY));
+    } catch (e) {}
     var params = new URLSearchParams(window.location.search);
     params.set('strategy', value);
     window.location = window.location.pathname + '?' + params.toString();

@@ -61,6 +61,15 @@
     </div>
     <div class="mt-2 text-xs text-light-muted dark:text-dark-muted flex items-center justify-between gap-3">
       <span>{{ deployed_pct|round(0)|int }}% deployed · {{ bankroll_status.open_positions_count }} open positions</span>
+      {% if bankroll_status.sport_open and bankroll_status.sport_open|length > 0 %}
+      <span class="block mt-1 text-xs text-light-muted dark:text-dark-muted">
+        By sport (open):
+        {% for s in bankroll_status.sport_open %}
+          {% if not loop.first %} · {% endif %}
+          {{ s.sport|upper }} {{ s.deployed_display }} · {{ s.count }} pos
+        {% endfor %}
+      </span>
+      {% endif %}
       <span>{% if bankroll_status.last_updated_display %}Last updated: {{ bankroll_status.last_updated_display }}{% endif %}</span>
     </div>
   </div>
@@ -166,8 +175,10 @@
         <thead class="bg-light-hover dark:bg-dark-hover">
           <tr>
             <th class="px-3 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Time</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Sport</th>
             <th class="px-3 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Market</th>
             <th class="px-3 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase" title="Outcome side for the alerted token (from alerts_log outcome_label)">Pick</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Type</th>
             <th class="px-3 py-2 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Strategy</th>
             <th class="px-3 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Bet size</th>
             <th class="px-3 py-2 text-right text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Conv.</th>
@@ -178,6 +189,7 @@
           {% for d in recent_decisions %}
           <tr class="hover:bg-light-hover dark:hover:bg-dark-hover">
             <td class="px-3 py-2 text-sm text-light-muted dark:text-dark-muted whitespace-nowrap">{{ d.ts_display }}</td>
+            <td class="px-3 py-2 text-sm whitespace-nowrap" title="{{ d.sport or '' }}">{{ d.sport_display }}</td>
             <td class="px-3 py-2 text-sm">
               {% if d.link and d.link|length > 0 %}
                 <a href="{{ d.link }}" target="_blank" rel="noopener noreferrer" class="text-light-text dark:text-dark-text font-medium underline decoration-light-border/40 hover:decoration-light-border">
@@ -188,6 +200,7 @@
               {% endif %}
             </td>
             <td class="px-3 py-2 text-sm text-light-text dark:text-dark-text whitespace-nowrap" title="{{ d.outcome_label or '' }}">{{ d.pick_display }}</td>
+            <td class="px-3 py-2 text-sm text-light-muted dark:text-dark-muted whitespace-nowrap" title="{{ d.event_key or '' }}">{{ d.market_type_display }}</td>
             <td class="px-3 py-2 text-sm whitespace-nowrap">
               <span class="font-medium text-light-text dark:text-dark-text">{{ d.strategy_id or '—' }}</span>
             </td>
@@ -259,7 +272,7 @@
   {{ polymarket_time_filter('polymarket.polymarket_portfolio', current_days, {'filter': current_filter, 'sort': current_sort, 'category': current_category if current_category else none, 'strategy': nav_strategy}, '#resolved-alerts') }}
   <div class="flex items-center gap-2">
     <span class="text-sm font-medium text-light-muted dark:text-dark-muted">Sort:</span>
-    <select id="polymarket-sort" data-polymarket-nav onchange="sessionStorage.setItem('polymarket_scroll', window.scrollY); window.location.href=this.value+'#resolved-alerts';"
+    <select id="polymarket-sort" onchange="sessionStorage.setItem('polymarket_scroll', window.scrollY); window.location.href=this.value+'#resolved-alerts';"
             class="px-3 py-1.5 rounded-md text-sm border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary">
       <option value="{{ url_for('polymarket.polymarket_portfolio', filter=current_filter, days=current_days, sort='pnl_asc', category=current_category if current_category else none, from_date=current_from_date, strategy=nav_strategy) }}" {% if current_sort == 'pnl_asc' %}selected{% endif %}>P/L lowest first</option>
       <option value="{{ url_for('polymarket.polymarket_portfolio', filter=current_filter, days=current_days, sort='pnl_desc', category=current_category if current_category else none, from_date=current_from_date, strategy=nav_strategy) }}" {% if current_sort == 'pnl_desc' %}selected{% endif %}>P/L highest first</option>
@@ -551,18 +564,6 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script>
-(function() {
-  var savedScroll = sessionStorage.getItem('polymarket_scroll');
-  if (savedScroll !== null) {
-    sessionStorage.removeItem('polymarket_scroll');
-    requestAnimationFrame(function() { window.scrollTo(0, parseInt(savedScroll, 10)); });
-  }
-  document.querySelectorAll('.polymarket-preserve-scroll').forEach(function(el) {
-    el.addEventListener('click', function() { sessionStorage.setItem('polymarket_scroll', String(window.scrollY)); });
-  });
-})();
-</script>
 <script>
 (function() {
   const searchInput = document.getElementById('polymarket-search');

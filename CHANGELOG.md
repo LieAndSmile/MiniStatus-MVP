@@ -2,6 +2,38 @@
 
 All notable changes to MiniStatus are documented in this file.
 
+## [1.5.4] - 2026-04-18
+
+### Added
+
+- **AI Simulation — Safe-scope toggle:** new *Safe only* vs *All tracked* switch on the AI Simulation tab. When set to *Safe only* (default) the simulation stats, resolved/open markets, and pagination are restricted to sports on the shared safe-execution allowlist (`SAFE_EXECUTION_SPORTS`, default `soccer,tennis,nba,nhl,mlb`). The selection persists across refresh, filter, sort, and pagination via a `safe_scope` query parameter.
+- **`polymarket_constants.py`:** new block-reason label `sport_not_enabled_for_safe_execution` → "Sport not enabled for safe execution"; extended `SPORT_DISPLAY_LABELS` with `tennis`, `golf`, `mma`, `boxing`, `esports`, `american_football`, `other`.
+- **`app/utils/polymarket.py`:** `_safe_execution_sports()` helper (env-backed) and `get_ai_sim_stats(safe_scope=…)` filtering.
+
+---
+
+## [1.5.3] - 2026-04-17
+
+### Added
+
+- **Portfolio / Polymarket UI:** optional **Sport** and **Type** columns when `sport` and `market_type` are present in `alerts_log.csv`; bankroll summary includes **by-sport** open exposure (`sport_open`).
+- **`polymarket_constants.py`:** strategy labels and block-reason strings for safe NBA/NHL/MLB lanes and sport caps (`blocked_sport_cap`, `blocked_event_duplicate`).
+
+### Fixed
+
+- **Sidebar navigation:** main nav scrolls (`flex` + `overflow-y-auto`) when the Polymarket submenu is expanded.
+- **Tab navigation:** preserve main content scroll position across Polymarket section changes via `sessionStorage.polymarket_scroll` in `base.html` (strategy links in `polymarket_nav.html`); removed duplicate scroll handlers from individual templates; Sort `<select>` elements no longer use `data-polymarket-nav` (avoids conflicting with strategy navigation).
+
+### Documentation
+
+- **`docs/POLYMARKET_INTEGRATION.md`** — extended header note (`event_key`); UI scroll behavior.
+
+### Notes (upstream)
+
+- **polymarket-alerts** `v6.6.0`: `alerts_log.csv` schema v7 adds **`event_key`**; run **`scripts/backfill_alert_metadata.py`** on existing logs if you want historical rows populated. Copy `polymarket-alerts/docs/alerts_log_header.json` to **`tests/fixtures/alerts_log_header.json`** when syncing schema (see integration contract checklist).
+
+---
+
 ## [1.5.2] - 2026-04-16
 
 ### Added

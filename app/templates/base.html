@@ -165,9 +165,9 @@
 </head>
 <body class="h-full bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text font-sans transition-colors duration-200" data-polymarket-active="{{ 'true' if request.blueprint == 'polymarket' else 'false' }}">
   <!-- Sidebar -->
-  <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 transition-all duration-300 ease-in-out bg-light-nav dark:bg-dark-nav border-r border-light-border dark:border-dark-border">
+  <aside id="sidebar" class="fixed inset-y-0 left-0 z-30 flex h-full w-64 flex-col overflow-hidden transition-all duration-300 ease-in-out bg-light-nav dark:bg-dark-nav border-r border-light-border dark:border-dark-border">
     <!-- Logo section -->
-    <div class="flex items-center justify-between h-16 px-4 border-b border-light-border dark:border-dark-border">
+    <div class="flex h-16 flex-shrink-0 items-center justify-between border-b border-light-border dark:border-dark-border px-4">
       <a href="{{ url_for('public.index') }}" class="flex items-center space-x-2 overflow-hidden">
         <div class="text-2xl font-bold text-light-text dark:text-dark-text">MiniStatus</div>
       </a>
@@ -178,8 +178,8 @@
       </button>
     </div>
 
-    <!-- Navigation Links -->
-    <nav class="p-4 space-y-4">
+    <!-- Navigation Links (scroll when Polymarket / Settings submenus are expanded) -->
+    <nav class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4 space-y-4">
       <!-- PUBLIC SECTION -->
       <div>
         <div class="px-3 py-2 mb-2">
@@ -412,6 +412,59 @@
       {% block content %}{% endblock %}
     </main>
   </div>
+
+  <!-- Preserve main window scroll when navigating between Polymarket sections (sidebar + top tabs) -->
+  <script>
+  (function () {
+    var KEY = 'polymarket_scroll';
+    function isPolymarketPath(p) {
+      return typeof p === 'string' && (p === '/polymarket' || p.indexOf('/polymarket/') === 0);
+    }
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest('a');
+      if (!a) return;
+      if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+      if (a.target === '_blank') return;
+      var raw = a.getAttribute('href');
+      if (!raw || !raw.trim() || raw.charAt(0) === '#' || raw.indexOf('javascript:') === 0) return;
+      var url;
+      try {
+        url = new URL(a.href, window.location.href);
+      } catch (err) {
+        return;
+      }
+      if (url.origin !== window.location.origin) return;
+      if (!isPolymarketPath(window.location.pathname)) return;
+      if (!isPolymarketPath(url.pathname)) return;
+      if (url.pathname === window.location.pathname && url.search === window.location.search && url.hash) {
+        return;
+      }
+      try {
+        sessionStorage.setItem(KEY, String(window.scrollY));
+      } catch (err2) {}
+    }, true);
+
+    function restorePolymarketScroll() {
+      if (!isPolymarketPath(window.location.pathname)) return;
+      var y = sessionStorage.getItem(KEY);
+      if (y === null) return;
+      sessionStorage.removeItem(KEY);
+      var target = parseInt(y, 10) || 0;
+      function go() {
+        window.scrollTo(0, target);
+      }
+      go();
+      requestAnimationFrame(go);
+      setTimeout(go, 0);
+      setTimeout(go, 50);
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', restorePolymarketScroll);
+    } else {
+      restorePolymarketScroll();
+    }
+  })();
+  </script>
 
   <!-- Toast Notification Container -->
   <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>

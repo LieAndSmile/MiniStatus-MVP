@@ -59,7 +59,7 @@ All consumer paths below are **relative to `POLYMARKET_DATA_PATH`** unless noted
 
 **Expected schema**
 
-MiniStatus expects the **v3 schema** maintained by polymarket-alerts (`alerts_log_writer.ALERTS_HEADER`):
+MiniStatus expects the **current producer header** maintained by polymarket-alerts (`alerts_log_writer.ALERTS_HEADER`; schema **v7** adds **`event_key`** between `sport` and `market_type`). The canonical ordered list is **`polymarket-alerts/docs/alerts_log_header.json`** — copy it to **`tests/fixtures/alerts_log_header.json`** when the producer changes columns.
 
 - Required columns (case-insensitive, validated by `validate_alerts_log_schema`):
   - `question`
@@ -67,31 +67,11 @@ MiniStatus expects the **v3 schema** maintained by polymarket-alerts (`alerts_lo
   - `resolved`
   - `actual_result`
   - **at least one** of `ts` or `resolved_ts`
-- Full header currently used by the consumer (order important for producer):
-  - `alert_id`
-  - `ts`
-  - `question`
-  - `gamma`
-  - `best_ask`
-  - `effective`
-  - `fill_usdc`
-  - `fill_pct`
-  - `edge`
-  - `spread`
-  - `days`
-  - `event_time`
-  - `link`
-  - `token`
-  - `token_id`
-  - `market`
-  - `yes_price`
-  - `resolved`
-  - `actual_result`
-  - `pnl_usd`
-  - `resolved_ts`
-  - `strategy_id`
-  - `status`
-  - `cost_usd`
+- **Full column order** matches **`polymarket-alerts/docs/alerts_log_header.json`** ( sizing fields, `risk_bucket`, `sport`, **`event_key`**, `market_type`, AI columns, etc.). If this paragraph and the repo JSON disagree, trust the JSON and update **`tests/fixtures/alerts_log_header.json`**.
+
+**Navigation / scroll**
+
+- Polymarket section links (sidebar and tab bar) save **`sessionStorage.polymarket_scroll`** so the main window restores vertical scroll position when switching tabs or strategies (`app/templates/base.html`, `polymarket_nav.html`). Sort dropdowns must **not** use `data-polymarket-nav` (that attribute is reserved for strategy links).
 
 **How it is used**
 

@@ -24,6 +24,9 @@ STRATEGY_OPTIONS = (
     "gamma_92_96_probe",
     "mid_gamma",
     "resolution_sprint",
+    "safe_nba_core",
+    "safe_nhl_core",
+    "safe_mlb_core",
 )
 
 # One-line operator hints (Portfolio Strategy Overview). Keys optional; missing keys show no extra line.
@@ -36,6 +39,9 @@ STRATEGY_SHORT_HELP: dict[str, str] = {
     ),
     "safe_fast": "Legacy strategy id in older logs only; new rows use same-day or 1–2d core strategies.",
     "safe_premium": "Separate premium tier; evaluate on its own track before changing sizing.",
+    "safe_nba_core": "NBA-only lane; moneyline/side/total; capped per sport and one position per event.",
+    "safe_nhl_core": "NHL-only lane; moneyline/side/total; capped per sport and one position per event.",
+    "safe_mlb_core": "MLB-only lane; moneyline/side only at launch; slightly tighter sizing than NBA/NHL.",
 }
 
 STRATEGY_LABELS: dict[str, str] = {
@@ -54,6 +60,9 @@ STRATEGY_LABELS: dict[str, str] = {
     "gamma_92_96_probe": "Gamma 92–96 probe",
     "mid_gamma": "Mid gamma",
     "resolution_sprint": "Resolution sprint",
+    "safe_nba_core": "Safe NBA core",
+    "safe_nhl_core": "Safe NHL core",
+    "safe_mlb_core": "Safe MLB core",
 }
 
 STRATEGY_MODE: dict[str, str] = {
@@ -72,6 +81,9 @@ STRATEGY_MODE: dict[str, str] = {
     "gamma_92_96_probe": "shadow",
     "mid_gamma": "shadow",
     "resolution_sprint": "shadow",
+    "safe_nba_core": "active",
+    "safe_nhl_core": "active",
+    "safe_mlb_core": "active",
 }
 
 
@@ -80,7 +92,27 @@ BLOCK_REASON_LABELS: dict[str, str] = {
     "MAX_OPEN_POSITIONS": "Max positions open",
     "MAX_CATEGORY_EXPOSURE_USD": "Per-bucket exposure cap (risk_bucket)",
     "MAX_STRATEGY_EXPOSURE_USD": "Strategy limit reached",
+    "event_already_open": "Already have an open position on this event",
+    "sport_cap_reached": "Per-sport exposure cap (NBA/NHL/MLB)",
+    "sport_max_open_reached": "Per-sport max open positions",
+    "sport_not_enabled_for_safe_execution": "Sport not enabled for safe execution",
     "blocked_inactive_strategy": "Strategy inactive",
+}
+
+# Normalized sport slugs from alerts_log (subset)
+SPORT_DISPLAY_LABELS: dict[str, str] = {
+    "nba": "NBA",
+    "nhl": "NHL",
+    "mlb": "MLB",
+    "soccer": "Soccer",
+    "basketball": "Basketball",
+    "american_football": "NFL",
+    "tennis": "Tennis",
+    "golf": "Golf",
+    "mma": "MMA",
+    "boxing": "Boxing",
+    "esports": "Esports",
+    "other": "Other",
 }
 
 # Empty stats structure for error/fallback responses
