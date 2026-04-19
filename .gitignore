@@ -59,8 +59,8 @@ logs/
 
 # Local development
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # Testing
 .coverage
