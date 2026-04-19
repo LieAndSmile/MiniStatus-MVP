@@ -25,9 +25,6 @@ SECRET_KEY={secrets.token_hex(32)}
 # Admin auth - CHANGE THESE!
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD={hashed_password}
-
-# API
-API_KEY=supersecret
 """
         with open(env_path, "w") as f:
             f.write(default_env)

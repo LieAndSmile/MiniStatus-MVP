@@ -77,49 +77,20 @@
       }
     }
 
-    // Sidebar collapse functionality
+    // Sidebar collapse: single .is-collapsed class + CSS (no querySelectorAll per toggle — was janky)
     function toggleSidebar() {
       const sidebar = document.getElementById('sidebar');
-      const mainContent = document.getElementById('main-content');
-      const polymarketMenu = document.getElementById('polymarket-menu');
-      const navLabels = document.querySelectorAll('.nav-label');
-      const isCollapsed = sidebar.classList.contains('w-16');
-      
-      if (isCollapsed) {
-        sidebar.classList.remove('w-16');
-        sidebar.classList.add('w-64');
-        mainContent.classList.remove('ml-16');
-        mainContent.classList.add('ml-64');
-        navLabels.forEach(label => label.classList.remove('hidden'));
-      } else {
-        sidebar.classList.remove('w-64');
-        sidebar.classList.add('w-16');
-        mainContent.classList.remove('ml-64');
-        mainContent.classList.add('ml-16');
-        // Keep Polymarket submenu labels visible when collapsed (they have no icons)
-        navLabels.forEach(function(label) {
-          if (polymarketMenu && polymarketMenu.contains(label)) return;
-          label.classList.add('hidden');
-        });
+      if (!sidebar) return;
+      sidebar.classList.toggle('is-collapsed');
+      var collapsed = sidebar.classList.contains('is-collapsed');
+      try {
+        localStorage.setItem('sidebarCollapsed', collapsed ? 'true' : 'false');
+      } catch (e) {}
+      var btn = document.querySelector('.sidebar-toggle-btn');
+      if (btn) {
+        btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        btn.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
       }
-    }
-
-    // Settings section toggle functionality
-    function toggleSettings() {
-      const settingsMenu = document.getElementById('settings-menu');
-      const settingsIcon = document.getElementById('settings-icon');
-      const isExpanded = !settingsMenu.classList.contains('hidden');
-      
-      if (isExpanded) {
-        settingsMenu.classList.add('hidden');
-        settingsIcon.classList.remove('rotate-90');
-      } else {
-        settingsMenu.classList.remove('hidden');
-        settingsIcon.classList.add('rotate-90');
-      }
-      
-      // Store state in localStorage
-      localStorage.setItem('settingsExpanded', !isExpanded);
     }
 
     // Polymarket section toggle functionality
@@ -139,16 +110,21 @@
       localStorage.setItem('polymarketExpanded', !isExpanded);
     }
 
-    // Restore settings and polymarket menu state on page load
+    // Restore polymarket menu + sidebar collapse on page load
     document.addEventListener('DOMContentLoaded', function() {
-      const settingsExpanded = localStorage.getItem('settingsExpanded') === 'true';
-      const settingsMenu = document.getElementById('settings-menu');
-      const settingsIcon = document.getElementById('settings-icon');
-      
-      if (settingsExpanded && settingsMenu) {
-        settingsMenu.classList.remove('hidden');
-        if (settingsIcon) settingsIcon.classList.add('rotate-90');
-      }
+      try {
+        if (localStorage.getItem('sidebarCollapsed') === 'true') {
+          const sb = document.getElementById('sidebar');
+          if (sb) {
+            sb.classList.add('is-collapsed');
+            var btn = document.querySelector('.sidebar-toggle-btn');
+            if (btn) {
+              btn.setAttribute('aria-expanded', 'false');
+              btn.title = 'Expand sidebar';
+            }
+          }
+        }
+      } catch (e) {}
 
       const polymarketExpanded = localStorage.getItem('polymarketExpanded') === 'true';
       const polymarketMenu = document.getElementById('polymarket-menu');
@@ -162,28 +138,96 @@
       }
     });
   </script>
+  <style>
+    /* Sidebar: animate width only (not transition-all — avoids layout thrash) */
+    #sidebar.sidebar-shell {
+      width: 16rem;
+      will-change: width;
+      transition: width 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #sidebar.sidebar-shell.is-collapsed {
+      width: 4rem;
+    }
+    #main-content.main-offset {
+      margin-left: 16rem;
+      transition: margin-left 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #sidebar.sidebar-shell.is-collapsed + #main-content.main-offset {
+      margin-left: 4rem;
+    }
+    #sidebar.is-collapsed .sidebar-brand-text {
+      display: none;
+    }
+    #sidebar.is-collapsed .sidebar-row-heading {
+      display: none !important;
+    }
+    /* Collapsed: hide most labels; keep Polymarket drill-down link text (icons-only elsewhere looked broken) */
+    #sidebar.is-collapsed .nav-label {
+      display: none;
+    }
+    #sidebar.is-collapsed #polymarket-menu .nav-label {
+      display: inline-flex !important;
+      align-items: center;
+    }
+    #sidebar.is-collapsed #polymarket-menu {
+      padding-left: 0.25rem;
+      padding-right: 0.125rem;
+    }
+    #sidebar.is-collapsed #polymarket-menu .pl-6 {
+      padding-left: 0.25rem;
+    }
+    .sidebar-collapse-chevron {
+      transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #sidebar.is-collapsed .sidebar-collapse-chevron {
+      transform: rotate(180deg);
+    }
+    /* Nav scrollbar — default OS scrollbar reads as a bright strip in dark mode */
+    #sidebar-nav {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(55, 65, 81, 0.75) transparent;
+    }
+    #sidebar-nav::-webkit-scrollbar {
+      width: 6px;
+    }
+    #sidebar-nav::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    #sidebar-nav::-webkit-scrollbar-thumb {
+      background: rgba(55, 65, 81, 0.55);
+      border-radius: 4px;
+    }
+    html.dark #sidebar-nav {
+      scrollbar-color: rgba(107, 114, 128, 0.45) transparent;
+    }
+    html.dark #sidebar-nav::-webkit-scrollbar-thumb {
+      background: rgba(107, 114, 128, 0.4);
+    }
+  </style>
 </head>
 <body class="h-full bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text font-sans transition-colors duration-200" data-polymarket-active="{{ 'true' if request.blueprint == 'polymarket' else 'false' }}">
   <!-- Sidebar -->
-  <aside id="sidebar" class="fixed inset-y-0 left-0 z-30 flex h-full w-64 flex-col overflow-hidden transition-all duration-300 ease-in-out bg-light-nav dark:bg-dark-nav border-r border-light-border dark:border-dark-border">
+  <aside id="sidebar" class="sidebar-shell fixed inset-y-0 left-0 z-30 flex h-full flex-col overflow-hidden bg-light-nav dark:bg-dark-nav border-r border-light-border dark:border-dark-border">
     <!-- Logo section -->
     <div class="flex h-16 flex-shrink-0 items-center justify-between border-b border-light-border dark:border-dark-border px-4">
-      <a href="{{ url_for('polymarket.polymarket_scorecard') }}" class="flex items-center space-x-2 overflow-hidden">
-        <div class="text-2xl font-bold text-light-text dark:text-dark-text">MiniStatus</div>
+      <a href="{% if session.get('authenticated') %}{{ url_for('polymarket.polymarket_ops') }}{% else %}{{ url_for('admin.login') }}{% endif %}"
+         class="flex min-w-0 flex-1 items-center space-x-2 overflow-hidden rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-light-primary dark:focus-visible:ring-dark-primary"
+         title="{% if session.get('authenticated') %}Polymarket Tools overview{% else %}Admin login{% endif %}">
+        <div class="sidebar-brand-text text-2xl font-bold text-light-text dark:text-dark-text truncate">MiniStatus</div>
       </a>
-      <button onclick="toggleSidebar()" class="p-2 rounded-lg hover:bg-light-hover dark:hover:bg-dark-hover">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <button type="button" onclick="toggleSidebar()" class="sidebar-toggle-btn shrink-0 p-2 rounded-lg hover:bg-light-hover dark:hover:bg-dark-hover" title="Collapse sidebar" aria-expanded="true" aria-controls="sidebar-nav">
+        <svg xmlns="http://www.w3.org/2000/svg" class="sidebar-collapse-chevron w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
         </svg>
       </button>
     </div>
 
     <!-- Navigation Links (scroll when Polymarket / Settings submenus are expanded) -->
-    <nav class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4 space-y-4">
+    <nav id="sidebar-nav" class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain p-4 space-y-4">
       <!-- ADMIN SECTION (only shown when authenticated) -->
       {% if session.get('authenticated') %}
       <div>
-        <div class="px-3 py-2 mb-2">
+        <div class="sidebar-row-heading px-3 py-2 mb-2">
           <span class="text-xs font-semibold uppercase tracking-wider text-light-muted dark:text-dark-muted">🔐 Admin</span>
         </div>
         <div class="space-y-2">
@@ -201,7 +245,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
               </svg>
             </button>
-            <div id="polymarket-menu" class="pl-9 mt-1 space-y-1 {% if request.blueprint != 'polymarket' %}hidden{% endif %}">
+            <div id="polymarket-menu" class="mt-2 {% if request.blueprint != 'polymarket' %}hidden{% endif %}">
               {% macro polymarket_sidebar_url(endpoint) -%}
               {% if request.blueprint == 'polymarket' and request.args.get('strategy') %}
               {{ url_for(endpoint, strategy=request.args.get('strategy')) }}
@@ -209,61 +253,106 @@
               {{ url_for(endpoint) }}
               {% endif %}
               {%- endmacro %}
-              {# Phase 5b: four primary destinations; secondary tools via Ops hub #}
-              {% set polymarket_ops_sidebar = request.endpoint in [
-                'polymarket.polymarket_ops', 'polymarket.polymarket_positions', 'polymarket.polymarket_risky',
-                'polymarket.polymarket_loss_lab', 'polymarket.polymarket_analytics', 'polymarket.polymarket_lifecycle',
-                'polymarket.polymarket_loop', 'polymarket.polymarket_ai_performance', 'polymarket.polymarket_mirror_portfolio',
-                'polymarket.polymarket_mirror_alerts'
-              ] %}
-              <a href="{{ polymarket_sidebar_url('polymarket.polymarket_portfolio') }}"
-                 class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_portfolio' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
-                <span class="nav-label text-sm">Live</span>
+              {% macro polymarket_sidebar_link(endpoint, label, icon_path) -%}
+              {% set is_active = request.endpoint == endpoint %}
+              <a href="{{ polymarket_sidebar_url(endpoint) }}"
+                 title="{{ label }}"
+                 class="group relative flex items-center gap-2.5 pl-3 pr-2 py-1.5 rounded-md border-l-2 text-sm transition-all duration-150
+                        {% if is_active %}
+                          border-light-primary dark:border-dark-primary
+                          bg-light-primary/10 dark:bg-dark-primary/15
+                          text-light-primary dark:text-dark-primary font-medium
+                        {% else %}
+                          border-transparent
+                          text-light-muted dark:text-dark-muted
+                          hover:border-light-border dark:hover:border-dark-border
+                          hover:bg-light-hover/70 dark:hover:bg-dark-hover/60
+                          hover:text-light-text dark:hover:text-dark-text
+                        {% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  {{ icon_path | safe }}
+                </svg>
+                <span class="nav-label truncate">{{ label }}</span>
               </a>
-              <a href="{{ polymarket_sidebar_url('polymarket.polymarket_scorecard') }}"
-                 class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_scorecard' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
-                <span class="nav-label text-sm">Scorecard</span>
-              </a>
-              <a href="{{ polymarket_sidebar_url('polymarket.polymarket_ai_simulation') }}"
-                 class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'polymarket.polymarket_ai_simulation' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
-                <span class="nav-label text-sm">AI Simulation</span>
-              </a>
-              <a href="{{ polymarket_sidebar_url('polymarket.polymarket_ops') }}"
-                 class="flex items-center space-x-3 p-2 rounded-lg {% if polymarket_ops_sidebar %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
-                <span class="nav-label text-sm">Ops</span>
-              </a>
+              {%- endmacro %}
+              {# Grouped sidebar (Option A polish): labeled sections with dividers + icons. #}
+              <div class="pl-6 pr-2 space-y-4">
+                <div class="space-y-0.5">
+                  <div class="sidebar-row-heading flex items-center gap-2 px-2 pt-1 pb-1.5">
+                    <span class="text-[10px] font-semibold uppercase tracking-[0.12em] text-light-muted/80 dark:text-dark-muted/80">Main</span>
+                    <span class="flex-1 h-px bg-light-border/60 dark:bg-dark-border/60"></span>
+                  </div>
+                  {{ polymarket_sidebar_link('polymarket.polymarket_portfolio', 'Live',
+                      '<path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M7 15l4-4 3 3 5-6"/>') }}
+                  {{ polymarket_sidebar_link('polymarket.polymarket_scorecard', 'Scorecard',
+                      '<path stroke-linecap="round" stroke-linejoin="round" d="M9 17V9m4 8v-5m4 5v-2M5 5h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z"/>') }}
+                  {{ polymarket_sidebar_link('polymarket.polymarket_ai_simulation', 'AI Simulation',
+                      '<path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2m0 14v2m9-9h-2M5 12H3m14.95-6.95l-1.4 1.4M7.45 16.55l-1.4 1.4m12.9 0l-1.4-1.4M7.45 7.45L6.05 6.05M12 8a4 4 0 100 8 4 4 0 000-8z"/>') }}
+                </div>
+                <div class="space-y-0.5">
+                  <div class="sidebar-row-heading flex items-center gap-2 px-2 pt-1 pb-1.5">
+                    <span class="text-[10px] font-semibold uppercase tracking-[0.12em] text-light-muted/80 dark:text-dark-muted/80">Tools</span>
+                    <span class="flex-1 h-px bg-light-border/60 dark:bg-dark-border/60"></span>
+                  </div>
+                  {{ polymarket_sidebar_link('polymarket.polymarket_ops', 'Overview',
+                      '<path stroke-linecap="round" stroke-linejoin="round" d="M4 6h6v6H4V6zm10 0h6v6h-6V6zM4 16h6v4H4v-4zm10-2h6v6h-6v-6z"/>') }}
+                  {{ polymarket_sidebar_link('polymarket.polymarket_positions', 'Open Positions',
+                      '<path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M3 12h18M3 17h12"/>') }}
+                  {{ polymarket_sidebar_link('polymarket.polymarket_risky', 'Risky',
+                      '<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M4.93 19h14.14a2 2 0 001.74-3L13.74 4a2 2 0 00-3.48 0L3.2 16a2 2 0 001.73 3z"/>') }}
+                  {{ polymarket_sidebar_link('polymarket.polymarket_analytics', 'Analytics',
+                      '<path stroke-linecap="round" stroke-linejoin="round" d="M4 20V10m6 10V4m6 16v-7m4 7H4"/>') }}
+                  {{ polymarket_sidebar_link('polymarket.polymarket_loss_lab', 'Loss Lab',
+                      '<path stroke-linecap="round" stroke-linejoin="round" d="M9 3h6v4l4 8a4 4 0 01-3.6 5.7H8.6A4 4 0 015 15l4-8V3zM9 3h6M9 11h6"/>') }}
+                  {{ polymarket_sidebar_link('polymarket.polymarket_lifecycle', 'Lifecycle',
+                      '<path stroke-linecap="round" stroke-linejoin="round" d="M4 4v6h6M20 20v-6h-6M5 13a8 8 0 0014.5 3M19 11A8 8 0 004.5 8"/>') }}
+                  {{ polymarket_sidebar_link('polymarket.polymarket_ai_performance', 'AI Performance',
+                      '<path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>') }}
+                </div>
+                <div class="space-y-0.5">
+                  <div class="sidebar-row-heading flex items-center gap-2 px-2 pt-1 pb-1.5">
+                    <span class="text-[10px] font-semibold uppercase tracking-[0.12em] text-light-muted/80 dark:text-dark-muted/80">Mirrors</span>
+                    <span class="flex-1 h-px bg-light-border/60 dark:bg-dark-border/60"></span>
+                  </div>
+                  {{ polymarket_sidebar_link('polymarket.polymarket_mirror_portfolio', 'Mirror Portfolio',
+                      '<path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M4 12h16M4 17h16"/>') }}
+                  {{ polymarket_sidebar_link('polymarket.polymarket_mirror_alerts', 'Mirror Alerts',
+                      '<path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.17V11a6 6 0 10-12 0v3.17a2 2 0 01-.6 1.43L4 17h5m6 0a3 3 0 11-6 0"/>') }}
+                </div>
+                <div class="space-y-0.5">
+                  <div class="sidebar-row-heading flex items-center gap-2 px-2 pt-1 pb-1.5">
+                    <span class="text-[10px] font-semibold uppercase tracking-[0.12em] text-light-muted/80 dark:text-dark-muted/80">Diagnostics</span>
+                    <span class="flex-1 h-px bg-light-border/60 dark:bg-dark-border/60"></span>
+                  </div>
+                  {{ polymarket_sidebar_link('polymarket.polymarket_loop', 'Loop / Dev',
+                      '<path stroke-linecap="round" stroke-linejoin="round" d="M8 9h8M8 13h5m-1 8l-4-4H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-7l-4 4z"/>') }}
+                </div>
+              </div>
             </div>
           </div>
 
-          <!-- Settings Section (Collapsible) -->
-          <div>
-            <button onclick="toggleSettings()" 
-                    class="w-full flex items-center justify-between space-x-3 p-3 rounded-lg text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text transition-colors duration-200">
-              <div class="flex items-center space-x-3">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span class="nav-label">Settings</span>
-              </div>
-              <svg id="settings-icon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          <!-- Settings: always visible (was collapsible + hidden by default — links were easy to miss / appear broken) -->
+          <div class="space-y-1">
+            <div class="sidebar-row-heading flex items-center gap-2 px-2 pt-1 pb-1">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-light-muted dark:text-dark-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-            </button>
-            <div id="settings-menu" class="hidden pl-9 mt-1 space-y-1">
+              <span class="text-[10px] font-semibold uppercase tracking-[0.12em] text-light-muted/80 dark:text-dark-muted/80">Settings</span>
+              <span class="flex-1 h-px bg-light-border/60 dark:bg-dark-border/60"></span>
+            </div>
+            <div class="pl-1 space-y-0.5">
               <a href="{{ url_for('admin.change_password') }}"
-                 class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'admin.change_password' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                 class="flex items-center gap-2.5 p-2 rounded-md border-l-2 text-sm transition-all duration-150
+                        {% if request.endpoint == 'admin.change_password' %}
+                          border-light-primary dark:border-dark-primary bg-light-primary/10 dark:bg-dark-primary/15 text-light-primary dark:text-dark-primary font-medium
+                        {% else %}
+                          border-transparent text-light-muted dark:text-dark-muted hover:border-light-border dark:hover:border-dark-border hover:bg-light-hover/70 dark:hover:bg-dark-hover/60 hover:text-light-text dark:hover:text-dark-text
+                        {% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                 </svg>
                 <span class="nav-label text-sm">Change Password</span>
-              </a>
-              <a href="{{ url_for('admin.api_test') }}"
-                 class="flex items-center space-x-3 p-2 rounded-lg {% if request.endpoint == 'admin.api_test' %}bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-text{% else %}text-light-muted dark:text-dark-muted hover:bg-light-hover dark:hover:bg-dark-hover hover:text-light-text dark:hover:text-dark-text{% endif %} transition-colors duration-200">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span class="nav-label text-sm">API Testing</span>
               </a>
             </div>
           </div>
@@ -310,7 +399,7 @@
   </aside>
 
   <!-- Main Content -->
-  <div id="main-content" class="ml-64 transition-all duration-300 ease-in-out bg-light-bg dark:bg-dark-bg min-h-screen">
+  <div id="main-content" class="main-offset min-h-screen bg-light-bg dark:bg-dark-bg">
     <!-- Content Header -->
     <header class="h-16 bg-light-nav dark:bg-dark-nav border-b border-light-border dark:border-dark-border px-6 flex items-center justify-between">
       <h1 class="text-xl font-bold text-light-text dark:text-dark-text">{% block header %}Dashboard{% endblock %}</h1>

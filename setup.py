@@ -13,7 +13,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="ministatus-mvp",
-    version="1.3.0",
+    version="1.7.1",
     author="LieAndSmile",
     description="Read-only operator console for polymarket-alerts (Flask)",
     long_description=long_description,

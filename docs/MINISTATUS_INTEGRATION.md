@@ -9,7 +9,7 @@ It is written purely from the **MiniStatus (consumer) perspective**: what we rea
 > That document defines the full field-level contract for each artifact.  
 > This file only documents how MiniStatus uses those artifacts.
 
-> **Short “what’s done / what’s left” notes:** `docs/AI_MINISTATUS_TRACKER.md` (stub) · canonical `polymarket-alerts/docs/AI_MINISTATUS_TRACKER.md`
+> **Short “what’s done / what’s left” notes:** canonical `polymarket-alerts/docs/AI_MINISTATUS_TRACKER.md`
 
 ---
 

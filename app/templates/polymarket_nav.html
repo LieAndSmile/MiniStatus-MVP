@@ -1,5 +1,5 @@
 {% if polymarket_sections is defined and polymarket_sections %}
-{# POLYMARKET_SECTIONS: Live, Scorecard, AI Simulation, Ops (Phase 5b). Secondary routes highlight Ops. #}
+{# POLYMARKET_SECTIONS: Live, Scorecard, AI Simulation, Tools (Phase 5b; section_id ops). Secondary routes highlight Tools. #}
 {% set nav_act = active_section if active_section is defined and active_section in ['portfolio', 'scorecard', 'ai-simulation'] else 'ops' %}
 <nav class="mb-6 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 border-b border-light-border dark:border-dark-border" aria-label="Polymarket sections">
   <div class="flex flex-wrap items-center gap-2 sm:gap-4">

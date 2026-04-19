@@ -29,3 +29,17 @@ def test_no_sqlalchemy_in_extensions():
     from app import extensions
 
     assert not hasattr(extensions, "db")
+
+
+def test_change_password_page_renders():
+    """Cancel link must use a live route (admin.dashboard was removed in Tier 3)."""
+    from app import create_app
+
+    app = create_app()
+    app.config["TESTING"] = True
+    with app.test_client() as c:
+        with c.session_transaction() as sess:
+            sess["authenticated"] = True
+        r = c.get("/admin/change-password")
+    assert r.status_code == 200
+    assert b"Change Password" in r.data

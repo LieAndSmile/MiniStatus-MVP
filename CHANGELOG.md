@@ -2,6 +2,30 @@
 
 All notable changes to MiniStatus are documented in this file.
 
+## [1.7.1] - 2026-04-18
+
+### Added
+
+- **Secondary tabs UX (plan):** Shared **`polymarket-page-header`** partial (`_partials/polymarket_page_header.html`) on Risky, Loss Lab, Analytics, AI Performance, and AI Simulation.
+- **AI Performance:** TL;DR strip, tooltips + sample sizes on lift tiles, **`get_recent_ai_blocked()`** (last producer `skip_*` rows), details table, link to AI Simulation.
+- **AI Simulation:** Page header + TL;DR strip, link card to AI Performance.
+- **Risky:** Summary strip (qualifying / historical hit rate / avg P/L per historical qualifier), **Now** vs **History** sections with anchors, empty-state CTA to **Loose** preset, **Track** (interesting) column with same toggle behavior as Open Positions.
+- **Loss Lab:** Header + filter chips, “biggest driver” cards (category / strategy / timing), monthly **sparkline** bars above the trend table.
+- **Analytics:** Header with refresh in action slot, **At a glance** hero for insights, win-rate **bar** column on Edge Quality & Timing, **All strategies** / **Strategy filter** badges.
+- **Task 5b (Δ vs previous export):** `analytics_export.py` copies the existing output to **`analytics.prev.json`** before writing a new `analytics.json`. Analytics page loads the prior snapshot and shows **Δ** (resolved counts, insight “was:” lines, optional cohort ROI pp and 2h avg drift when a strategy filter is set).
+- **Tests:** `tests/test_polymarket_shared_header.py`, `tests/test_polymarket_ai_blocked_recent.py`, `tests/test_polymarket_analytics_delta.py`.
+
+### Changed
+
+- **Polymarket Tools hub** (`GET /polymarket/ops`): fourth tab label is **Tools** (was Ops). Hub page groups secondary links (portfolio & risk, reports & analysis, AI, engine/debug, mirroring) and adds shortcuts back to Live, Scorecard, and AI Simulation.
+- **`get_data_quality_flags`:** The “analytics.json vs alerts_log.csv” yellow banner is **not** shown when `alerts_log.csv` fails schema validation (e.g. wrong or placeholder headers). Fix the CSV first; the portfolio page already shows the red schema error.
+- **`base.html` (Polymarket sidebar):** Grouped links — **Main** (Live, Scorecard, AI Simulation), **Tools** (Overview hub, Open Positions, Risky, Analytics, Loss Lab, Lifecycle, AI Performance), **Mirrors**, **Diagnostics** (Loop / Dev). Top bar stays four tabs; secondary pages are one click in the sidebar.
+- **`base.html` (nav fixes):** **MiniStatus** logo goes to **Tools overview** (`/polymarket/ops`) when logged in (login when not). **Settings** links (Change Password, API Testing) are always visible — they were inside a collapsed submenu (`hidden` by default), which made them look broken.
+- **`base.html` (sidebar collapse):** Collapse uses a single **`is-collapsed`** class + CSS (no per-click `querySelectorAll('.nav-label')`); only **`width`** / **`margin-left`** animate (not `transition-all`). **Nav scrollbar** styled for dark/light so the track doesn’t read as a white strip. **localStorage** `sidebarCollapsed` restores state across loads.
+- **`admin/change_password.html`:** **Cancel** linked to removed `admin.dashboard` (BuildError / 500). Now points to **Tools overview** (`polymarket.polymarket_ops`).
+
+---
+
 ## [1.7.0] - 2026-04-18
 
 ### Removed (Phase 5 Chunk 5c — Tier 3)

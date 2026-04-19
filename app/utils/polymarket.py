@@ -2359,6 +2359,108 @@ def get_analytics_json(data_path: str) -> Optional[dict]:
         return None
 
 
+def get_analytics_prev_json(data_path: str) -> Optional[dict]:
+    """Load analytics.prev.json (copy of previous analytics.json before last export). Optional."""
+    if not data_path or not os.path.isdir(data_path):
+        return None
+    import json
+    path = os.path.join(data_path, "analytics.prev.json")
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (IOError, json.JSONDecodeError):
+        return None
+
+
+def build_analytics_deltas(
+    current: Optional[dict],
+    previous: Optional[dict],
+    strategy: Optional[str] = None,
+) -> dict:
+    """
+    Compare current vs previous analytics.json for UI hints (Δ since last refresh).
+    strategy: when set and not 'all', includes cohort ROI pp delta for that strategy.
+    """
+    empty: dict = {
+        "has_prev": False,
+        "prev_generated_at": None,
+        "totals": {},
+        "insights": {},
+        "cohort_roi_pp": None,
+        "exit_2h_avg": {},
+    }
+    if not current or not isinstance(current, dict):
+        return empty
+    if not previous or not isinstance(previous, dict):
+        return empty
+
+    out = {
+        "has_prev": True,
+        "prev_generated_at": previous.get("generated_at"),
+        "totals": {},
+        "insights": {},
+        "cohort_roi_pp": None,
+        "exit_2h_avg": {},
+    }
+
+    tc = current.get("totals") or {}
+    tp = previous.get("totals") or {}
+    for key in ("alerts_resolved", "alerts_open", "alerts_total"):
+        c, p = tc.get(key), tp.get(key)
+        try:
+            c_i = int(c) if c is not None else None
+            p_i = int(p) if p is not None else None
+        except (TypeError, ValueError):
+            c_i, p_i = None, None
+        if c_i is not None and p_i is not None:
+            out["totals"][key] = {"current": c_i, "previous": p_i, "delta": c_i - p_i}
+
+    ic = current.get("insights") or {}
+    ip = previous.get("insights") or {}
+    for key in ("suggested_edge_threshold", "best_timing_windows", "top_strategy_by_roi", "drift_status"):
+        c, p = ic.get(key), ip.get(key)
+        cs, ps = (str(c) if c is not None else ""), (str(p) if p is not None else "")
+        if cs != ps:
+            out["insights"][key] = {"changed": True, "current": c, "previous": p}
+        else:
+            out["insights"][key] = {"changed": False}
+
+    sid = (strategy or "").strip()
+    if sid and sid.lower() != "all":
+        sc_c = current.get("strategy_cohort") or {}
+        sc_p = previous.get("strategy_cohort") or {}
+        row_c = sc_c.get(sid) if isinstance(sc_c.get(sid), dict) else None
+        row_p = sc_p.get(sid) if isinstance(sc_p.get(sid), dict) else None
+        if row_c and row_p:
+            try:
+                roi_c = float(row_c.get("roi_pct") or 0)
+                roi_p = float(row_p.get("roi_pct") or 0)
+                out["cohort_roi_pp"] = round(roi_c - roi_p, 2)
+            except (TypeError, ValueError):
+                pass
+
+    # Optional: 2h avg drift for current strategy (numeric Δ)
+    ex_c = current.get("exit_study") or {}
+    ex_p = previous.get("exit_study") or {}
+    if sid and sid.lower() != "all":
+        h_c = (ex_c.get(sid) or {}).get("2h") or {}
+        h_p = (ex_p.get(sid) or {}).get("2h") or {}
+        a_c, a_p = h_c.get("avg_move"), h_p.get("avg_move")
+        if a_c is not None and a_p is not None:
+            try:
+                out["exit_2h_avg"] = {
+                    "current": float(a_c),
+                    "previous": float(a_p),
+                    "delta": round(float(a_c) - float(a_p), 6),
+                }
+            except (TypeError, ValueError):
+                pass
+
+    return out
+
+
 def get_lifecycle_json(data_path: str) -> Optional[dict]:
     """
     Load lifecycle.json from polymarket-alerts (from evaluate_strategy_lifecycle.py).
@@ -2612,6 +2714,51 @@ def _sim_lists_from_artifact_sim(sim_section: dict, strategy: Optional[str]) -> 
     return resolved_rows, open_rows, alerts_total
 
 
+# Cache polymarket-alerts core/market_meta.py when POLYMARKET_DATA_PATH sits under that repo (…/data → …/core).
+_POLY_ALERTS_MARKET_META: dict[str, object] = {}
+
+
+def _polymarket_alerts_market_meta_module(data_path: str) -> Optional[object]:
+    """Load market_meta from sibling ``core/`` if present (same layout as producer)."""
+    if not data_path:
+        return None
+    base = os.path.dirname(os.path.abspath(data_path))
+    core = os.path.join(base, "core")
+    if core not in _POLY_ALERTS_MARKET_META:
+        mp = os.path.join(core, "market_meta.py")
+        if not os.path.isfile(mp):
+            _POLY_ALERTS_MARKET_META[core] = None  # type: ignore[assignment]
+        else:
+            import sys
+
+            if core not in sys.path:
+                sys.path.insert(0, core)
+            import market_meta as mm  # noqa: E402
+
+            _POLY_ALERTS_MARKET_META[core] = mm
+    mod = _POLY_ALERTS_MARKET_META.get(core)
+    return mod if mod is not None else None
+
+
+def _apply_ai_sim_sport_display(data_path: str, rows: list[dict]) -> None:
+    """Human-readable sport column: re-infer from full question when polymarket-alerts core is importable."""
+    mm = _polymarket_alerts_market_meta_module(data_path)
+    for r in rows:
+        qfull = r.pop("question_full", None)
+        q = (qfull or r.get("question") or "").strip()
+        stored = (r.get("sport") or "").strip()
+        slug = stored
+        if mm and q:
+            try:
+                slug = (mm.infer_pipeline_meta(q, "").get("sport") or "").strip() or stored  # type: ignore[union-attr]
+            except Exception:
+                slug = stored
+        label = SPORT_DISPLAY_LABELS.get((slug or "").lower())
+        if not label:
+            label = slug.title() if slug else "—"
+        r["sport_display"] = label
+
+
 def _finalize_ai_sim_stats_body(
     resolved_rows: list[dict],
     open_rows: list[dict],
@@ -2692,6 +2839,10 @@ def _finalize_ai_sim_stats_body(
         r["bet_size_display"] = format_compact_usd(r["bet_size_usd"] or 0.0)
         r["ts_display"] = format_ts_display(r.get("ts"))
 
+    if data_path:
+        _apply_ai_sim_sport_display(data_path, resolved_rows)
+        _apply_ai_sim_sport_display(data_path, open_rows)
+
     out: dict = {
         "alerts_total": alerts_total,
         "open": len(open_rows),
@@ -2713,6 +2864,129 @@ def _finalize_ai_sim_stats_body(
     if data_path:
         _apply_live_ai_loop_diagnostics(data_path, out, producer_snapshot if producer_snapshot else None)
     return out
+
+
+def _annotate_ai_lift_metrics(out: dict) -> None:
+    """Add sample-size and auxiliary lift fields for TL;DR / tooltips (artifact + CSV paths)."""
+    lm = out.setdefault("lift_metrics", {})
+    tiers = out.get("accuracy_tiers") or []
+    lm.setdefault("skip_high_lift_pp", lm.get("skip_tier_lift_pp"))
+    fb_j = int(lm.get("blocked_judged_count") or 0)
+    if fb_j > 0:
+        lm.setdefault("false_block_n", fb_j)
+        lm.setdefault("loss_avoided_n", fb_j)
+    for verdict, conf, key in (
+        ("SKIP", "High", "skip_high_lift_n"),
+        ("SKIP", "Medium", "skip_med_lift_n"),
+        ("BET", "High", "allow_lift_n"),
+    ):
+        if lm.get(key) is not None:
+            continue
+        t = next((x for x in tiers if x.get("verdict") == verdict and x.get("confidence") == conf), None)
+        if t:
+            lm[key] = int(t.get("resolved") or 0)
+    skip_med = next((x for x in tiers if x.get("verdict") == "SKIP" and x.get("confidence") == "Medium"), None)
+    if skip_med and lm.get("skip_med_lift_pp") is None and skip_med.get("lift") is not None:
+        lm["skip_med_lift_pp"] = skip_med.get("lift")
+    br = out.get("baseline_loss_rate")
+    bet_h = next((x for x in tiers if x.get("verdict") == "BET" and x.get("confidence") == "High"), None)
+    if lm.get("allow_lift_pp") is None and br is not None and bet_h and bet_h.get("accuracy_pct") is not None:
+        baseline_win = round(100.0 - float(br), 1)
+        lm["allow_lift_pp"] = round(float(bet_h["accuracy_pct"]) - baseline_win, 1)
+
+
+def get_recent_ai_blocked(
+    data_path: str,
+    limit: int = 5,
+    strategy: Optional[str] = None,
+) -> list[dict]:
+    """
+    Newest rows whose ai_applied_effect indicates a producer skip (skip_*).
+    Used for the AI Performance “recent screened-out” table.
+    """
+    if not data_path or not os.path.isdir(data_path) or limit <= 0:
+        return []
+    csv_path = os.path.join(data_path, "alerts_log.csv")
+    result = _read_csv_cached(csv_path)
+    if result is None:
+        return []
+    _, rows = result
+    if strategy and strategy.strip().lower() != "all":
+        rows = [r for r in rows if (r.get("strategy_id") or "").strip() == strategy.strip()]
+    picked: list[dict] = []
+    for row in rows:
+        eff = (row.get("ai_applied_effect") or "").strip().lower()
+        if not eff.startswith("skip"):
+            continue
+        ts_raw = (row.get("ts") or "").strip()
+        pnl = _parse_float(row.get("pnl_usd"))
+        ar = (row.get("actual_result") or "").strip().upper()
+        is_res = _parse_bool(row.get("resolved")) or ar in ("YES", "NO")
+        picked.append({
+            "_ts_sort": ts_raw,
+            "ts_display": ts_raw[:16] if len(ts_raw) >= 16 else ts_raw,
+            "question": ((row.get("question") or "").strip()[:140]),
+            "strategy_id": (row.get("strategy_id") or "").strip() or "—",
+            "ai_verdict": (row.get("ai_verdict") or "").strip().upper() or "—",
+            "resolved": "Yes" if is_res else "No",
+            "actual_result": ar if ar in ("YES", "NO") else "—",
+            "pnl_display": format_compact_usd(pnl),
+        })
+    picked.sort(key=lambda x: x.get("_ts_sort") or "", reverse=True)
+    for p in picked:
+        p.pop("_ts_sort", None)
+    return picked[:limit]
+
+
+def get_loss_worst_strategy(
+    data_path: str,
+    days: Optional[int] = None,
+    strategy: Optional[str] = None,
+) -> Optional[dict]:
+    """Strategy_id with the largest aggregate loss (negative P/L sum) in the window."""
+    if not data_path or not os.path.isdir(data_path):
+        return None
+    csv_path = os.path.join(data_path, "alerts_log.csv")
+    result = _read_csv_cached(csv_path)
+    if result is None:
+        return None
+    _, raw_rows = result
+    raw_rows = _filter_sent_rows(raw_rows)
+    if strategy and strategy.strip():
+        raw_rows = [r for r in raw_rows if (r.get("strategy_id") or "").strip() == strategy.strip()]
+    by_strat: dict[str, float] = defaultdict(float)
+    by_n: dict[str, int] = defaultdict(int)
+    try:
+        for row in raw_rows:
+            resolved_val = row.get("resolved", "")
+            actual_result = (row.get("actual_result") or "").strip().upper()
+            is_resolved = _parse_bool(resolved_val) or actual_result in ("YES", "NO")
+            if not is_resolved:
+                continue
+            pnl = _parse_float(row.get("pnl_usd", ""))
+            if pnl >= 0:
+                continue
+            resolved_ts = _parse_date(row.get("resolved_ts") or row.get("ts"))
+            if days is not None and days > 0 and resolved_ts:
+                cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+                ts_aware = resolved_ts.replace(tzinfo=timezone.utc) if resolved_ts.tzinfo is None else resolved_ts
+                if ts_aware < cutoff:
+                    continue
+            sid = (row.get("strategy_id") or "").strip() or "—"
+            by_strat[sid] += pnl
+            by_n[sid] += 1
+    except (IOError, csv.Error):
+        return None
+    if not by_strat:
+        return None
+    worst = min(by_strat.keys(), key=lambda k: by_strat[k])
+    tot = by_strat[worst]
+    return {
+        "strategy_id": worst,
+        "total_pnl": round(tot, 2),
+        "pnl_display": f"${tot:.2f}",
+        "loss_count": by_n[worst],
+    }
 
 
 def get_ai_performance(data_path: str, strategy: Optional[str] = None) -> dict:
@@ -2767,6 +3041,7 @@ def get_ai_performance(data_path: str, strategy: Optional[str] = None) -> dict:
             out["artifact_exported_at"] = art.get("exported_at")
             prod = art.get("producer") or {}
             _apply_live_ai_loop_diagnostics(data_path, out, prod if prod else None)
+            _annotate_ai_lift_metrics(out)
             return out
 
     csv_path = os.path.join(data_path, "alerts_log.csv")
@@ -2938,6 +3213,7 @@ def get_ai_performance(data_path: str, strategy: Optional[str] = None) -> dict:
         },
     }
     _apply_live_ai_loop_diagnostics(data_path, out, None)
+    _annotate_ai_lift_metrics(out)
     return out
 
 
@@ -3047,7 +3323,9 @@ def get_ai_sim_stats(
         sport = row.get("sport") or ""
 
         base: dict = {
-            "question": label, "actual_result": actual_result or "—",
+            "question": label,
+            "question_full": question,
+            "actual_result": actual_result or "—",
             "pnl_usd": pnl, "link": link if link.startswith("http") else "",
             "bet_size_usd": bet_size, "ai_verdict": ai_verdict,
             "ai_confidence": ai_confidence, "ai_red_flags": ai_red_flags,

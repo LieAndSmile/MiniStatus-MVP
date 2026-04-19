@@ -10,6 +10,35 @@
   <p class="text-light-muted dark:text-dark-muted">No AI simulation data available. Set <code class="px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover">POLYMARKET_DATA_PATH</code> and ensure <code class="px-1.5 py-0.5 rounded bg-light-hover dark:bg-dark-hover">alerts_log.csv</code> exists.</p>
 </div>
 {% else %}
+{% from "_partials/polymarket_page_header.html" import page_header %}
+{% set sim_age = polymarket_freshness.alerts_log_age if polymarket_freshness is defined and polymarket_freshness else none %}
+{{ page_header(
+  "AI Simulation",
+  "Paper-traded AI sim rows from alerts_log (status ai_sim): bankroll, KPIs, and resolved bets. Filters below respect scope and time window.",
+  "Data",
+  ("alerts_log " ~ sim_age) if sim_age else none
+) }}
+{% set sim_n = sim.resolved if sim.resolved is defined else 0 %}
+{% set sim_wr = (sim.wins / sim.resolved * 100) if sim.resolved and sim.resolved > 0 else none %}
+{% set sim_low = sim_n < 30 %}
+{% set sim_tldr = "border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card" %}
+{% if sim_low %}
+  {% set sim_tldr = "border-light-border dark:border-dark-border bg-light-hover/40 dark:bg-dark-hover/25" %}
+{% elif sim.total_pnl is defined and sim.total_pnl > 0 and sim_wr is not none and sim_wr >= 50 %}
+  {% set sim_tldr = "border-status-up-light/50 dark:border-status-up-dark/50 bg-status-up-light/10 dark:bg-status-up-dark/15" %}
+{% elif sim.total_pnl is defined and sim.total_pnl > 0 %}
+  {% set sim_tldr = "border-amber-300/80 dark:border-amber-600/50 bg-amber-50/80 dark:bg-amber-900/20" %}
+{% elif sim.total_pnl is defined and sim.total_pnl <= 0 %}
+  {% set sim_tldr = "border-status-down-light/50 dark:border-status-down-dark/50 bg-status-down-light/10 dark:bg-status-down-dark/15" %}
+{% endif %}
+<div class="mb-6 rounded-xl border px-4 py-4 {{ sim_tldr }}">
+  <p class="text-sm text-light-text dark:text-dark-text leading-relaxed">
+    Paper sim: <strong>{{ sim.resolved }}</strong> resolved{% if sim_wr is not none %} · win rate <strong>{{ "%.1f"|format(sim_wr) }}%</strong>{% endif %}
+    · net <strong>{{ sim.total_pnl_display }}</strong>
+    {% if sim_n %}<span class="text-light-muted dark:text-dark-muted"> (n={{ sim_n }})</span>{% endif %}
+    {% if sim_low %}<span class="text-light-muted dark:text-dark-muted"> — Low sample; directional only.</span>{% endif %}
+  </p>
+</div>
 
 {% if sim.data_source is defined and sim.data_source != "none" %}
 <div class="mb-4 rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card px-4 py-3 text-xs text-light-text dark:text-dark-text space-y-1">
@@ -159,7 +188,7 @@
             {% endif %}
           </td>
           <td class="px-4 py-3 text-sm text-light-muted dark:text-dark-muted">{{ item.ai_confidence or "—" }}</td>
-          <td class="px-4 py-3 text-sm text-light-muted dark:text-dark-muted">{{ item.sport or "—" }}</td>
+          <td class="px-4 py-3 text-sm text-light-muted dark:text-dark-muted">{{ item.sport_display if item.sport_display is defined else (item.sport or "—") }}</td>
           <td class="px-4 py-3 text-right text-sm font-medium text-light-text dark:text-dark-text">{{ item.bet_size_display }}</td>
           <td class="px-4 py-3 text-sm text-light-muted dark:text-dark-muted whitespace-nowrap">{{ item.ts_display }}</td>
           <td class="px-4 py-3">
@@ -296,7 +325,7 @@
             </details>
             {% endif %}
           </td>
-          <td class="px-4 py-3 text-sm text-light-muted dark:text-dark-muted whitespace-nowrap">{{ item.sport or "—" }}</td>
+          <td class="px-4 py-3 text-sm text-light-muted dark:text-dark-muted whitespace-nowrap">{{ item.sport_display if item.sport_display is defined else (item.sport or "—") }}</td>
           <td class="px-4 py-3 text-sm text-light-muted dark:text-dark-muted whitespace-nowrap">{{ item.resolved_ts_display }}</td>
           <td class="px-4 py-3 text-right text-sm font-medium {% if item.pnl_usd >= 0 %}text-status-up-light dark:text-status-up-dark{% else %}text-status-down-light dark:text-status-down-dark{% endif %}">
             {{ item.pnl_display }}
@@ -366,6 +395,16 @@
     </nav>
   </div>
   {% endif %}
+</div>
+
+<div class="mt-8 rounded-lg border border-light-border dark:border-dark-border bg-light-hover/30 dark:bg-dark-hover/20 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  <p class="text-sm text-light-text dark:text-dark-text">
+    Also see: <strong>AI Performance</strong> — how AI screening scored on real sent vs blocked rows in the log.
+  </p>
+  <a href="{{ url_for('polymarket.polymarket_ai_performance', strategy=(current_strategy if current_strategy is defined else none) or 'all') }}"
+     class="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium bg-light-primary dark:bg-dark-primary text-white hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-light-primary dark:focus-visible:ring-dark-primary">
+    Open AI Performance
+  </a>
 </div>
 
 {% endif %}{# end if sim #}

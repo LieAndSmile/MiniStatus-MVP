@@ -181,7 +181,11 @@ def get_data_quality_flags(data_path: str) -> List[dict]:
 
     alerts_path = os.path.join(data_path, "alerts_log.csv")
     analytics_path = os.path.join(data_path, "analytics.json")
-    if os.path.isfile(alerts_path) and os.path.isfile(analytics_path):
+    # Only compare CSV vs analytics when the log schema is valid. A broken or non-canonical
+    # alerts_log (e.g. stray columns) yields zero resolved rows in code but analytics.json
+    # may still reflect old runs — that would falsely trigger the "refresh analytics" banner.
+    alerts_schema_ok, _ = validate_alerts_log_schema(data_path)
+    if alerts_schema_ok and os.path.isfile(alerts_path) and os.path.isfile(analytics_path):
         result = _read_csv_cached(alerts_path)
         csv_n = _count_sent_resolved(result[1] if result else [])
         json_n = _cohort_resolved_sum(analytics_path)

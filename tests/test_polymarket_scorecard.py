@@ -414,7 +414,7 @@ def test_scorecard_defaults_to_html_json_explicit(tmp_path, monkeypatch):
 
 
 def test_polymarket_primary_nav_four_tabs():
-    """Phase 5b: horizontal Polymarket nav is four primary tabs + Ops hub for the rest."""
+    """Phase 5b: horizontal Polymarket nav is four primary tabs + Tools hub for the rest."""
     from app.routes.polymarket import POLYMARKET_OPS_ENDPOINTS, POLYMARKET_SECTIONS
 
     assert len(POLYMARKET_SECTIONS) == 4

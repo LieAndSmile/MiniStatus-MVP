@@ -28,6 +28,8 @@ from app.utils.polymarket import (
     format_compact_usd,
     build_pagination,
     get_analytics_json,
+    get_analytics_prev_json,
+    build_analytics_deltas,
     get_lifecycle_json,
     get_analytics_file_age,
     get_lifecycle_file_age,
@@ -39,6 +41,8 @@ from app.utils.polymarket import (
     get_bankroll_status,
     get_strategy_summary,
     get_ai_performance,
+    get_recent_ai_blocked,
+    get_loss_worst_strategy,
     get_ai_sim_stats,
     get_strategy_scorecard,
     get_mirror_portfolio_json,
@@ -115,10 +119,10 @@ POLYMARKET_SECTIONS = [
     ("portfolio", "Live", "polymarket.polymarket_portfolio"),
     ("scorecard", "Scorecard", "polymarket.polymarket_scorecard"),
     ("ai-simulation", "AI Simulation", "polymarket.polymarket_ai_simulation"),
-    ("ops", "Ops", "polymarket.polymarket_ops"),
+    ("ops", "Tools", "polymarket.polymarket_ops"),
 ]
 
-# Routes that highlight the "Ops" tab in the four-item nav (and sidebar).
+# Routes that highlight the "Tools" tab in the four-item nav (and sidebar).
 POLYMARKET_OPS_ENDPOINTS = frozenset(
     {
         "polymarket.polymarket_ops",
@@ -363,12 +367,12 @@ def polymarket_index():
     return redirect(url_for("polymarket.polymarket_portfolio"))
 
 
-# ── Ops hub (secondary tools) ─────────────────────────────────────────────────
+# ── Tools hub (secondary tools; URL remains /polymarket/ops) ───────────────────
 @polymarket_bp.route("/ops")
 @admin_required
 @_polymarket_configured_required("ops")
 def polymarket_ops():
-    """Hub for Open Positions, Analytics, mirrors, dev tools — not top-level nav items."""
+    """Hub for secondary tools (positions, analytics, mirrors, dev) — grouped UX; URL /polymarket/ops."""
     data_path = _get_data_path()
     strategy_options = get_strategy_options_for_nav(data_path)
     strategy_options_grouped = get_strategy_options_grouped(strategy_options)
@@ -627,6 +631,11 @@ def polymarket_risky():
         expiry_hours_max=criteria["expiry_hours_max"],
     )
     data_freshness = get_file_age(data_path, "open_positions.csv")
+    interesting_ids = get_interesting_ids(data_path)
+    for p in positions:
+        p["is_interesting"] = (p.get("market_id") or "") in interesting_ids
+    for p in near_risky_positions:
+        p["is_interesting"] = (p.get("market_id") or "") in interesting_ids
 
     return render_template(
         "polymarket_risky.html",
@@ -735,6 +744,7 @@ def polymarket_loss_lab():
     bucket_breakdowns = get_loss_breakdown_buckets(data_path, days=days, strategy=strategy_val) if valid else {"edge": [], "gamma": [], "hold": [], "time_to_resolution": []}
     trend = get_loss_trend_by_category(data_path, days=days, strategy=strategy_val) if valid else []
     data_freshness = get_file_age(data_path, "alerts_log.csv")
+    worst_strategy = get_loss_worst_strategy(data_path, days=days, strategy=strategy_val) if valid else None
     return render_template(
         "polymarket_loss_lab.html",
         configured=True,
@@ -755,6 +765,8 @@ def polymarket_loss_lab():
         strategy_options=strategy_options,
         strategy_options_grouped=strategy_options_grouped,
         csv_schema_error=schema_error if not valid else None,
+        loss_worst_strategy=worst_strategy,
+        STRATEGY_LABELS=STRATEGY_LABELS,
         **_polymarket_freshness_context(),
     )
 
@@ -770,6 +782,7 @@ def polymarket_analytics():
     strategy_options_grouped = get_strategy_options_grouped(strategy_options)
     strategy_val = _get_strategy(strategy_options)
     analytics = get_analytics_json(data_path)
+    analytics_prev = get_analytics_prev_json(data_path)
     analytics_age = get_analytics_file_age(data_path)
     # Normalize so template never sees non-dict for strategy_cohort, edge_quality, timing, exit_study, insights
     if analytics is not None and isinstance(analytics, dict):
@@ -777,12 +790,15 @@ def polymarket_analytics():
         for key in ("strategy_cohort", "edge_quality", "timing", "exit_study", "insights", "ai_policy_pnl_cohort"):
             if analytics.get(key) is not None and not isinstance(analytics.get(key), dict):
                 analytics[key] = {}
+    analytics_delta = build_analytics_deltas(analytics, analytics_prev, strategy_val)
     return render_template(
         "polymarket_analytics.html",
         configured=True,
         active_section="analytics",
         polymarket_sections=POLYMARKET_SECTIONS,
         analytics=analytics,
+        analytics_prev=analytics_prev,
+        analytics_delta=analytics_delta,
         analytics_age=analytics_age,
         data_quality_flags=get_data_quality_flags(data_path),
         current_strategy=strategy_val,
@@ -1333,6 +1349,9 @@ def polymarket_ai_performance():
     current_strategy = _get_strategy(strategy_options)
     data_quality_flags = get_data_quality_flags(data_path)
     ai_perf = get_ai_performance(data_path, strategy=current_strategy)
+    ai_recent_blocked = get_recent_ai_blocked(data_path, limit=5, strategy=current_strategy)
+    tiers = ai_perf.get("accuracy_tiers") or []
+    ai_resolved_row_count = sum(int(t.get("resolved") or 0) for t in tiers)
     return render_template(
         "polymarket_ai_performance.html",
         polymarket_sections=POLYMARKET_SECTIONS,
@@ -1343,6 +1362,8 @@ def polymarket_ai_performance():
         STRATEGY_LABELS=STRATEGY_LABELS,
         data_quality_flags=data_quality_flags,
         ai_perf=ai_perf,
+        ai_recent_blocked=ai_recent_blocked,
+        ai_resolved_row_count=ai_resolved_row_count,
         **_polymarket_freshness_context(),
     )
 

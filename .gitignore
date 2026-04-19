@@ -81,14 +81,11 @@ htmlcov/
 .terraform.lock.hcl
 terraform.tfvars
 
-cookies.txt
-
 # Polymarket consumer: local copies of producer runtime JSON (POLYMARKET_DATA_PATH)
 bankroll.json
 ai_sim_bankroll.json
 
 # Local assistant / editor scratch (optional)
 CLAUDE.md
-claude.md
 
 

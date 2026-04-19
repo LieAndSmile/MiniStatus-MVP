@@ -49,13 +49,6 @@ def help_page():
     return render_template("admin/help.html")
 
 
-@admin_bp.route("/api-test")
-@admin_required
-def api_test():
-    api_key = os.getenv("API_KEY", "not-configured")
-    return render_template("admin/api_test.html", api_key=api_key)
-
-
 @admin_bp.route("/change-password", methods=["GET", "POST"])
 @admin_required
 def change_password():

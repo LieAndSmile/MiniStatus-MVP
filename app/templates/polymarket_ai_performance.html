@@ -4,6 +4,38 @@
 
 {% block content %}
 {% include "polymarket_nav.html" %}
+{% from "_partials/polymarket_page_header.html" import page_header %}
+{% set lm = ai_perf.lift_metrics if (ai_perf.lift_metrics is defined) else {} %}
+{% set ap_age = polymarket_freshness.alerts_log_age if polymarket_freshness is defined and polymarket_freshness else none %}
+{{ page_header(
+  "AI Performance",
+  "Direction-based accuracy for AI verdicts on resolved rows, plus lift from blocked trades. When a strategy filter is set, stats come from CSV; a fresh precomputed artifact summarizes all strategies.",
+  "Data",
+  ("alerts_log " ~ ap_age) if ap_age else none
+) }}
+{% set fbr = lm.false_block_rate_pct %}
+{% set saved = lm.counterfactual_blocked_pnl_est %}
+{% set n_tot = ai_resolved_row_count if ai_resolved_row_count is defined else 0 %}
+{% set fbr_n = lm.false_block_n if lm.false_block_n is defined else lm.blocked_judged_count %}
+{% set low_s = n_tot < 30 %}
+{% set tldr_cls = "border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card" %}
+{% if low_s %}
+  {% set tldr_cls = "border-light-border dark:border-dark-border bg-light-hover/40 dark:bg-dark-hover/25" %}
+{% elif saved is not none and fbr is not none and saved > 0 and fbr < 20 %}
+  {% set tldr_cls = "border-status-up-light/50 dark:border-status-up-dark/50 bg-status-up-light/10 dark:bg-status-up-dark/15" %}
+{% elif saved is not none and fbr is not none and saved > 0 and fbr < 35 %}
+  {% set tldr_cls = "border-amber-300/80 dark:border-amber-600/50 bg-amber-50/80 dark:bg-amber-900/20" %}
+{% elif saved is not none and (saved <= 0 or (fbr is not none and fbr >= 35)) %}
+  {% set tldr_cls = "border-status-down-light/50 dark:border-status-down-dark/50 bg-status-down-light/10 dark:bg-status-down-dark/15" %}
+{% endif %}
+<div class="mb-6 rounded-xl border px-4 py-4 {{ tldr_cls }}">
+  <p class="text-sm text-light-text dark:text-dark-text leading-relaxed">
+    Of the last <strong>{{ n_tot }}</strong> resolved AI-judged rows, the pipeline logged <strong>{{ ai_perf.total_blocked }}</strong> blocked-by-screen rows.
+    {% if saved is not none %}Blocking summed to roughly <strong>${{ "%.0f"|format(saved) }}</strong> (counterfactual est.).{% endif %}
+    {% if fbr is not none %}False-block rate: <strong>{{ fbr }}%</strong>{% if fbr_n %} (n={{ fbr_n }}){% endif %}.{% endif %}
+    {% if low_s %}<span class="text-light-muted dark:text-dark-muted"> (Low sample — treat as directional only.)</span>{% endif %}
+  </p>
+</div>
 
 {% if ai_perf.data_source is defined and ai_perf.data_source != "none" %}
 <div class="mb-4 rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card px-4 py-3 text-xs text-light-text dark:text-dark-text space-y-1.5">
@@ -29,39 +61,38 @@
 {% include "polymarket_ai_loop_diagnostics.html" %}
 {% endwith %}
 
-{% set lm = ai_perf.lift_metrics if (ai_perf.lift_metrics is defined) else {} %}
 {% if ai_perf.has_data and lm %}
 {# ── Block quality / lift (blocked AI rows) ─────────────────────────────── #}
 <div class="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
   <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
-    <div class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase mb-1">False-block rate</div>
+    <div class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase mb-1 cursor-help" title="Blocked rows that later resolved YES (AI was wrong to skip).">False-block rate</div>
     {% if lm.false_block_rate_pct is not none %}
-    <div class="text-2xl font-bold text-light-text dark:text-dark-text">{{ lm.false_block_rate_pct }}%</div>
+    <div class="text-2xl font-bold text-light-text dark:text-dark-text {% if (lm.false_block_n or lm.blocked_judged_count or 0) < 30 %}text-light-muted dark:text-dark-muted{% endif %}">{{ lm.false_block_rate_pct }}%{% if lm.false_block_n or lm.blocked_judged_count %} <span class="text-sm font-normal text-light-muted dark:text-dark-muted">(n={{ lm.false_block_n or lm.blocked_judged_count }})</span>{% endif %}</div>
     {% else %}
     <div class="text-2xl font-bold text-light-muted dark:text-dark-muted">—</div>
     {% endif %}
     <div class="text-xs text-light-muted dark:text-dark-muted mt-1">blocked rows judged wrong (missed YES)</div>
   </div>
   <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
-    <div class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase mb-1">Loss-avoided rate</div>
+    <div class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase mb-1 cursor-help" title="Blocked rows that later resolved NO (AI correctly skipped).">Loss-avoided rate</div>
     {% if lm.loss_avoided_rate_pct is not none %}
-    <div class="text-2xl font-bold text-status-up-light dark:text-status-up-dark">{{ lm.loss_avoided_rate_pct }}%</div>
+    <div class="text-2xl font-bold text-status-up-light dark:text-status-up-dark {% if (lm.loss_avoided_n or lm.blocked_judged_count or 0) < 30 %}!text-light-muted dark:!text-dark-muted{% endif %}">{{ lm.loss_avoided_rate_pct }}%{% if lm.loss_avoided_n or lm.blocked_judged_count %} <span class="text-sm font-normal text-light-muted dark:text-dark-muted">(n={{ lm.loss_avoided_n or lm.blocked_judged_count }})</span>{% endif %}</div>
     {% else %}
     <div class="text-2xl font-bold text-light-muted dark:text-dark-muted">—</div>
     {% endif %}
     <div class="text-xs text-light-muted dark:text-dark-muted mt-1">blocked rows judged correct (NO)</div>
   </div>
   <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
-    <div class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase mb-1">SKIP High lift</div>
+    <div class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase mb-1 cursor-help" title="Extra win rate vs letting everything through, in percentage points, for the SKIP-HIGH tier.">SKIP High lift</div>
     {% if lm.skip_tier_lift_pp is not none %}
-    <div class="text-2xl font-bold text-light-text dark:text-dark-text">{{ "%+.1f"|format(lm.skip_tier_lift_pp) }} pp</div>
+    <div class="text-2xl font-bold text-light-text dark:text-dark-text {% if (lm.skip_high_lift_n or 0) < 30 %}text-light-muted dark:text-dark-muted{% endif %}">{{ "%+.1f"|format(lm.skip_tier_lift_pp) }} pp{% if lm.skip_high_lift_n %} <span class="text-sm font-normal text-light-muted dark:text-dark-muted">(n={{ lm.skip_high_lift_n }})</span>{% endif %}</div>
     {% else %}
     <div class="text-2xl font-bold text-light-muted dark:text-dark-muted">—</div>
     {% endif %}
     <div class="text-xs text-light-muted dark:text-dark-muted mt-1">vs. baseline loss on sent rows</div>
   </div>
   <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-4">
-    <div class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase mb-1">CF blocked P/L est.</div>
+    <div class="text-xs font-semibold text-light-muted dark:text-dark-muted uppercase mb-1 cursor-help" title="Counterfactual sum for judged blocked rows using a standard bet proxy.">CF blocked P/L est.</div>
     {% if lm.counterfactual_blocked_pnl_est is not none %}
     <div class="text-2xl font-bold {% if lm.counterfactual_blocked_pnl_est >= 0 %}text-status-up-light dark:text-status-up-dark{% else %}text-status-down-light dark:text-status-down-dark{% endif %}">${{ "%.0f"|format(lm.counterfactual_blocked_pnl_est) }}</div>
     {% else %}
@@ -301,4 +332,52 @@
     {% endif %}
   </details>
 </div>
+
+{% if ai_recent_blocked is defined and ai_recent_blocked|length > 0 %}
+<details class="mb-6 rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-4">
+  <summary class="cursor-pointer text-sm font-semibold text-light-text dark:text-dark-text">
+    Recent producer skip rows (ai_applied_effect) — last {{ ai_recent_blocked|length }}
+  </summary>
+  <p class="text-xs text-light-muted dark:text-dark-muted mt-2 mb-3">Newest rows where the producer recorded a skip effect on the log (may overlap with blocked_ai_screen stats above).</p>
+  <div class="overflow-x-auto mt-2">
+    <table class="min-w-full text-sm">
+      <thead>
+        <tr class="text-left text-xs font-semibold text-light-muted dark:text-dark-muted border-b border-light-border dark:border-dark-border">
+          <th class="py-2 pr-3">Time</th>
+          <th class="py-2 pr-3">Question</th>
+          <th class="py-2 pr-3">Strategy</th>
+          <th class="py-2 pr-3">AI verdict</th>
+          <th class="py-2 pr-3">Resolved</th>
+          <th class="py-2 pr-3">Outcome</th>
+          <th class="py-2 text-right">P/L</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in ai_recent_blocked %}
+        <tr class="border-b border-light-border/50 dark:border-dark-border/50">
+          <td class="py-2 pr-3 whitespace-nowrap text-xs text-light-muted dark:text-dark-muted">{{ r.ts_display }}</td>
+          <td class="py-2 pr-3 max-w-xs truncate" title="{{ r.question }}">{{ r.question }}</td>
+          <td class="py-2 pr-3 text-xs">{{ r.strategy_id }}</td>
+          <td class="py-2 pr-3 text-xs">{{ r.ai_verdict }}</td>
+          <td class="py-2 pr-3 text-xs">{{ r.resolved }}</td>
+          <td class="py-2 pr-3 text-xs">{{ r.actual_result }}</td>
+          <td class="py-2 text-right text-xs">{{ r.pnl_display }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</details>
+{% endif %}
+
+<div class="rounded-lg border border-light-border dark:border-dark-border bg-light-hover/30 dark:bg-dark-hover/20 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  <p class="text-sm text-light-text dark:text-dark-text">
+    Also see: <strong>AI Simulation</strong> — paper bankroll and resolved sim bets with the same AI pipeline.
+  </p>
+  <a href="{{ url_for('polymarket.polymarket_ai_simulation', strategy=(current_strategy if current_strategy is defined else none) or 'all', safe_scope=g.polymarket_safe_scope) }}"
+     class="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium bg-light-primary dark:bg-dark-primary text-white hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-light-primary dark:focus-visible:ring-dark-primary">
+    Open AI Simulation
+  </a>
+</div>
 {% endblock %}
+

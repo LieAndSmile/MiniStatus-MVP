@@ -4,25 +4,29 @@
 
 {% block content %}
 {% include "polymarket_nav.html" %}
+{% from "_partials/polymarket_page_header.html" import page_header %}
 {% set nav_strategy = (current_strategy if current_strategy is defined else none) or 'all' %}
 
-<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-  <p class="text-sm text-light-muted dark:text-dark-muted">
-    Positions matching the <strong>Risky</strong> strategy: edge ≥ {{ "%.1f"|format(risky_criteria.edge_min * 100) }}%, gamma ≤ {{ "%.2f"|format(risky_criteria.gamma_max) }}, expiry within {{ "%.0f"|format(risky_criteria.expiry_hours_max) }}h. Excludes expired.
-    {% if not current_preset %}Tune via <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">RISKY_EDGE_MIN_PCT</code>, <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">RISKY_GAMMA_MAX</code>, <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">RISKY_EXPIRY_HOURS_MAX</code>.{% endif %}
-    {% if data_freshness %} Data: <strong>open_positions {{ data_freshness }}</strong>.{% endif %}
-  </p>
-  <a href="{{ url_for('polymarket.polymarket_positions', strategy=nav_strategy) }}" class="px-4 py-2 rounded-md text-sm font-medium bg-light-hover dark:bg-dark-hover text-light-text dark:text-dark-text hover:bg-light-border dark:hover:bg-dark-border transition-colors">
-    View all Open Positions
-  </a>
-</div>
+{% set risky_purpose %}
+Positions matching the <strong>Risky</strong> strategy: edge ≥ {{ "%.1f"|format(risky_criteria.edge_min * 100) }}%, gamma ≤ {{ "%.2f"|format(risky_criteria.gamma_max) }}, expiry within {{ "%.0f"|format(risky_criteria.expiry_hours_max) }}h. Excludes expired.
+{% if not current_preset %}Tune via <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">RISKY_EDGE_MIN_PCT</code>, <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">RISKY_GAMMA_MAX</code>, <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">RISKY_EXPIRY_HOURS_MAX</code>.{% endif %}
+{% endset %}
+{% set risky_fresh = ('open_positions ' ~ data_freshness) if data_freshness else none %}
+
+{% set risky_action %}
+<a href="{{ url_for('polymarket.polymarket_positions', strategy=nav_strategy) }}" class="px-4 py-2 rounded-md text-sm font-medium bg-light-hover dark:bg-dark-hover text-light-text dark:text-dark-text hover:bg-light-border dark:hover:bg-dark-border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-light-primary dark:focus-visible:ring-dark-primary">
+  View all Open Positions
+</a>
+{% endset %}
 
 {% set risky_extra = {'sort': current_sort, 'strategy': nav_strategy} %}
 {% if current_from_date %}{% set _ = risky_extra.update({'from_date': current_from_date}) %}{% endif %}
 {% if current_preset %}{% set _ = risky_extra.update({'preset': current_preset}) %}{% endif %}
 {% set risky_extra_no_from = {'sort': current_sort, 'strategy': nav_strategy} %}
 {% if current_preset %}{% set _ = risky_extra_no_from.update({'preset': current_preset}) %}{% endif %}
-<div class="mb-6 flex flex-wrap items-center gap-4" data-polymarket-filters>
+{% from "polymarket_time_filter.html" import render as polymarket_time_filter %}
+{% set risky_filters %}
+<div class="flex flex-wrap items-center gap-4">
   <div class="flex items-center gap-2">
     <span class="text-sm font-medium text-light-muted dark:text-dark-muted">Preset:</span>
     <a href="{{ url_for('polymarket.polymarket_risky', days=current_days or 'all', from_date=current_from_date, sort=current_sort, strategy=nav_strategy) }}"
@@ -39,7 +43,6 @@
        class="px-3 py-1.5 rounded-md text-sm {% if current_preset == 'loose' %}bg-light-primary dark:bg-dark-primary text-white{% else %}bg-light-hover dark:bg-dark-hover text-light-text dark:text-dark-text hover:bg-light-border dark:hover:bg-dark-border{% endif %} transition-colors"
        title="edge ≥ 0.5%, gamma ≤ 0.97, expiry ≤ 72h">Loose</a>
   </div>
-  {% from "polymarket_time_filter.html" import render as polymarket_time_filter %}
   {{ polymarket_time_filter('polymarket.polymarket_risky', current_days, risky_extra_no_from) }}
   {% if current_from_date %}
   <a href="{{ url_for('polymarket.polymarket_risky', days=current_days, sort=current_sort, strategy=nav_strategy, **({'preset': current_preset} if current_preset else {})) }}"
@@ -71,85 +74,37 @@
     </select>
   </div>
 </div>
+{% endset %}
+{{ page_header("Risky", risky_purpose, "Data", risky_fresh, filter_slot=risky_filters, action_slot=risky_action) }}
 
-{% if risky_historical and risky_historical.resolved_count > 0 %}
-<div class="mb-6 bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-6">
-  <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-4">Risky historical performance</h2>
-  <p class="text-sm text-light-muted dark:text-dark-muted mb-4">
-    Resolved alerts that would have qualified as Risky (same edge/gamma/expiry thresholds). {% if current_days != 'all' or current_from_date %}Date window: {% if current_from_date %}from {{ current_from_date }}{% else %}last {{ current_days }} days{% endif %}.{% endif %}
-  </p>
-  <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 mb-4">
-    <div class="p-3 rounded-lg border border-light-border dark:border-dark-border">
-      <div class="text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Resolved</div>
-      <div class="text-lg font-bold text-light-text dark:text-dark-text mt-0.5">{{ risky_historical.resolved_count }}</div>
-    </div>
-    <div class="p-3 rounded-lg border border-light-border dark:border-dark-border">
-      <div class="text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Win rate</div>
-      <div class="text-lg font-bold text-light-text dark:text-dark-text mt-0.5">
-        {% if risky_historical.resolved_count > 0 %}{{ "%.0f"|format(risky_historical.wins / risky_historical.resolved_count * 100) }}%{% else %}—{% endif %}
-      </div>
-    </div>
-    <div class="p-3 rounded-lg border border-light-border dark:border-dark-border">
-      <div class="text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Realized P/L</div>
-      <div class="text-lg font-bold mt-0.5 {% if risky_historical.total_pnl >= 0 %}text-status-up-light dark:text-status-up-dark{% else %}text-status-down-light dark:text-status-down-dark{% endif %}">
-        {{ risky_historical.total_pnl_display }}
-      </div>
-    </div>
-    <div class="p-3 rounded-lg border border-light-border dark:border-dark-border">
-      <div class="text-xs font-medium text-light-muted dark:text-dark-muted uppercase">ROI</div>
-      <div class="text-lg font-bold mt-0.5 {% if risky_historical.roi_pct is not none %}{% if risky_historical.roi_pct >= 0 %}text-status-up-light dark:text-status-up-dark{% else %}text-status-down-light dark:text-status-down-dark{% endif %}{% else %}text-light-muted dark:text-dark-muted{% endif %}">
-        {% if risky_historical.roi_pct is not none %}{{ "%.1f"|format(risky_historical.roi_pct) }}%{% else %}—{% endif %}
-      </div>
-    </div>
-    <div class="p-3 rounded-lg border border-light-border dark:border-dark-border">
-      <div class="text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Avg edge</div>
-      <div class="text-lg font-bold text-light-text dark:text-dark-text mt-0.5">{{ risky_historical.avg_edge_pct|default('—') }}</div>
-    </div>
-    <div class="p-3 rounded-lg border border-light-border dark:border-dark-border">
-      <div class="text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Avg gamma</div>
-      <div class="text-lg font-bold text-light-text dark:text-dark-text mt-0.5">{{ "%.2f"|format(risky_historical.avg_gamma) }}</div>
-    </div>
-    <div class="p-3 rounded-lg border border-light-border dark:border-dark-border">
-      <div class="text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Avg hold</div>
-      <div class="text-lg font-bold text-light-text dark:text-dark-text mt-0.5">{{ "%.1f"|format(risky_historical.avg_hold_hours) }}h</div>
-    </div>
-    <div class="p-3 rounded-lg border border-light-border dark:border-dark-border">
-      <div class="text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Total cost</div>
-      <div class="text-lg font-bold text-light-text dark:text-dark-text mt-0.5">{{ risky_historical.total_cost_display|default('—') }}</div>
-    </div>
-  </div>
-  {% if risky_historical.categories and risky_historical.categories|length > 0 %}
-  <div class="overflow-x-auto">
-    <table class="min-w-full text-sm">
-      <thead>
-        <tr class="text-left text-xs font-semibold text-light-muted dark:text-dark-muted border-b border-light-border dark:border-dark-border">
-          <th class="py-2 pr-4">Category</th>
-          <th class="py-2 pr-4 text-right">Count</th>
-          <th class="py-2 pr-4 text-right">W / L</th>
-          <th class="py-2 pr-4 text-right">Realized P/L</th>
-          <th class="py-2 text-right">ROI %</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for c in risky_historical.categories %}
-        <tr class="border-b border-light-border/60 dark:border-dark-border/60 last:border-b-0">
-          <td class="py-1.5 pr-4 text-light-text dark:text-dark-text">
-            <a href="{{ url_for('polymarket.polymarket_portfolio', filter='losses', days=current_days or 'all', category=c.category, strategy=nav_strategy) }}#resolved-alerts" class="text-light-primary dark:text-dark-primary hover:underline" title="View resolved losses for this category in Portfolio">{{ c.category }}</a>
-          </td>
-          <td class="py-1.5 pr-4 text-right text-light-text dark:text-dark-text">{{ c.count }}</td>
-          <td class="py-1.5 pr-4 text-right text-light-text dark:text-dark-text">{{ c.wins }} / {{ c.losses }}</td>
-          <td class="py-1.5 pr-4 text-right {% if c.total_pnl >= 0 %}text-status-up-light dark:text-status-up-dark{% else %}text-status-down-light dark:text-status-down-dark{% endif %}">{{ c.total_pnl_display }}</td>
-          <td class="py-1.5 text-right {% if c.roi_pct is not none %}{% if c.roi_pct >= 0 %}text-status-up-light dark:text-status-up-dark{% else %}text-status-down-light dark:text-status-down-dark{% endif %}{% else %}text-light-muted dark:text-dark-muted{% endif %}">
-            {% if c.roi_pct is not none %}{{ "%.1f"|format(c.roi_pct) }}%{% else %}—{% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% endif %}
+<div class="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm border-b border-light-border/60 dark:border-dark-border/60 pb-4">
+  <span class="text-light-text dark:text-dark-text">Qualifying right now: <strong>{{ positions|length }}</strong> market{% if positions|length != 1 %}s{% endif %}</span>
+  <span class="text-light-muted dark:text-dark-muted">
+    Historical hit rate (same filter):
+    {% if risky_historical and risky_historical.resolved_count > 0 %}
+    <strong>{{ "%.0f"|format(risky_historical.wins / risky_historical.resolved_count * 100) }}%</strong>
+    <span class="text-light-muted dark:text-dark-muted">(n={{ risky_historical.resolved_count }})</span>
+    {% else %}
+    <strong>—</strong>
+    {% endif %}
+  </span>
+  <span class="text-light-muted dark:text-dark-muted">
+    Avg realized P/L per historical qualifier:
+    {% if risky_historical and risky_historical.resolved_count > 0 %}
+    <strong>${{ "%.2f"|format(risky_historical.total_pnl / risky_historical.resolved_count) }}</strong>
+    {% else %}
+    <strong>—</strong>
+    {% endif %}
+  </span>
 </div>
-{% endif %}
+<div class="mb-6 flex flex-wrap items-center gap-2 text-xs sticky top-0 z-20 py-2 -mx-1 px-1 bg-light-bg/90 dark:bg-dark-bg/90 backdrop-blur-sm border-b border-light-border/40 dark:border-dark-border/40">
+  <span class="text-light-muted dark:text-dark-muted uppercase tracking-wider font-semibold">Jump:</span>
+  <a href="#risky-now" class="px-2 py-1 rounded-md bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-primary hover:underline">Now</a>
+  <span class="text-light-muted dark:text-dark-muted">·</span>
+  <a href="#risky-history" class="px-2 py-1 rounded-md bg-light-hover dark:bg-dark-hover text-light-primary dark:text-dark-primary hover:underline">History</a>
+</div>
+
+<section id="risky-now" class="scroll-mt-24">
 
 {% if positions and positions|length > 0 %}
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
@@ -214,9 +169,10 @@
     </div>
   </div>
   <div class="overflow-x-auto max-h-[60vh] overflow-y-auto">
-    <table class="min-w-full divide-y divide-light-border dark:divide-dark-border">
+    <table class="min-w-full divide-y divide-light-border dark:divide-dark-border" data-csrf-token="{{ csrf_token() }}" data-toggle-interesting-url="{{ url_for('polymarket.polymarket_positions_toggle_interesting') }}">
       <thead class="bg-light-hover dark:bg-dark-hover sticky top-0 z-10">
         <tr>
+          <th class="px-2 py-3 text-center text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider w-10" title="Mark as interesting to track resolution">Track</th>
           <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider">Question</th>
           <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider whitespace-nowrap">Opened</th>
           <th class="px-4 py-3 text-left text-xs font-medium text-light-muted dark:text-dark-muted uppercase tracking-wider whitespace-nowrap">Resolution</th>
@@ -232,7 +188,20 @@
       </thead>
       <tbody class="divide-y divide-light-border dark:divide-dark-border">
         {% for p in positions %}
-        <tr class="risky-positions-row hover:bg-light-hover dark:hover:bg-dark-hover transition-colors" data-search="{{ p.question|lower|e }}">
+        <tr class="risky-positions-row hover:bg-light-hover dark:hover:bg-dark-hover transition-colors" data-search="{{ p.question|lower|e }}" data-market-id="{{ p.market_id|e }}" data-is-interesting="{{ 'true' if p.is_interesting else 'false' }}">
+          <td class="px-2 py-3 text-center">
+            {% if p.market_id %}
+            <button type="button" class="positions-interesting-btn p-1 rounded hover:bg-light-hover dark:hover:bg-dark-hover transition-colors focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary" data-market-id="{{ p.market_id|e }}" title="{{ 'Remove from interesting' if p.is_interesting else 'Mark as interesting to track resolution' }}" aria-label="{{ 'Remove from interesting' if p.is_interesting else 'Mark as interesting' }}">
+              {% if p.is_interesting %}
+              <svg class="w-5 h-5 text-amber-500 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+              {% else %}
+              <svg class="w-5 h-5 text-light-muted dark:text-dark-muted hover:text-amber-500 fill-none stroke currentColor stroke-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" stroke-linejoin="round"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+              {% endif %}
+            </button>
+            {% else %}
+            <span class="text-light-muted dark:text-dark-muted text-xs">—</span>
+            {% endif %}
+          </td>
           <td class="px-4 py-3 text-sm text-light-text dark:text-dark-text max-w-md truncate" title="{{ p.question }}">{{ p.question }}</td>
           <td class="px-4 py-3 text-sm whitespace-nowrap">
             {% if p.alert_date_param %}
@@ -282,14 +251,56 @@
   }
 })();
 </script>
+<script>
+(function() {
+  const table = document.querySelector('#risky-now table[data-csrf-token][data-toggle-interesting-url]');
+  if (!table) return;
+  const csrfToken = table.getAttribute('data-csrf-token');
+  const url = table.getAttribute('data-toggle-interesting-url');
+  table.addEventListener('click', function(e) {
+    const btn = e.target.closest('.positions-interesting-btn');
+    if (!btn) return;
+    e.preventDefault();
+    const marketId = btn.getAttribute('data-market-id');
+    if (!marketId) return;
+    btn.disabled = true;
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken, 'Accept': 'application/json' },
+      body: JSON.stringify({ market_id: marketId })
+    }).then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
+      .then(function(result) {
+        btn.disabled = false;
+        if (result.ok && result.data.is_interesting !== undefined) {
+          const row = btn.closest('tr');
+          row.setAttribute('data-is-interesting', result.data.is_interesting ? 'true' : 'false');
+          if (result.data.is_interesting) {
+            btn.innerHTML = '<svg class="w-5 h-5 text-amber-500 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>';
+            btn.title = 'Remove from interesting';
+          } else {
+            btn.innerHTML = '<svg class="w-5 h-5 text-light-muted dark:text-dark-muted hover:text-amber-500 fill-none stroke currentColor stroke-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" stroke-linejoin="round"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>';
+            btn.title = 'Mark as interesting to track resolution';
+          }
+        }
+      })
+      .catch(function() { btn.disabled = false; });
+  });
+})();
+</script>
 {% else %}
-<div class="rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-12 text-center">
-  <h2 class="text-xl font-semibold text-light-text dark:text-dark-text mb-2">No risky positions</h2>
-  <p class="text-light-muted dark:text-dark-muted mb-4">
-    No open positions match the Risky criteria (edge ≥ {{ "%.1f"|format(risky_criteria.edge_min * 100) }}%, gamma ≤ {{ "%.2f"|format(risky_criteria.gamma_max) }}, expiry within {{ "%.0f"|format(risky_criteria.expiry_hours_max) }}h, not expired).
+<div class="rounded-lg border border-dashed border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-8 sm:p-12 text-center">
+  <h2 class="text-xl font-semibold text-light-text dark:text-dark-text mb-2">No markets match right now</h2>
+  <p class="text-light-muted dark:text-dark-muted mb-6 max-w-lg mx-auto">
+    Current thresholds: edge ≥ <strong>{{ "%.1f"|format(risky_criteria.edge_min * 100) }}%</strong>,
+    gamma ≤ <strong>{{ "%.2f"|format(risky_criteria.gamma_max) }}</strong>,
+    expiry ≤ <strong>{{ "%.0f"|format(risky_criteria.expiry_hours_max) }}h</strong> (not expired).
   </p>
-  <p class="text-sm text-light-muted dark:text-dark-muted">
-    Try <a href="{{ url_for('polymarket.polymarket_positions') }}" class="text-light-primary dark:text-dark-primary hover:underline">Open Positions</a> to see all positions, or relax criteria via env vars or presets.
+  <a href="{{ url_for('polymarket.polymarket_risky', days=current_days or 'all', from_date=current_from_date, sort=current_sort, strategy=nav_strategy, preset='loose') }}"
+     class="inline-flex items-center px-5 py-2.5 rounded-lg text-sm font-medium bg-light-primary dark:bg-dark-primary text-white hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-light-primary dark:focus-visible:ring-dark-primary">
+    Try looser filter (Loose preset)
+  </a>
+  <p class="text-sm text-light-muted dark:text-dark-muted mt-4">
+    Or see <a href="{{ url_for('polymarket.polymarket_positions', strategy=nav_strategy) }}" class="text-light-primary dark:text-dark-primary hover:underline">all open positions</a>.
   </p>
 </div>
 {% endif %}
@@ -340,4 +351,89 @@
   </div>
 </div>
 {% endif %}
+
+</section>
+
+{% if risky_historical and risky_historical.resolved_count > 0 %}
+<section id="risky-history" class="scroll-mt-24 mt-10">
+  <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-1">Historical performance</h2>
+  <p class="text-sm text-light-muted dark:text-dark-muted mb-4 max-w-3xl">
+    What would have happened if this filter had been live on past bets. Resolved alerts that would have qualified as Risky (same edge/gamma/expiry thresholds).
+    {% if current_days != 'all' or current_from_date %}Date window: {% if current_from_date %}from {{ current_from_date }}{% else %}last {{ current_days }} days{% endif %}.{% endif %}
+  </p>
+  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-6">
+    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 mb-4">
+      <div class="p-3 rounded-lg border border-light-border dark:border-dark-border">
+        <div class="text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Resolved</div>
+        <div class="text-lg font-bold text-light-text dark:text-dark-text mt-0.5">{{ risky_historical.resolved_count }}</div>
+      </div>
+      <div class="p-3 rounded-lg border border-light-border dark:border-dark-border">
+        <div class="text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Win rate</div>
+        <div class="text-lg font-bold text-light-text dark:text-dark-text mt-0.5">
+          {% if risky_historical.resolved_count > 0 %}{{ "%.0f"|format(risky_historical.wins / risky_historical.resolved_count * 100) }}%{% else %}—{% endif %}
+        </div>
+      </div>
+      <div class="p-3 rounded-lg border border-light-border dark:border-dark-border">
+        <div class="text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Realized P/L</div>
+        <div class="text-lg font-bold mt-0.5 {% if risky_historical.total_pnl >= 0 %}text-status-up-light dark:text-status-up-dark{% else %}text-status-down-light dark:text-status-down-dark{% endif %}">
+          {{ risky_historical.total_pnl_display }}
+        </div>
+      </div>
+      <div class="p-3 rounded-lg border border-light-border dark:border-dark-border">
+        <div class="text-xs font-medium text-light-muted dark:text-dark-muted uppercase">ROI</div>
+        <div class="text-lg font-bold mt-0.5 {% if risky_historical.roi_pct is not none %}{% if risky_historical.roi_pct >= 0 %}text-status-up-light dark:text-status-up-dark{% else %}text-status-down-light dark:text-status-down-dark{% endif %}{% else %}text-light-muted dark:text-dark-muted{% endif %}">
+          {% if risky_historical.roi_pct is not none %}{{ "%.1f"|format(risky_historical.roi_pct) }}%{% else %}—{% endif %}
+        </div>
+      </div>
+      <div class="p-3 rounded-lg border border-light-border dark:border-dark-border">
+        <div class="text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Avg edge</div>
+        <div class="text-lg font-bold text-light-text dark:text-dark-text mt-0.5">{{ risky_historical.avg_edge_pct|default('—') }}</div>
+      </div>
+      <div class="p-3 rounded-lg border border-light-border dark:border-dark-border">
+        <div class="text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Avg gamma</div>
+        <div class="text-lg font-bold text-light-text dark:text-dark-text mt-0.5">{{ "%.2f"|format(risky_historical.avg_gamma) }}</div>
+      </div>
+      <div class="p-3 rounded-lg border border-light-border dark:border-dark-border">
+        <div class="text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Avg hold</div>
+        <div class="text-lg font-bold text-light-text dark:text-dark-text mt-0.5">{{ "%.1f"|format(risky_historical.avg_hold_hours) }}h</div>
+      </div>
+      <div class="p-3 rounded-lg border border-light-border dark:border-dark-border">
+        <div class="text-xs font-medium text-light-muted dark:text-dark-muted uppercase">Total cost</div>
+        <div class="text-lg font-bold text-light-text dark:text-dark-text mt-0.5">{{ risky_historical.total_cost_display|default('—') }}</div>
+      </div>
+    </div>
+    {% if risky_historical.categories and risky_historical.categories|length > 0 %}
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="text-left text-xs font-semibold text-light-muted dark:text-dark-muted border-b border-light-border dark:border-dark-border">
+            <th class="py-2 pr-4">Category</th>
+            <th class="py-2 pr-4 text-right">Count</th>
+            <th class="py-2 pr-4 text-right">W / L</th>
+            <th class="py-2 pr-4 text-right">Realized P/L</th>
+            <th class="py-2 text-right">ROI %</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in risky_historical.categories %}
+          <tr class="border-b border-light-border/60 dark:border-dark-border/60 last:border-b-0">
+            <td class="py-1.5 pr-4 text-light-text dark:text-dark-text">
+              <a href="{{ url_for('polymarket.polymarket_portfolio', filter='losses', days=current_days or 'all', category=c.category, strategy=nav_strategy) }}#resolved-alerts" class="text-light-primary dark:text-dark-primary hover:underline" title="View resolved losses for this category in Portfolio">{{ c.category }}</a>
+            </td>
+            <td class="py-1.5 pr-4 text-right text-light-text dark:text-dark-text">{{ c.count }}</td>
+            <td class="py-1.5 pr-4 text-right text-light-text dark:text-dark-text">{{ c.wins }} / {{ c.losses }}</td>
+            <td class="py-1.5 pr-4 text-right {% if c.total_pnl >= 0 %}text-status-up-light dark:text-status-up-dark{% else %}text-status-down-light dark:text-status-down-dark{% endif %}">{{ c.total_pnl_display }}</td>
+            <td class="py-1.5 text-right {% if c.roi_pct is not none %}{% if c.roi_pct >= 0 %}text-status-up-light dark:text-status-up-dark{% else %}text-status-down-light dark:text-status-down-dark{% endif %}{% else %}text-light-muted dark:text-dark-muted{% endif %}">
+              {% if c.roi_pct is not none %}{{ "%.1f"|format(c.roi_pct) }}%{% else %}—{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
 {% endblock %}

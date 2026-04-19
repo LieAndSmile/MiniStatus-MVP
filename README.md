@@ -2,14 +2,14 @@
 
 **MiniStatus is the read-only operator console for the [polymarket-alerts](https://github.com/LieAndSmile/polymarket-alerts) engine.** It is not a general-purpose status dashboard.
 
-Point `POLYMARKET_DATA_PATH` at your polymarket-alerts checkout so MiniStatus can read `alerts_log.csv`, `open_positions.csv`, `analytics.json`, and related artifacts. Strategy scorecard, portfolio P/L, AI simulation, Ops tools (positions, analytics, mirrors, dev), and CSV export are all session-authenticated.
+Point `POLYMARKET_DATA_PATH` at your polymarket-alerts checkout so MiniStatus can read `alerts_log.csv`, `open_positions.csv`, `analytics.json`, and related artifacts. Strategy scorecard, portfolio P/L, AI simulation, Tools hub (positions, analytics, mirrors, dev; `/polymarket/ops`), and CSV export are all session-authenticated.
 
 Roadmap and pruning plan: [SCORECARD_AND_PRUNING_ROADMAP.md](https://github.com/LieAndSmile/polymarket-alerts/blob/main/docs/SCORECARD_AND_PRUNING_ROADMAP.md) (polymarket-alerts repo).
 
 ## Features
 
-- **Polymarket console** — Live (portfolio), Scorecard, AI Simulation, Ops hub; safe-scope session, charts, export
-- **Admin** — Login, change password, API key display (legacy JSON status API removed in Phase 5c Tier 3)
+- **Polymarket console** — Live (portfolio), Scorecard, AI Simulation, Tools hub; safe-scope session, charts, export
+- **Admin** — Login, change password (legacy JSON status API removed in Phase 5c Tier 3)
 - **Security** — bcrypt passwords, CSRF on forms, rate-limited login
 - **Themes** — Dark / light
 
@@ -53,10 +53,10 @@ sudo journalctl -u ministatus -f   # View logs
 
 ### After pulling code changes
 
-1. If **`requirements.txt`** changed, install deps (from project root, using your venv — often `scripts/venv`):
+1. If **`requirements.txt`** changed, install deps into the project venv (`.venv/`):
 
    ```bash
-   ./scripts/venv/bin/pip install -r requirements.txt
+   ./.venv/bin/pip install -r requirements.txt
    ```
 
 2. Regenerate the **CI minimal** lockfile when `requirements.txt` changes (keeps GitHub Actions `test-ci-minimal` in sync):
@@ -90,9 +90,8 @@ FLASK_PORT=5000
 SECRET_KEY=your-secret-key
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=your-password-hash  # Automatically hashed with bcrypt
-API_KEY=your-api-key
 
-# Polymarket Alerts integration (optional)
+# Polymarket Alerts integration (required for the Polymarket pages)
 POLYMARKET_DATA_PATH=/path/to/polymarket-alerts  # Path to polymarket-alerts dir (alerts_log.csv, open_positions.csv, run_stats.csv, etc.)
 ```
 
@@ -232,20 +231,20 @@ MiniStatus-MVP/
 ├── app/
 │   ├── routes/
 │   │   ├── root.py         # / and legacy RSS stubs (404)
-│   │   ├── admin.py        # Login, logout, password, help, API key
+│   │   ├── admin.py        # Login, logout, change password, help
 │   │   ├── polymarket.py   # Polymarket operator UI
 │   │   └── error_handlers.py
 │   ├── templates/          # Jinja2 (Polymarket + admin + base)
 │   ├── utils/              # polymarket*.py, password, decorators, polymarket_health (incl. data-quality flags)
 │   └── extensions.py       # csrf, limiter (no SQLAlchemy)
-├── data/legacy/            # Optional: move old ministatus.db here if present on disk
+├── docs/                   # POLYMARKET_INTEGRATION, MINISTATUS_INTEGRATION, DUCKDB_MIGRATION_PLAN, SECONDARY_TABS_UX_PLAN
 ├── scripts/
 ├── tests/
 ├── run.py
 └── requirements.txt
 ```
 
-**Database:** Tier 3 removed Flask-SQLAlchemy and product models. If an old `ministatus.db` exists on your server, you may move it to `data/legacy/ministatus.db.bak`; the app does not open it.
+**Database:** Tier 3 removed Flask-SQLAlchemy and product models. The app does not open any local SQLite DB.
 
 ## License
 

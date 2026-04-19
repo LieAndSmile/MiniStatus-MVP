@@ -4,7 +4,53 @@
 
 {% block content %}
 {% include "polymarket_nav.html" %}
+{% from "_partials/polymarket_page_header.html" import page_header %}
 {% set nav_strategy = (current_strategy if current_strategy is defined else none) or 'all' %}
+{% set ll_purpose %}Where losses concentrate by category, edge/gamma/hold, and month. Uses resolved <strong>sent</strong> trades from <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">alerts_log.csv</code>.{% endset %}
+{% set ll_fresh = ('alerts_log ' ~ data_freshness) if data_freshness else none %}
+{% set ll_filters %}
+  {% from "polymarket_time_filter.html" import render as polymarket_time_filter %}
+  {{ polymarket_time_filter('polymarket.polymarket_loss_lab', current_days, {'strategy': nav_strategy}) }}
+  {% if current_days != 'all' %}
+  <a href="{{ url_for('polymarket.polymarket_loss_lab', strategy=nav_strategy) }}" class="px-3 py-1.5 rounded-md text-xs font-medium border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card hover:bg-light-hover dark:hover:bg-dark-hover">All time</a>
+  {% endif %}
+  {% if current_strategy %}
+  <a href="{{ url_for('polymarket.polymarket_loss_lab', days=current_days) }}" class="px-3 py-1.5 rounded-md text-xs font-medium border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card hover:bg-light-hover dark:hover:bg-dark-hover">All strategies</a>
+  {% endif %}
+{% endset %}
+{{ page_header("Loss Lab", ll_purpose, "Data", ll_fresh, filter_slot=ll_filters) }}
+
+{% set worst_cat = loss_breakdown[0] if loss_breakdown and loss_breakdown|length > 0 else none %}
+{% set worst_ttr = none %}
+{% if ttr_buckets and ttr_buckets|length > 0 %}
+  {% set worst_ttr = ttr_buckets|sort(attribute='pnl')|first %}
+{% endif %}
+
+{% if not csv_schema_error and (worst_cat or loss_worst_strategy or worst_ttr) %}
+<div class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+  {% if worst_cat %}
+  <a href="#loss-by-category" class="block rounded-xl border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-4 hover:bg-light-hover/50 dark:hover:bg-dark-hover/40 transition-colors">
+    <div class="text-[10px] font-semibold uppercase tracking-wider text-light-muted dark:text-dark-muted">Worst category</div>
+    <div class="text-lg font-semibold text-light-text dark:text-dark-text mt-1">{{ worst_cat.category|upper }}</div>
+    <div class="text-sm text-status-down-light dark:text-status-down-dark mt-2">{{ worst_cat.pnl_display }} · {{ worst_cat.count }} loss{{ 'es' if worst_cat.count != 1 else '' }}</div>
+  </a>
+  {% endif %}
+  {% if loss_worst_strategy %}
+  <a href="#loss-by-category" class="block rounded-xl border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-4 hover:bg-light-hover/50 dark:hover:bg-dark-hover/40 transition-colors">
+    <div class="text-[10px] font-semibold uppercase tracking-wider text-light-muted dark:text-dark-muted">Worst strategy</div>
+    <div class="text-lg font-semibold text-light-text dark:text-dark-text mt-1 truncate" title="{{ loss_worst_strategy.strategy_id }}">{{ STRATEGY_LABELS.get(loss_worst_strategy.strategy_id, loss_worst_strategy.strategy_id) }}</div>
+    <div class="text-sm text-status-down-light dark:text-status-down-dark mt-2">{{ loss_worst_strategy.pnl_display }} · {{ loss_worst_strategy.loss_count }} loss{{ 'es' if loss_worst_strategy.loss_count != 1 else '' }}</div>
+  </a>
+  {% endif %}
+  {% if worst_ttr %}
+  <a href="#loss-ttr" class="block rounded-xl border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card p-4 hover:bg-light-hover/50 dark:hover:bg-dark-hover/40 transition-colors">
+    <div class="text-[10px] font-semibold uppercase tracking-wider text-light-muted dark:text-dark-muted">Worst timing bucket</div>
+    <div class="text-lg font-semibold text-light-text dark:text-dark-text mt-1">{{ worst_ttr.bucket }}</div>
+    <div class="text-sm text-status-down-light dark:text-status-down-dark mt-2">{{ worst_ttr.pnl_display }} · {{ worst_ttr.count }} loss{{ 'es' if worst_ttr.count != 1 else '' }}</div>
+  </a>
+  {% endif %}
+</div>
+{% endif %}
 
 {% if csv_schema_error %}
 <div class="mb-6 rounded-lg border border-status-down-light dark:border-status-down-dark bg-status-down-light/10 dark:bg-status-down-dark/10 p-4">
@@ -14,13 +60,7 @@
 </div>
 {% endif %}
 
-<div class="mb-6 flex flex-wrap items-center gap-4" data-polymarket-filters>
-  {% from "polymarket_time_filter.html" import render as polymarket_time_filter %}
-  {{ polymarket_time_filter('polymarket.polymarket_loss_lab', current_days, {'strategy': nav_strategy}) }}
-  {% if data_freshness %}<span class="text-xs text-light-muted dark:text-dark-muted">alerts_log: {{ data_freshness }}</span>{% endif %}
-</div>
-
-<div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-6">
+<div id="loss-by-category" class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-6 scroll-mt-24">
   <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-2">Losses by Category</h2>
   <p class="text-sm text-light-muted dark:text-dark-muted mb-4">
     Breakdown of lost bets by market type (politics, sports, crypto, etc.).
@@ -175,11 +215,12 @@
     {% endif %}
   </div>
 
-  <div class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-6">
+  <div id="loss-ttr" class="bg-light-card dark:bg-dark-card rounded-lg border border-light-border dark:border-dark-border p-6 scroll-mt-24">
     <h2 class="text-lg font-semibold text-light-text dark:text-dark-text mb-2">Losses by Time to Resolution</h2>
     <p class="text-sm text-light-muted dark:text-dark-muted mb-4">
       Same buckets as Analytics timing: time from alert to market resolution.
     </p>
+    <p class="text-xs text-light-muted dark:text-dark-muted mb-3">High loss density in a bucket may mean tightening edge or hold rules for similar timing in <code class="px-1 rounded bg-light-hover dark:bg-dark-hover">strategies.yaml</code>.</p>
     {% if ttr_buckets and ttr_buckets|length > 0 %}
     <div class="overflow-x-auto">
       <table class="min-w-full text-sm">
@@ -215,6 +256,18 @@
     Net P/L per month, broken down by category. Respects the current time window and strategy.
   </p>
   {% if loss_trend and loss_trend|length > 0 %}
+  {% set ns = namespace(m=0.01) %}
+  {% for row in loss_trend %}
+    {% set ns.m = ([ns.m, row.total_pnl|abs] | max) %}
+  {% endfor %}
+  <div class="flex items-end gap-1 h-24 px-2 mb-4 border-b border-light-border/70 dark:border-dark-border/70" role="img" aria-label="Monthly net P/L sparkline">
+    {% for row in loss_trend %}
+      {% set bar_h = ((row.total_pnl|abs / ns.m) * 88) | round(0) %}
+      <div class="flex-1 min-w-0 flex flex-col justify-end group" title="{{ row.month }}: {{ row.total_pnl_display }}">
+        <div class="rounded-t {% if row.total_pnl < 0 %}bg-status-down-light/70 dark:bg-status-down-dark/60{% else %}bg-emerald-500/50 dark:bg-emerald-500/40{% endif %}" style="height: {{ [bar_h, 3] | max }}px"></div>
+      </div>
+    {% endfor %}
+  </div>
   <div class="overflow-x-auto">
     <table class="min-w-full text-sm">
       <thead>
