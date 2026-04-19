@@ -8,10 +8,12 @@ Roadmap and pruning plan: [SCORECARD_AND_PRUNING_ROADMAP.md](https://github.com/
 
 ## Features
 
-- **Polymarket console** — Live (portfolio), Scorecard, AI Simulation, Tools hub; safe-scope session, charts, export
-- **Admin** — Login, change password (legacy JSON status API removed in Phase 5c Tier 3)
-- **Security** — bcrypt passwords, CSRF on forms, rate-limited login
-- **Themes** — Dark / light
+- **Polymarket console** — Four primary destinations (**Live**, **Scorecard**, **AI Simulation**, **Tools**) plus a Tools hub at `/polymarket/ops` that opens the secondary pages: Open Positions, Risky, Analytics, Loss Lab, Lifecycle, AI Performance, Mirror Portfolio, Mirror Alerts, Loop / Dev. Safe-scope session, charts, CSV export.
+- **AI tabs** — **AI Simulation** (per-strategy bankroll sim from `ai_sim_bankroll.json`) and **AI Performance** (lift tiles, recent producer-side AI blocks, link back into the simulation).
+- **Mirror tools** — **Mirror Portfolio** (ledger / P&L from `mirror_portfolio.json`) and **Mirror Alerts** (manage up to 20 wallets, per-wallet Telegram on/off, writes `mirror_watch_config.json`).
+- **Admin** — Login, change password. Legacy JSON status API and SQLite stack were removed in 1.7.0 (Phase 5c Tier 3); the app no longer opens any local DB.
+- **Security** — bcrypt passwords, CSRF on forms, rate-limited login.
+- **Themes** — Dark / light.
 
 ## Quick Start
 
@@ -138,31 +140,57 @@ sudo bash scripts/uninstall.sh
 
 ## Polymarket Integration
 
-When `POLYMARKET_DATA_PATH` points to a polymarket-alerts directory, an admin-only **Polymarket** sub-app is available at `/polymarket` with six pages:
+When `POLYMARKET_DATA_PATH` points to a polymarket-alerts directory, an admin-only **Polymarket** sub-app is available at `/polymarket`. The sidebar groups pages into **Main**, **Tools**, **Mirrors**, and **Diagnostics**; the four primary tabs at the top are Live, Scorecard, AI Simulation, and Tools.
 
 ### Pages
 
+**Main**
+
 | Page | Route | Description |
 |------|-------|--------------|
-| **Portfolio** | `/polymarket/portfolio` | Resolved bets, KPIs (wins, losses, net P/L, max drawdown), cumulative P/L chart, drawdown chart, filter (all/wins/losses), time window, sort, search, pagination, export |
-| **Open Positions** | `/polymarket/positions` | Open positions from `open_positions.csv`, total cost, unrealized P/L, cluster exposure summary (top 5 by category), search, **filter by opened date** (All time / Last 30/90/180 days, or click a date to filter from that date), category filter, **track interesting** (star to mark positions; filter "Interesting only", sort "Interesting first"), sort, clickable Opened column header |
-| **Risky** | `/polymarket/risky` | Positions matching the Risky strategy: edge ≥ 1%, gamma ≤ 0.94, expiry within 48h. **Excludes expired.** Tune via `RISKY_EDGE_MIN_PCT`, `RISKY_GAMMA_MAX`, `RISKY_EXPIRY_HOURS_MAX`. Results of resolved risky positions appear in **Analytics** (edge quality, timing, strategy cohort). |
-| **Loss Lab** | `/polymarket/loss-lab` | Losses by category (politics, sports, crypto, etc.), time window filter |
-| **Analytics** | `/polymarket/analytics` | Edge Quality, Timing, Strategy Cohort (with drawdown), MTM/Exit Study from `analytics.json`; refresh button |
-| **Lifecycle** | `/polymarket/lifecycle` | Promote/kill verdicts per strategy from `lifecycle.json`; refresh button |
-| **Loop / Dev** | `/polymarket/loop` | Debug candidates from CSV (default `debug_candidates.csv`; set `POLYMARKET_DEBUG_CSV` to match polymarket-alerts), time window filter, status filter (All/ALERT), sort, search, pagination, export, clickable dates for filtering |
+| **Live (Portfolio)** | `/polymarket/portfolio` | Resolved bets, KPIs (wins, losses, net P/L, max drawdown), cumulative P/L and drawdown charts, filter (all/wins/losses), time window, sort, search, pagination, export. |
+| **Scorecard** | `/polymarket/scorecard` | Per-strategy roll-up: resolved count, win rate, ROI, P/L, drawdown. Sortable columns, time-window filter (`?days=`), strategy dropdown filter. |
+| **AI Simulation** | `/polymarket/ai-simulation` | Per-strategy AI sim bankroll from `ai_sim_bankroll.json`; cross-link to AI Performance. |
+| **Tools (Overview)** | `/polymarket/ops` | Hub page; one-click into all secondary tabs grouped by purpose (portfolio & risk, reports & analysis, AI, engine/debug, mirroring). |
 
-### Features
+**Tools (secondary)**
 
-- **Time window** – All time / Last 30 / 90 / 180 days (Portfolio, Loss Lab, Open Positions, Loop/Dev). **Click date cells** to filter from that date (Portfolio, Positions, Loop)
-- **Search** – Client-side search by question text (Portfolio, Positions, Loop)
-- **Sticky table headers** – Headers stay visible when scrolling
-- **mtime caching** – CSV reads are cached; cache invalidates when files change
-- **Charts** – Cumulative P/L, drawdown, per-run stats trend (Chart.js)
-- **Export CSV** – Resolved list, Loop Summary
-- **Health check** – "polymarket-alerts last run: X ago" from `polymarket_alerts.log`
-- **CSV schema validation** – Clear "CSV schema mismatch" banner when `alerts_log.csv` is invalid
-- **Cross-tab UX** – Active tab styling, mobile horizontal scroll, loading overlay when switching tabs/filters, empty states (e.g. "No open positions")
+| Page | Route | Description |
+|------|-------|--------------|
+| **Open Positions** | `/polymarket/positions` | Open positions from `open_positions.csv`, total cost, unrealized P/L, cluster exposure summary (top 5 by category), search, **filter by opened date** (All time / Last 30/90/180 days, or click a date to filter from that date), category filter, **track interesting** (star to mark positions; filter "Interesting only", sort "Interesting first"), sort, clickable Opened column header. |
+| **Risky** | `/polymarket/risky` | Positions matching the Risky preset: edge ≥ 1%, gamma ≤ 0.94, expiry within 48h. **Excludes expired.** Tune via `RISKY_EDGE_MIN_PCT`, `RISKY_GAMMA_MAX`, `RISKY_EXPIRY_HOURS_MAX`. Page shows **Now** vs **History** sections, qualifying / hit-rate / avg P/L summary, empty-state CTA to a Loose preset, and a **Track** column (same toggle as Open Positions). |
+| **Analytics** | `/polymarket/analytics` | Edge Quality, Timing, Strategy Cohort (with drawdown), MTM / Exit Study from `analytics.json`; **At a glance** hero, win-rate bar columns, all-strategies / strategy-filter badges. **Δ vs previous export** — diffs against `analytics.prev.json` (resolved counts, "was:" insight lines, optional cohort ROI / 2h drift when a strategy filter is set). Refresh button re-runs the producer export. |
+| **Loss Lab** | `/polymarket/loss-lab` | Losses by category (politics, sports, crypto, etc.) with filter chips, biggest-driver cards (category / strategy / timing), monthly sparkline bars above the trend table, time-window filter. |
+| **Lifecycle** | `/polymarket/lifecycle` | Promote/kill verdicts per strategy from `lifecycle.json`; refresh button. |
+| **AI Performance** | `/polymarket/ai-performance` | TL;DR strip, tooltips and sample sizes on lift tiles, recent producer-side AI-blocked rows, details table, link to AI Simulation. |
+
+**Mirrors**
+
+| Page | Route | Description |
+|------|-------|--------------|
+| **Mirror Portfolio** | `/polymarket/mirror-portfolio` | Ledger / P&L from `mirror_portfolio.json`; **Refresh from API** re-runs the mirror export. |
+| **Mirror Alerts** | `/polymarket/mirror-alerts` | Manage up to 20 watched wallets with labels and per-wallet Telegram on/off; writes `mirror_watch_config.json` for the producer-side `jobs/mirror_watch.py` timer. |
+
+**Diagnostics**
+
+| Page | Route | Description |
+|------|-------|--------------|
+| **Loop / Dev** | `/polymarket/loop` | Debug candidates from CSV (default `debug_candidates.csv`; set `POLYMARKET_DEBUG_CSV` to match polymarket-alerts), time window filter, status filter (All/ALERT), sort, search, pagination, export, clickable dates for filtering. |
+
+### Cross-page features
+
+- **Time window** – All time / Last 30 / 90 / 180 days (Portfolio, Loss Lab, Open Positions, Loop/Dev, Scorecard). **Click date cells** to filter from that date (Portfolio, Positions, Loop).
+- **Strategy filter** – Most pages accept `?strategy=<id>`; the dropdown is filled from strategy IDs found in the data.
+- **Search** – Client-side search by question text (Portfolio, Positions, Loop).
+- **Sticky table headers** – Headers stay visible when scrolling; mobile horizontal scroll.
+- **mtime caching** – CSV/JSON reads are cached; cache invalidates when files change.
+- **Charts** – Cumulative P/L, drawdown, per-run stats trend (Chart.js).
+- **Export CSV** – Resolved list, Loop Summary, debug candidates.
+- **Health & freshness** – "polymarket-alerts last run: X ago" from `polymarket_alerts.log`; per-artifact age strip.
+- **Data-quality flags** – Yellow banner when `analytics.json` and `alerts_log.csv` disagree on a strategy's resolved count (suppressed when the CSV itself fails schema validation, so the red error wins).
+- **CSV schema validation** – Clear "CSV schema mismatch" banner when `alerts_log.csv` headers don't match the producer-side contract.
+- **Shared header partial** – Risky, Loss Lab, Analytics, AI Performance, AI Simulation share `_partials/polymarket_page_header.html` (title + action slot + breadcrumbs).
+- **Cross-tab UX** – Active tab styling, loading overlay when switching tabs/filters, empty states with CTAs.
 
 ### Requirements
 
@@ -230,21 +258,51 @@ Creates `run_stats.csv` with columns: `ts`, `resolved`, `wins`, `losses`, `total
 MiniStatus-MVP/
 ├── app/
 │   ├── routes/
-│   │   ├── root.py         # / and legacy RSS stubs (404)
-│   │   ├── admin.py        # Login, logout, change password, help
-│   │   ├── polymarket.py   # Polymarket operator UI
+│   │   ├── root.py             # / → scorecard redirect; /feed.xml + /rss → 404
+│   │   ├── admin.py            # Login, logout, change password, help
+│   │   ├── polymarket.py       # Polymarket operator UI (all /polymarket/* routes)
 │   │   └── error_handlers.py
-│   ├── templates/          # Jinja2 (Polymarket + admin + base)
-│   ├── utils/              # polymarket*.py, password, decorators, polymarket_health (incl. data-quality flags)
-│   └── extensions.py       # csrf, limiter (no SQLAlchemy)
-├── docs/                   # POLYMARKET_INTEGRATION, MINISTATUS_INTEGRATION, DUCKDB_MIGRATION_PLAN, SECONDARY_TABS_UX_PLAN
+│   ├── templates/
+│   │   ├── _partials/          # Shared Jinja partials (e.g. polymarket_page_header.html)
+│   │   ├── admin/              # change_password.html, help.html
+│   │   ├── base.html           # Sidebar (Main / Tools / Mirrors / Diagnostics) + top tabs
+│   │   ├── login.html
+│   │   ├── 403.html
+│   │   └── polymarket*.html    # one template per Polymarket page
+│   ├── utils/
+│   │   ├── decorators.py
+│   │   ├── password.py         # bcrypt hashing helpers
+│   │   ├── polymarket.py       # Main data-loading entry points
+│   │   ├── polymarket_constants.py
+│   │   ├── polymarket_format.py
+│   │   ├── polymarket_health.py# Freshness + get_data_quality_flags
+│   │   ├── polymarket_io.py    # CSV/JSON readers with mtime cache
+│   │   └── polymarket_parse.py
+│   └── extensions.py           # csrf, limiter only (no SQLAlchemy)
+├── docs/
+│   ├── POLYMARKET_INTEGRATION.md
+│   ├── MINISTATUS_INTEGRATION.md
+│   ├── SECONDARY_TABS_UX_PLAN.md
+│   └── DUCKDB_MIGRATION_PLAN.md
 ├── scripts/
-├── tests/
-├── run.py
-└── requirements.txt
+│   ├── install.sh              # systemd setup; uses .venv/, runs as $SUDO_USER
+│   ├── uninstall.sh
+│   ├── restart.sh              # quick `systemctl restart` wrapper
+│   ├── analyze_losses_by_category.py
+│   ├── backfill_resolved_ts.py
+│   ├── log_run_stats.py
+│   ├── retention_alerts_log.py
+│   └── sync_requirements_ci_minimal.py
+├── tests/                      # pytest; ~13 test_*.py files
+├── AGENTS.md                   # Rules for AI agents working in this repo
+├── CHANGELOG.md
+├── run.py                      # Entry point (uses gunicorn in production)
+├── gunicorn.conf.py
+├── requirements.txt
+└── requirements-ci-minimal.txt # Lock for CI minimal job; sync via scripts/sync_requirements_ci_minimal.py
 ```
 
-**Database:** Tier 3 removed Flask-SQLAlchemy and product models. The app does not open any local SQLite DB.
+**Database:** v1.7.0 (Phase 5c Tier 3) removed Flask-SQLAlchemy and the product models. The app does not open any local SQLite DB. All data comes from CSV/JSON files in `POLYMARKET_DATA_PATH`.
 
 ## License
 
