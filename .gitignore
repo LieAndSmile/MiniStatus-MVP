@@ -57,10 +57,27 @@ Thumbs.db
 *.log
 logs/
 
-# Local development
+# Local development — env files & their backups
 .env
 .env.*
 !.env.example
+*.env.bak
+
+# Editor / sed backups (catch-all so accidental sed -i.bak can't slip in)
+*.bak
+*.swp
+*.swo
+*~
+
+# Generic credential files (defense-in-depth; pre-commit hook also blocks these)
+cookies.txt
+secrets.json
+credentials.json
+*.pem
+*.key
+*.pfx
+id_rsa
+id_ed25519
 
 # Testing
 .coverage

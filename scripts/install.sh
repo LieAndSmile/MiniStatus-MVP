@@ -18,6 +18,12 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# Wire up the secret-leak pre-commit hook for this clone (idempotent, harmless
+# if .githooks/ is missing — git just runs no hooks).
+if [ -d ".git" ] && [ -d ".githooks" ]; then
+    git config core.hooksPath .githooks
+fi
+
 # Detect the unprivileged user we should own the venv as (so dev tooling
 # without sudo can still rerun pytest, etc.). Fall back to root if none.
 RUN_USER="${SUDO_USER:-root}"

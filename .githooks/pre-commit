@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Pre-commit guard against leaking secrets / env files.
+# Enable for this clone with:   git config core.hooksPath .githooks
+#
+# Blocks any staged path that matches a known "this-is-a-secret" pattern.
+# Allow-list: .env.example is the documented template and is safe to commit.
+
+set -euo pipefail
+
+# Only check staged additions/modifications (not deletions).
+mapfile -t STAGED < <(git diff --cached --name-only --diff-filter=ACMR)
+
+if [ "${#STAGED[@]}" -eq 0 ]; then
+  exit 0
+fi
+
+BLOCKED=()
+for path in "${STAGED[@]}"; do
+  base="$(basename "$path")"
+  case "$base" in
+    .env.example)
+      # The documented template — always allowed.
+      continue
+      ;;
+    .env|.env.*)
+      BLOCKED+=("$path  (env file — never commit; see .env.example)")
+      ;;
+    *.bak|*.swp|*.swo|*~)
+      BLOCKED+=("$path  (editor / sed backup — almost certainly garbage)")
+      ;;
+    cookies.txt|secrets.json|credentials.json|*.pem|*.key|*.pfx|id_rsa|id_ed25519)
+      BLOCKED+=("$path  (looks like a secret / credential)")
+      ;;
+  esac
+done
+
+if [ "${#BLOCKED[@]}" -gt 0 ]; then
+  echo "✗ pre-commit: refusing to commit potentially sensitive files:" >&2
+  for line in "${BLOCKED[@]}"; do
+    echo "    - $line" >&2
+  done
+  echo "" >&2
+  echo "If you really mean to commit one of these, either rename it" >&2
+  echo "or bypass the hook with:  git commit --no-verify" >&2
+  exit 1
+fi
+
+exit 0
